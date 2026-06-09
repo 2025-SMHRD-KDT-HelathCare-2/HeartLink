@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Heart, LogOut, Menu, X } from "lucide-react";
-import { ReportPage } from "./ReportPage";
-import { ReportHistoryPage } from "./ReportHistoryPage";
+import { ReportPage } from "../pages/ReportPage";
+import { ReportHistoryPage } from "../pages/ReportHistoryPage";
 
 type UserScreen = "report" | "history";
 
