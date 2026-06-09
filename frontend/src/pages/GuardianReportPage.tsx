@@ -1,8 +1,11 @@
-import { Download, Share2, Phone, AlertTriangle, Info } from "lucide-react";
+import { useState } from "react";
+import { Download, Share2, Phone, AlertTriangle, Info, ChevronLeft, ChevronRight } from "lucide-react";
 
-interface GuardianReportPageProps {
-  memberId?: number;
-}
+const MEMBERS = [
+  { id: 1, name: "김할머니", age: 74, relation: "어머니" },
+  { id: 2, name: "박할아버지", age: 81, relation: "아버지" },
+  { id: 3, name: "이순자", age: 68, relation: "이모" },
+];
 
 const MEMBER_REPORTS: Record<number, {
   name: string; age: number; riskLevel: "상" | "중" | "하"; riskScore: number;
@@ -48,16 +51,85 @@ const RISK_CONFIG = {
   하: { color: "#16A34A", bg: "#F0FDF4", border: "#BBF7D0", label: "양호" },
 };
 
+interface GuardianReportPageProps {
+  memberId?: number;
+}
+
 export function GuardianReportPage({ memberId = 1 }: GuardianReportPageProps) {
-  const report = MEMBER_REPORTS[memberId] || MEMBER_REPORTS[1];
+  const [selectedId, setSelectedId] = useState(memberId);
+  const report = MEMBER_REPORTS[selectedId] || MEMBER_REPORTS[1];
   const config = RISK_CONFIG[report.riskLevel];
 
   return (
     <div className="max-w-2xl mx-auto p-6">
 
-      <div className="mb-8">
+      <div className="mb-6">
         <h1 className="font-bold text-[#0A2647]" style={{ fontSize: "1.9rem" }}>건강 결과 보고서</h1>
-        <p className="text-gray-600 mt-2 font-bold" style={{ fontSize: "1.1rem" }}>{report.name} · {report.date}</p>
+      </div>
+
+      {/* 가족 선택 탭 */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 mb-6 overflow-hidden">
+        <div className="p-4 border-b border-gray-100">
+          <p className="text-gray-500 font-bold" style={{ fontSize: "1rem" }}>리포트를 볼 가족을 선택하세요</p>
+        </div>
+        <div className="flex">
+          {MEMBERS.map((m, i) => {
+            const r = MEMBER_REPORTS[m.id];
+            const c = RISK_CONFIG[r.riskLevel];
+            const active = selectedId === m.id;
+            return (
+              <button
+                key={m.id}
+                onClick={() => setSelectedId(m.id)}
+                className={`flex-1 flex flex-col items-center gap-1 py-4 transition-all border-b-4 ${
+                  active ? "border-[#0A2647] bg-blue-50" : "border-transparent hover:bg-gray-50"
+                } ${i !== 0 ? "border-l border-gray-100" : ""}`}
+                style={{ minHeight: 80 }}
+              >
+                <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold"
+                  style={{ backgroundColor: c.color, fontSize: "1rem" }}>
+                  {m.name[0]}
+                </div>
+                <span className="font-bold text-gray-800" style={{ fontSize: "1rem" }}>{m.name}</span>
+                <span className="px-2 py-0.5 rounded-full text-white font-bold"
+                  style={{ backgroundColor: c.color, fontSize: "0.8rem" }}>
+                  {c.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 이전/다음 네비게이션 */}
+      <div className="flex items-center justify-between mb-6">
+        <button
+          onClick={() => {
+            const idx = MEMBERS.findIndex(m => m.id === selectedId);
+            if (idx > 0) setSelectedId(MEMBERS[idx - 1].id);
+          }}
+          disabled={MEMBERS.findIndex(m => m.id === selectedId) === 0}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-30 font-bold transition-colors"
+          style={{ fontSize: "1rem" }}
+        >
+          <ChevronLeft className="w-5 h-5" />
+          이전
+        </button>
+        <span className="text-gray-500 font-bold" style={{ fontSize: "1rem" }}>
+          {MEMBERS.findIndex(m => m.id === selectedId) + 1} / {MEMBERS.length}
+        </span>
+        <button
+          onClick={() => {
+            const idx = MEMBERS.findIndex(m => m.id === selectedId);
+            if (idx < MEMBERS.length - 1) setSelectedId(MEMBERS[idx + 1].id);
+          }}
+          disabled={MEMBERS.findIndex(m => m.id === selectedId) === MEMBERS.length - 1}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-30 font-bold transition-colors"
+          style={{ fontSize: "1rem" }}
+        >
+          다음
+          <ChevronRight className="w-5 h-5" />
+        </button>
       </div>
 
       {/* 위험도 배너 */}
@@ -69,7 +141,7 @@ export function GuardianReportPage({ memberId = 1 }: GuardianReportPageProps) {
               위험도 {report.riskLevel} — {config.label}
             </div>
             <div className="text-gray-600 font-bold mt-1" style={{ fontSize: "1rem" }}>
-              {report.name} ({report.age}세)
+              {report.name} ({report.age}세) · {report.date}
             </div>
           </div>
           <div className="text-right flex-shrink-0">
@@ -89,7 +161,8 @@ export function GuardianReportPage({ memberId = 1 }: GuardianReportPageProps) {
         <ul className="space-y-3">
           {report.findings.map((f, i) => (
             <li key={i} className="flex items-start gap-3">
-              <span className="w-7 h-7 rounded-full flex items-center justify-center text-white flex-shrink-0 font-bold" style={{ backgroundColor: config.color, fontSize: "0.9rem" }}>
+              <span className="w-7 h-7 rounded-full flex items-center justify-center text-white flex-shrink-0 font-bold"
+                style={{ backgroundColor: config.color, fontSize: "0.9rem" }}>
                 {i + 1}
               </span>
               <span className="text-gray-700 font-bold" style={{ fontSize: "1.05rem" }}>{f}</span>
