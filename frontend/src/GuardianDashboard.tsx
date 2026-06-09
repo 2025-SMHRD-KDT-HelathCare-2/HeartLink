@@ -1,4 +1,4 @@
-import { Bell, Clock, ArrowRight, Users } from "lucide-react";
+import { Bell, Clock, ArrowRight, Settings } from "lucide-react";
 
 
 const MEMBERS = [
@@ -21,9 +21,19 @@ export function GuardianDashboard({ onSelectMember }: GuardianDashboardProps) {
   return (
     <div className="max-w-2xl mx-auto p-6">
 
-      <div className="mb-8">
-        <h1 className="font-bold text-[#0A2647]" style={{ fontSize: "1.9rem" }}>연결된 가족 현황</h1>
-        <p className="text-gray-600 mt-2 font-bold" style={{ fontSize: "1.1rem" }}>연결된 가족 구성원의 건강 상태를 확인합니다.</p>
+      <div className="flex items-start justify-between mb-8">
+        <div>
+          <h1 className="font-bold text-[#0A2647]" style={{ fontSize: "1.9rem" }}>연결된 가족 현황</h1>
+          <p className="text-gray-600 mt-2 font-bold" style={{ fontSize: "1.1rem" }}>연결된 가족 구성원의 건강 상태를 확인합니다.</p>
+        </div>
+        <button
+          onClick={() => alert("대상 어르신 변경 기능은 준비 중입니다.")}
+          className="p-3 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 transition-colors shadow-sm"
+          title="대상 어르신 변경"
+          style={{ minWidth: 48, minHeight: 48 }}
+        >
+          <Settings className="w-6 h-6 text-gray-500" />
+        </button>
       </div>
 
       {/* Summary bar */}

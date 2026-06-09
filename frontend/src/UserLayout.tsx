@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Heart, FileText, Download, LogOut, Menu, X } from "lucide-react";
+import { Heart, LogOut, Menu, X } from "lucide-react";
 import { ReportPage } from "./ReportPage";
 import { ReportHistoryPage } from "./ReportHistoryPage";
 
@@ -9,22 +9,10 @@ interface UserLayoutProps {
   onLogout: () => void;
 }
 
-const NAV_ITEMS: { id: UserScreen; label: string; emoji: string; ucId: string }[] = [
-  { id: "report",  label: "내 건강 결과",  emoji: "❤️", ucId: "UC-05" },
-  { id: "history", label: "지난 기록",     emoji: "📋", ucId: "UC-07" },
+const NAV_ITEMS: { id: UserScreen; label: string; emoji: string }[] = [
+  { id: "report",  label: "내 건강 결과", emoji: "❤️" },
+  { id: "history", label: "지난 기록",    emoji: "📋" },
 ];
-
-function GuardianBanner() {
-  return (
-    <div className="mx-4 mt-4 flex items-start gap-3 bg-amber-50 border-2 border-amber-300 rounded-2xl p-5">
-      <span style={{ fontSize: "2rem" }} className="flex-shrink-0">👨‍👩‍👧</span>
-      <p className="text-amber-900 font-bold leading-relaxed" style={{ fontSize: "1.15rem" }}>
-        건강 정보 입력이나 기기 연결은<br />
-        <strong>가족·보호자</strong>가 대신 해드립니다.
-      </p>
-    </div>
-  );
-}
 
 export function UserLayout({ onLogout }: UserLayoutProps) {
   const [screen, setScreen] = useState<UserScreen>("report");
@@ -47,12 +35,11 @@ export function UserLayout({ onLogout }: UserLayoutProps) {
             <Heart className="w-7 h-7 text-white fill-current" />
           </div>
           <div>
-            <div className="font-bold" style={{ fontSize: "1.3rem" }}>HeartLink</div>
+            <div className="font-black" style={{ fontSize: "1.4rem" }}>HeartLink</div>
             <div className="text-white/60 font-bold" style={{ fontSize: "0.9rem" }}>어르신 건강 모니터링</div>
           </div>
         </div>
 
-        {/* 햄버거 (모바일) */}
         <button
           onClick={() => setMenuOpen(!menuOpen)}
           className="p-2 rounded-xl hover:bg-white/10 transition-colors lg:hidden"
@@ -61,10 +48,9 @@ export function UserLayout({ onLogout }: UserLayoutProps) {
           {menuOpen ? <X className="w-7 h-7" /> : <Menu className="w-7 h-7" />}
         </button>
 
-        {/* 데스크톱 사용자 정보 */}
         <div className="hidden lg:flex items-center gap-3">
-          <div className="w-10 h-10 bg-[#0E8080] rounded-full flex items-center justify-center text-white font-bold" style={{ fontSize: "1.1rem" }}>홍</div>
-          <span className="text-white font-bold" style={{ fontSize: "1.1rem" }}>홍길동 (74세)</span>
+          <div className="w-11 h-11 bg-[#0E8080] rounded-full flex items-center justify-center text-white font-black" style={{ fontSize: "1.2rem" }}>홍</div>
+          <span className="text-white font-black" style={{ fontSize: "1.15rem" }}>홍길동 (74세)</span>
           <button
             onClick={onLogout}
             className="ml-2 flex items-center gap-2 px-4 py-2 text-white/60 hover:text-white hover:bg-white/10 rounded-xl transition-colors font-bold"
@@ -80,18 +66,18 @@ export function UserLayout({ onLogout }: UserLayoutProps) {
       {menuOpen && (
         <div className="bg-[#0A2647] border-t border-white/10 px-4 pb-4 lg:hidden z-20">
           <div className="flex items-center gap-3 py-4 border-b border-white/10 mb-3">
-            <div className="w-10 h-10 bg-[#0E8080] rounded-full flex items-center justify-center text-white font-bold" style={{ fontSize: "1.1rem" }}>홍</div>
-            <span className="text-white font-bold" style={{ fontSize: "1.1rem" }}>홍길동 (74세)</span>
+            <div className="w-11 h-11 bg-[#0E8080] rounded-full flex items-center justify-center text-white font-black" style={{ fontSize: "1.2rem" }}>홍</div>
+            <span className="text-white font-black" style={{ fontSize: "1.15rem" }}>홍길동 (74세)</span>
           </div>
           {NAV_ITEMS.map(item => (
             <button
               key={item.id}
               onClick={() => { setScreen(item.id); setMenuOpen(false); }}
-              className={`w-full flex items-center gap-4 px-4 py-5 rounded-xl mb-1 transition-all font-bold ${screen === item.id ? "bg-white/20 text-white" : "text-white/60 hover:bg-white/10 hover:text-white"}`}
-              style={{ minHeight: 68 }}
+              className={`w-full flex items-center gap-4 px-4 py-5 rounded-xl mb-1 transition-all font-black ${screen === item.id ? "bg-white/20 text-white" : "text-white/60 hover:bg-white/10 hover:text-white"}`}
+              style={{ minHeight: 72 }}
             >
-              <span style={{ fontSize: "1.8rem" }}>{item.emoji}</span>
-              <span style={{ fontSize: "1.2rem" }}>{item.label}</span>
+              <span style={{ fontSize: "2rem" }}>{item.emoji}</span>
+              <span style={{ fontSize: "1.3rem" }}>{item.label}</span>
             </button>
           ))}
           <button
@@ -106,28 +92,32 @@ export function UserLayout({ onLogout }: UserLayoutProps) {
       )}
 
       {/* 보호자 안내 배너 */}
-      <GuardianBanner />
+      <div className="mx-4 mt-4 flex items-center gap-3 bg-amber-50 border-2 border-amber-300 rounded-2xl p-5">
+        <span style={{ fontSize: "2rem" }} className="flex-shrink-0">👨‍👩‍👧</span>
+        <p className="text-amber-900 font-black leading-relaxed" style={{ fontSize: "1.2rem" }}>
+          건강 정보 입력·기기 연결은<br /><strong>가족·보호자</strong>가 도와드립니다.
+        </p>
+      </div>
 
-      {/* 큼직한 메뉴 카드 */}
-      <div className="grid grid-cols-2 gap-4 p-4 pt-4">
+      {/* 메뉴 카드 */}
+      <div className="grid grid-cols-2 gap-4 p-4">
         {NAV_ITEMS.map(item => (
           <button
             key={item.id}
             onClick={() => setScreen(item.id)}
-            className={`flex flex-col items-center justify-center gap-3 py-8 rounded-2xl border-2 transition-all font-bold shadow-sm ${
+            className={`flex flex-col items-center justify-center gap-3 py-8 rounded-2xl border-4 transition-all font-black shadow-sm ${
               screen === item.id
                 ? "bg-[#0A2647] border-[#0A2647] text-white shadow-lg"
-                : "bg-white border-gray-200 text-gray-700 hover:border-[#0A2647]/30 hover:bg-[#0A2647]/5"
+                : "bg-white border-gray-200 text-gray-800 hover:border-[#0A2647]/40"
             }`}
-            style={{ minHeight: 140 }}
+            style={{ minHeight: 150 }}
           >
-            <span style={{ fontSize: "2.5rem" }}>{item.emoji}</span>
-            <span style={{ fontSize: "1.25rem", fontWeight: 800 }}>{item.label}</span>
+            <span style={{ fontSize: "2.8rem" }}>{item.emoji}</span>
+            <span style={{ fontSize: "1.35rem" }}>{item.label}</span>
           </button>
         ))}
       </div>
 
-      {/* 현재 화면 */}
       <main className="flex-1">
         {renderScreen()}
       </main>
