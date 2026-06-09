@@ -1,11 +1,12 @@
-const mongoose = require('mongoose');
+// backend/src/config/db.js
+const mongoose = require("mongoose");
 
 const connectDB = async () => {
   try {
-    await mongoose.connect(process.env.MONGODB_URI);
-    console.log('MongoDB connected');
+    await mongoose.connect(process.env.MONGO_URI);
+    console.log("✅ MongoDB Atlas 연결 성공");
   } catch (err) {
-    console.error(err.message);
+    console.error("❌ MongoDB 연결 실패:", err.message);
     process.exit(1);
   }
 };
