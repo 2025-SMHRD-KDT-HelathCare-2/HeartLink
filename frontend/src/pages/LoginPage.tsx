@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { login as loginApi } from "../api/authApi";
@@ -6,16 +6,48 @@ import { Heart, Eye, EyeOff, Lock, Mail, User, Shield } from "lucide-react";
 
 type Role = "user" | "guardian";
 
+function RoleToast({ role }: { role: Role }) {
+  const [visible, setVisible] = useState(false);
+  const [displayRole, setDisplayRole] = useState<Role>(role);
+
+  useEffect(() => {
+    setVisible(false);
+    const t = setTimeout(() => {
+      setDisplayRole(role);
+      requestAnimationFrame(() => setVisible(true));
+    }, 150);
+    return () => clearTimeout(t);
+  }, [role]);
+
+  const isUser = displayRole === "user";
+  return (
+    <div
+      className={`flex items-start gap-3 px-4 py-3 rounded-xl border font-bold mb-4 transition-all duration-500 ${
+        visible ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-1"
+      } ${
+        isUser
+          ? "bg-[#0E8080]/10 border-[#0E8080]/30 text-[#0E8080]"
+          : "bg-[#0A2647]/10 border-[#0A2647]/30 text-[#0A2647]"
+      }`}
+      style={{ fontSize: "0.95rem" }}
+    >
+      <span>
+        {isUser
+          ? "측정하는 본인의 페이지입니다. 잘 모르실 경우 보호자와 함께 진행해 주세요."
+          : "측정 결과를 지켜볼 수 있는 보호자 계정입니다."}
+      </span>
+    </div>
+  );
+}
+
 export function LoginPage() {
   const navigate = useNavigate();
   const { login } = useAuth();
   const [role, setRole] = useState<Role>("user");
   const [showPassword, setShowPassword] = useState(false);
-  const [failCount, setFailCount] = useState(0);
-  const [locked, setLocked] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({ email: "", password: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [submitting, setSubmitting] = useState(false);
 
   const validate = () => {
     const errs: Record<string, string> = {};
@@ -28,27 +60,25 @@ export function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (locked) return;
     const errs = validate();
     setErrors(errs);
     if (Object.keys(errs).length > 0) return;
 
     try {
       setSubmitting(true);
-      const { token, role: serverRole } = await loginApi({ email: form.email, password: form.password });
-      login({ email: form.email, role: serverRole }, serverRole, token);
+      const data = await loginApi({ email: form.email, password: form.password });
+
+      if (data.role !== role) {
+        const opposite = data.role === "guardian" ? "보호자" : "사용자";
+        setErrors({ global: `혹시 ${opposite}로 가입하셨나요? 위에서 ${opposite} 버튼을 선택해 주세요.` });
+        return;
+      }
+
+      login({ email: form.email, role: data.role }, data.role, data.token);
       navigate("/dashboard");
     } catch (err) {
-      const next = failCount + 1;
-      setFailCount(next);
-      if (next >= 5) {
-        setLocked(true);
-        setTimeout(() => { setLocked(false); setFailCount(0); }, 10 * 60 * 1000);
-        setErrors({ global: "로그인을 5번 틀렸습니다. 10분 후에 다시 시도해 주세요." });
-      } else {
-        const message = err instanceof Error ? err.message : "이메일 또는 비밀번호가 틀렸습니다.";
-        setErrors({ global: `${message} (${next}/5번)` });
-      }
+      const message = err instanceof Error ? err.message : "로그인에 실패했습니다.";
+      setErrors({ global: message });
     } finally {
       setSubmitting(false);
     }
@@ -66,11 +96,11 @@ export function LoginPage() {
         </div>
 
         <div className="bg-white rounded-2xl shadow-2xl p-8">
-          <div className="flex gap-3 mb-6">
+          <div className="flex gap-3 mb-3">
             <button type="button" onClick={() => setRole("user")}
               className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all font-bold ${role === "user" ? "border-[#0E8080] bg-[#0E8080]/10 text-[#0E8080]" : "border-gray-200 text-gray-500"}`}
               style={{ minHeight: 56, fontSize: "1.05rem" }}>
-              <User className="w-6 h-6" />어르신 본인
+              <User className="w-6 h-6" />사용자
             </button>
             <button type="button" onClick={() => setRole("guardian")}
               className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all font-bold ${role === "guardian" ? "border-[#0A2647] bg-[#0A2647]/10 text-[#0A2647]" : "border-gray-200 text-gray-500"}`}
@@ -79,12 +109,15 @@ export function LoginPage() {
             </button>
           </div>
 
+          <RoleToast role={role} />
+
           <form onSubmit={handleSubmit} className="space-y-5">
             {errors.global && (
-              <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-4 font-bold" style={{ fontSize: "1rem" }}>
+              <div className="bg-amber-50 border border-amber-300 text-amber-800 rounded-lg p-4 font-bold" style={{ fontSize: "1rem" }}>
                 {errors.global}
               </div>
             )}
+
             <div>
               <label className="block text-gray-700 mb-2 font-bold" style={{ fontSize: "1.1rem" }}>이메일 주소</label>
               <div className="relative">
@@ -96,6 +129,7 @@ export function LoginPage() {
               </div>
               {errors.email && <p className="text-red-500 mt-1 font-bold" style={{ fontSize: "1rem" }}>{errors.email}</p>}
             </div>
+
             <div>
               <label className="block text-gray-700 mb-2 font-bold" style={{ fontSize: "1.1rem" }}>비밀번호</label>
               <div className="relative">
@@ -111,11 +145,13 @@ export function LoginPage() {
               </div>
               {errors.password && <p className="text-red-500 mt-1 font-bold" style={{ fontSize: "1rem" }}>{errors.password}</p>}
             </div>
-            <button type="submit" disabled={locked || submitting}
+
+            <button type="submit" disabled={submitting}
               className="w-full py-5 bg-gradient-to-r from-[#0A2647] to-[#0E8080] text-white rounded-xl hover:opacity-90 active:scale-95 transition-all disabled:opacity-50 font-bold"
               style={{ minHeight: 60, fontSize: "1.2rem" }}>
-              {locked ? "잠금 중 (10분 후 가능)" : submitting ? "로그인 중..." : "로그인"}
+              {submitting ? "로그인 중..." : "로그인"}
             </button>
+
             <div className="text-center">
               <button type="button" className="text-gray-400 hover:text-[#0E8080] underline font-bold" style={{ fontSize: "1rem" }}>
                 비밀번호를 잊으셨나요?
@@ -128,10 +164,6 @@ export function LoginPage() {
             <button onClick={() => navigate("/signup")} className="text-[#0E8080] font-bold underline" style={{ fontSize: "1rem" }}>
               회원가입
             </button>
-          </div>
-
-          <div className="mt-4 p-4 bg-blue-50 rounded-lg font-bold" style={{ fontSize: "1rem", color: "#1d4ed8" }}>
-            <strong>테스트 계정:</strong> test@heartlink.kr / Password1
           </div>
         </div>
       </div>

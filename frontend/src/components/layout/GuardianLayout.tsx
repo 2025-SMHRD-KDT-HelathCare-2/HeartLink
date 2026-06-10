@@ -125,7 +125,7 @@ export function GuardianLayout({ onLogout }: GuardianLayoutProps) {
 
           <div>
             <p className="text-white/30 font-bold px-4 pb-2" style={{ fontSize: "0.8rem", letterSpacing: "0.06em" }}>
-              어르신 대신 처리
+              사용자 대신 처리
             </p>
             <div className="space-y-1">
               {CARE_NAV.map(item => <NavBtn key={item.id} {...item} />)}
