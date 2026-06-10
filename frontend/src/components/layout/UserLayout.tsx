@@ -36,7 +36,7 @@ export function UserLayout({ onLogout }: UserLayoutProps) {
           </div>
           <div>
             <div className="font-black" style={{ fontSize: "1.4rem" }}>HeartLink</div>
-            <div className="text-white/60 font-bold" style={{ fontSize: "0.9rem" }}>어르신 건강 모니터링</div>
+            <div className="text-white/60 font-bold" style={{ fontSize: "0.9rem" }}>사용자 건강 모니터링</div>
           </div>
         </div>
 
