@@ -9,6 +9,7 @@ const api = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
+// 요청 인터셉터: 저장된 토큰이 있으면 Authorization 헤더 자동 첨부
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
   if (token) {
@@ -17,6 +18,7 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// 응답 인터셉터: 서버 에러 메시지를 일관된 형태의 Error로 변환
 api.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -28,6 +30,11 @@ api.interceptors.response.use(
   }
 );
 
+/**
+ * 회원가입 payload
+ * - 필수(NN): email, password, nickname, role
+ * - 선택: age, gender, medical_history, medications
+ */
 export interface RegisterPayload {
   email: string;
   password: string;
