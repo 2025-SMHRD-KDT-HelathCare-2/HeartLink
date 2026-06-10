@@ -3,12 +3,12 @@ import {
   Heart, Users, Bell, FileText, LogOut, Menu, X,
   ChevronRight, Shield, Upload, Activity
 } from "lucide-react";
-import { GuardianDashboard } from "../pages/GuardianDashboard";
-import { NotificationsPage } from "../pages/NotificationsPage";
-import { GuardianReportPage } from "../pages/GuardianReportPage";
-import { UploadPage } from "../pages/UploadPage";
-import type { ECGData } from "../pages/UploadPage";
-import { VisualizationPage } from "../pages/VisualizationPage";
+import { GuardianDashboard } from "../../pages/GuardianDashboard";
+import { NotificationsPage } from "../../pages/NotificationsPage";
+import { GuardianReportPage } from "../../pages/GuardianReportPage";
+import { UploadPage } from "../../pages/UploadPage";
+import type { ECGData } from "../../pages/UploadPage";
+import { VisualizationPage } from "../../pages/VisualizationPage";
 
 type GuardianScreen = "dashboard" | "notifications" | "report" | "upload" | "visualization";
 

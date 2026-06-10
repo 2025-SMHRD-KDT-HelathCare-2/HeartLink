@@ -1,14 +1,13 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 import { Heart, Eye, EyeOff, Lock, Mail, User, Shield } from "lucide-react";
 
 type Role = "user" | "guardian";
 
-interface LoginPageProps {
-  onLogin: (role: Role) => void;
-  onGoRegister: () => void;
-}
-
-export function LoginPage({ onLogin, onGoRegister }: LoginPageProps) {
+export function LoginPage() {
+  const navigate = useNavigate();
+  const { login } = useAuth();
   const [role, setRole] = useState<Role>("user");
   const [showPassword, setShowPassword] = useState(false);
   const [failCount, setFailCount] = useState(0);
@@ -44,13 +43,15 @@ export function LoginPage({ onLogin, onGoRegister }: LoginPageProps) {
       }
       return;
     }
-    onLogin(role);
+
+    // 로그인 성공 — AuthContext에 저장 후 대시보드로
+    login({ email: form.email, role }, role, "mock-token");
+    navigate("/dashboard");
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0A2647] via-[#144272] to-[#0E8080] flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        {/* 로고 */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-24 h-24 bg-white/20 rounded-full mb-4 backdrop-blur-sm">
             <Heart className="w-12 h-12 text-white fill-current" />
@@ -60,7 +61,6 @@ export function LoginPage({ onLogin, onGoRegister }: LoginPageProps) {
         </div>
 
         <div className="bg-white rounded-2xl shadow-2xl p-8">
-          {/* 역할 선택 */}
           <div className="flex gap-3 mb-6">
             <button type="button" onClick={() => setRole("user")}
               className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all font-bold ${role === "user" ? "border-[#0E8080] bg-[#0E8080]/10 text-[#0E8080]" : "border-gray-200 text-gray-500"}`}
@@ -80,8 +80,6 @@ export function LoginPage({ onLogin, onGoRegister }: LoginPageProps) {
                 {errors.global}
               </div>
             )}
-
-            {/* 이메일 */}
             <div>
               <label className="block text-gray-700 mb-2 font-bold" style={{ fontSize: "1.1rem" }}>이메일 주소</label>
               <div className="relative">
@@ -93,8 +91,6 @@ export function LoginPage({ onLogin, onGoRegister }: LoginPageProps) {
               </div>
               {errors.email && <p className="text-red-500 mt-1 font-bold" style={{ fontSize: "1rem" }}>{errors.email}</p>}
             </div>
-
-            {/* 비밀번호 */}
             <div>
               <label className="block text-gray-700 mb-2 font-bold" style={{ fontSize: "1.1rem" }}>비밀번호</label>
               <div className="relative">
@@ -110,13 +106,11 @@ export function LoginPage({ onLogin, onGoRegister }: LoginPageProps) {
               </div>
               {errors.password && <p className="text-red-500 mt-1 font-bold" style={{ fontSize: "1rem" }}>{errors.password}</p>}
             </div>
-
             <button type="submit" disabled={locked}
-              className="w-full py-5 bg-gradient-to-r from-[#0A2647] to-[#0E8080] text-white rounded-xl hover:opacity-90 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-bold"
+              className="w-full py-5 bg-gradient-to-r from-[#0A2647] to-[#0E8080] text-white rounded-xl hover:opacity-90 active:scale-95 transition-all disabled:opacity-50 font-bold"
               style={{ minHeight: 60, fontSize: "1.2rem" }}>
               {locked ? "잠금 중 (10분 후 가능)" : "로그인"}
             </button>
-
             <div className="text-center">
               <button type="button" className="text-gray-400 hover:text-[#0E8080] underline font-bold" style={{ fontSize: "1rem" }}>
                 비밀번호를 잊으셨나요?
@@ -124,10 +118,9 @@ export function LoginPage({ onLogin, onGoRegister }: LoginPageProps) {
             </div>
           </form>
 
-          {/* 회원가입 이동 */}
           <div className="mt-6 pt-6 border-t border-gray-100 text-center">
             <span className="text-gray-500 font-bold" style={{ fontSize: "1rem" }}>아직 회원이 아니신가요? </span>
-            <button onClick={onGoRegister} className="text-[#0E8080] font-bold underline" style={{ fontSize: "1rem" }}>
+            <button onClick={() => navigate("/signup")} className="text-[#0E8080] font-bold underline" style={{ fontSize: "1rem" }}>
               회원가입
             </button>
           </div>

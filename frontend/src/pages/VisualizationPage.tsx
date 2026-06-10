@@ -1,8 +1,8 @@
 import { useState, useMemo } from "react";
 import { Info } from "lucide-react";
-import { ECGChart } from "../components/ECGChart";
-import { RiskGauge } from "../components/RiskGauge";
-import { AnomalyTimeline } from "../components/AnomalyTimeline";
+import { ECGChart } from "../components/charts/ECGChart";
+import { RiskGauge } from "../components/charts/RiskGauge";
+import { AnomalyTimeline } from "../components/charts/AnomalyTimeline";
 import type { ECGData } from "./UploadPage";
 
 function generateECG(points = 400): Array<{ x: number; y: number }> {
