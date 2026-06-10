@@ -11,7 +11,8 @@ import {
   Settings2,
   ListChecks,
 } from "lucide-react";
-import { register } from "../api/authApi";
+
+import { register, type RegisterPayload } from "../api/authApi";
 
 type Role = "user" | "guardian";
 type Mode = "simple" | "detail";
@@ -79,7 +80,7 @@ export function RegisterPage({ onRegister, onGoLogin }: RegisterPageProps) {
 
     // 간단 모드: email, password, nickname, role
     // 상세 모드: + age, gender, medical_history, medications
-    const payload: Record<string, unknown> = {
+    const payload: RegisterPayload = {
       email: form.email,
       password: form.password,
       nickname: form.nickname,
@@ -136,11 +137,10 @@ export function RegisterPage({ onRegister, onGoLogin }: RegisterPageProps) {
             <button
               type="button"
               onClick={() => setRole("user")}
-              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all font-bold ${
-                role === "user"
+              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all font-bold ${role === "user"
                   ? "border-[#0E8080] bg-[#0E8080]/10 text-[#0E8080]"
                   : "border-gray-200 text-gray-500"
-              }`}
+                }`}
               style={{ minHeight: 56, fontSize: "1.05rem" }}
             >
               <User className="w-6 h-6" />
@@ -149,11 +149,10 @@ export function RegisterPage({ onRegister, onGoLogin }: RegisterPageProps) {
             <button
               type="button"
               onClick={() => setRole("guardian")}
-              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all font-bold ${
-                role === "guardian"
+              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all font-bold ${role === "guardian"
                   ? "border-[#0A2647] bg-[#0A2647]/10 text-[#0A2647]"
                   : "border-gray-200 text-gray-500"
-              }`}
+                }`}
               style={{ minHeight: 56, fontSize: "1.05rem" }}
             >
               <Shield className="w-6 h-6" />
@@ -166,11 +165,10 @@ export function RegisterPage({ onRegister, onGoLogin }: RegisterPageProps) {
             <button
               type="button"
               onClick={() => setMode("simple")}
-              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 transition-all font-bold ${
-                mode === "simple"
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 transition-all font-bold ${mode === "simple"
                   ? "border-[#0E8080] bg-[#0E8080]/10 text-[#0E8080]"
                   : "border-gray-200 text-gray-500"
-              }`}
+                }`}
               style={{ minHeight: 48, fontSize: "1rem" }}
             >
               <UserCircle className="w-5 h-5" />
@@ -179,11 +177,10 @@ export function RegisterPage({ onRegister, onGoLogin }: RegisterPageProps) {
             <button
               type="button"
               onClick={() => setMode("detail")}
-              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 transition-all font-bold ${
-                mode === "detail"
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 transition-all font-bold ${mode === "detail"
                   ? "border-[#0E8080] bg-[#0E8080]/10 text-[#0E8080]"
                   : "border-gray-200 text-gray-500"
-              }`}
+                }`}
               style={{ minHeight: 48, fontSize: "1rem" }}
             >
               <Settings2 className="w-5 h-5" />
@@ -341,11 +338,10 @@ export function RegisterPage({ onRegister, onGoLogin }: RegisterPageProps) {
                     <button
                       type="button"
                       onClick={() => setField("gender", "M")}
-                      className={`flex-1 py-3 rounded-xl border-2 transition-all font-bold ${
-                        form.gender === "M"
+                      className={`flex-1 py-3 rounded-xl border-2 transition-all font-bold ${form.gender === "M"
                           ? "border-[#0E8080] bg-[#0E8080]/10 text-[#0E8080]"
                           : "border-gray-200 text-gray-500"
-                      }`}
+                        }`}
                       style={{ minHeight: 56, fontSize: "1.05rem" }}
                     >
                       남성
@@ -353,11 +349,10 @@ export function RegisterPage({ onRegister, onGoLogin }: RegisterPageProps) {
                     <button
                       type="button"
                       onClick={() => setField("gender", "F")}
-                      className={`flex-1 py-3 rounded-xl border-2 transition-all font-bold ${
-                        form.gender === "F"
+                      className={`flex-1 py-3 rounded-xl border-2 transition-all font-bold ${form.gender === "F"
                           ? "border-[#0E8080] bg-[#0E8080]/10 text-[#0E8080]"
                           : "border-gray-200 text-gray-500"
-                      }`}
+                        }`}
                       style={{ minHeight: 56, fontSize: "1.05rem" }}
                     >
                       여성
