@@ -6,25 +6,27 @@ exports.uploadECG = async (req, res, next) => {
     const { measured_at } = req.body;
     const file = req.file;
 
-    const aiResult = await aiService.analyze({
-      fileBuffer: file.buffer,
-      fileName: file.originalname,
-      userId: req.user.id,
-    });
-
     const measurement = await Measurement.create({
       user_id: req.user.id,
       file_name: file.originalname,
-      file_ext: file.originalname.split('.').pop(),
+      file_ext: file.originalname.split('.').pop().toUpperCase(),
       file_size: file.size,
-      lead_type: aiResult.lead_type,
-      sampling_rate: aiResult.sampling_rate,
-      ecg_waveform_lite: aiResult.ecg_waveform_lite,
-      r_peaks: aiResult.r_peaks,
+      status: 'processing',
       measured_at: measured_at || new Date(),
     });
 
-    res.status(201).json({ measurementId: measurement._id, waveform: aiResult.ecg_waveform_lite, r_peaks: aiResult.r_peaks });
+    // Fire-and-forget: FastAPI에 전송 후 응답 안 기다림
+    aiService.analyze({
+      fileBuffer: file.buffer,
+      fileName: file.originalname,
+      measurementId: measurement._id,
+      userId: req.user.id,
+    }).catch(err => {
+      console.error('FastAPI 전송 실패:', err.message);
+      Measurement.findByIdAndUpdate(measurement._id, { status: 'failed' }).catch(() => {});
+    });
+
+    res.status(201).json({ measurementId: measurement._id, status: 'processing' });
   } catch (err) {
     next(err);
   }

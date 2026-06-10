@@ -1,25 +1,39 @@
 import { createContext, useContext, useState, useEffect } from "react";
 
-const AuthContext = createContext(null);
+type Role = "user" | "guardian";
 
-export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
-  const [role, setRole] = useState(null); // "user" | "guardian"
+interface UserData {
+  email: string;
+  role: Role;
+}
+
+interface AuthContextType {
+  user: UserData | null;
+  role: Role | null;
+  login: (userData: UserData, userRole: Role, token: string) => void;
+  logout: () => void;
+  loading: boolean;
+}
+
+const AuthContext = createContext<AuthContextType | null>(null);
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<UserData | null>(null);
+  const [role, setRole] = useState<Role | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 새로고침해도 로그인 유지
     const token = localStorage.getItem("token");
     const savedRole = localStorage.getItem("role");
     const savedUser = localStorage.getItem("user");
     if (token && savedRole && savedUser) {
-      setRole(savedRole);
+      setRole(savedRole as Role);
       setUser(JSON.parse(savedUser));
     }
     setLoading(false);
   }, []);
 
-  const login = (userData, userRole, token) => {
+  const login = (userData: UserData, userRole: Role, token: string) => {
     localStorage.setItem("token", token);
     localStorage.setItem("role", userRole);
     localStorage.setItem("user", JSON.stringify(userData));
@@ -42,5 +56,4 @@ export function AuthProvider({ children }) {
   );
 }
 
-// 다른 파일에서 쓸 때: const { user, role, login, logout } = useAuth();
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => useContext(AuthContext)!;
