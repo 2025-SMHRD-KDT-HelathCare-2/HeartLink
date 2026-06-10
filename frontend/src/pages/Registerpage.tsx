@@ -8,22 +8,51 @@ import {
   User,
   Shield,
   UserCircle,
-  Settings2,
   ListChecks,
 } from "lucide-react";
-
 import { register, type RegisterPayload } from "../api/authApi";
 
 type Role = "user" | "guardian";
-type Mode = "simple" | "detail";
 
 interface RegisterPageProps {
   onRegister: (role: Role) => void;
   onGoLogin: () => void;
 }
 
+// 필수/선택 라벨 컴포넌트
+function FieldLabel({
+  text,
+  required,
+}: {
+  text: string;
+  required?: boolean;
+}) {
+  return (
+    <label
+      className="flex items-center gap-2 text-gray-700 mb-2 font-bold"
+      style={{ fontSize: "1.1rem" }}
+    >
+      {text}
+      {required ? (
+        <span
+          className="px-2 py-0.5 rounded-md bg-red-100 text-red-600 font-bold"
+          style={{ fontSize: "0.8rem" }}
+        >
+          필수
+        </span>
+      ) : (
+        <span
+          className="px-2 py-0.5 rounded-md bg-gray-100 text-gray-500 font-bold"
+          style={{ fontSize: "0.8rem" }}
+        >
+          선택
+        </span>
+      )}
+    </label>
+  );
+}
+
 export function RegisterPage({ onRegister, onGoLogin }: RegisterPageProps) {
-  const [mode, setMode] = useState<Mode>("simple");
   const [role, setRole] = useState<Role>("user");
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -47,6 +76,7 @@ export function RegisterPage({ onRegister, onGoLogin }: RegisterPageProps) {
   const validate = () => {
     const errs: Record<string, string> = {};
 
+    // 필수(NN) 항목 검증
     if (!form.email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/))
       errs.email = "올바른 이메일 주소를 입력해 주세요.";
     if (form.password.length < 8)
@@ -55,8 +85,8 @@ export function RegisterPage({ onRegister, onGoLogin }: RegisterPageProps) {
       errs.passwordConfirm = "비밀번호가 일치하지 않습니다.";
     if (!form.nickname.trim()) errs.nickname = "닉네임을 입력해 주세요.";
 
-    // 상세 모드 추가 검증
-    if (mode === "detail" && form.age) {
+    // 선택 항목이라도 값이 있으면 형식 검증
+    if (form.age) {
       const ageNum = Number(form.age);
       if (!Number.isInteger(ageNum) || ageNum < 0 || ageNum > 150)
         errs.age = "올바른 나이를 입력해 주세요.";
@@ -78,8 +108,7 @@ export function RegisterPage({ onRegister, onGoLogin }: RegisterPageProps) {
     setErrors(errs);
     if (Object.keys(errs).length > 0) return;
 
-    // 간단 모드: email, password, nickname, role
-    // 상세 모드: + age, gender, medical_history, medications
+    // 필수 항목 + 입력된 선택 항목만 담아 전송
     const payload: RegisterPayload = {
       email: form.email,
       password: form.password,
@@ -87,12 +116,10 @@ export function RegisterPage({ onRegister, onGoLogin }: RegisterPageProps) {
       role,
     };
 
-    if (mode === "detail") {
-      if (form.age) payload.age = Number(form.age);
-      if (form.gender) payload.gender = form.gender;
-      payload.medical_history = toArray(form.medical_history);
-      payload.medications = toArray(form.medications);
-    }
+    if (form.age) payload.age = Number(form.age);
+    if (form.gender) payload.gender = form.gender;
+    payload.medical_history = toArray(form.medical_history);
+    payload.medications = toArray(form.medications);
 
     try {
       setSubmitting(true);
@@ -111,12 +138,10 @@ export function RegisterPage({ onRegister, onGoLogin }: RegisterPageProps) {
   const inputClass =
     "w-full pl-12 pr-4 py-4 border border-gray-200 rounded-xl focus:outline-none focus:border-[#0E8080] bg-gray-50 font-bold";
   const inputStyle = { minHeight: 56, fontSize: "1.1rem" } as const;
-  const labelClass = "block text-gray-700 mb-2 font-bold";
-  const labelStyle = { fontSize: "1.1rem" } as const;
   const errStyle = { fontSize: "1rem" } as const;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0A2647] via-[#144272] to-[#0E8080] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-[#0A2647] via-[#144272] to-[#0E8080] flex items-center justify-center p-4 py-10">
       <div className="w-full max-w-md">
         {/* 로고 */}
         <div className="text-center mb-8">
@@ -132,60 +157,45 @@ export function RegisterPage({ onRegister, onGoLogin }: RegisterPageProps) {
         </div>
 
         <div className="bg-white rounded-2xl shadow-2xl p-8">
-          {/* 역할 선택 */}
-          <div className="flex gap-3 mb-5">
-            <button
-              type="button"
-              onClick={() => setRole("user")}
-              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all font-bold ${role === "user"
-                  ? "border-[#0E8080] bg-[#0E8080]/10 text-[#0E8080]"
-                  : "border-gray-200 text-gray-500"
-                }`}
-              style={{ minHeight: 56, fontSize: "1.05rem" }}
-            >
-              <User className="w-6 h-6" />
-              어르신 본인
-            </button>
-            <button
-              type="button"
-              onClick={() => setRole("guardian")}
-              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all font-bold ${role === "guardian"
-                  ? "border-[#0A2647] bg-[#0A2647]/10 text-[#0A2647]"
-                  : "border-gray-200 text-gray-500"
-                }`}
-              style={{ minHeight: 56, fontSize: "1.05rem" }}
-            >
-              <Shield className="w-6 h-6" />
-              가족·보호자
-            </button>
-          </div>
+          {/* 안내 문구 */}
+          <p
+            className="text-gray-500 mb-6 font-bold"
+            style={{ fontSize: "1rem" }}
+          >
+            <span className="text-red-500">필수</span> 항목을 입력해 주세요.
+            건강 정보(<span className="text-gray-500">선택</span>)를 입력하시면
+            더 정확한 분석을 받을 수 있어요.
+          </p>
 
-          {/* 가입 모드 선택 (간단 / 상세) */}
-          <div className="flex gap-3 mb-6">
-            <button
-              type="button"
-              onClick={() => setMode("simple")}
-              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 transition-all font-bold ${mode === "simple"
-                  ? "border-[#0E8080] bg-[#0E8080]/10 text-[#0E8080]"
-                  : "border-gray-200 text-gray-500"
-                }`}
-              style={{ minHeight: 48, fontSize: "1rem" }}
-            >
-              <UserCircle className="w-5 h-5" />
-              간편 가입
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode("detail")}
-              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 transition-all font-bold ${mode === "detail"
-                  ? "border-[#0E8080] bg-[#0E8080]/10 text-[#0E8080]"
-                  : "border-gray-200 text-gray-500"
-                }`}
-              style={{ minHeight: 48, fontSize: "1rem" }}
-            >
-              <Settings2 className="w-5 h-5" />
-              상세 가입
-            </button>
+          {/* 회원 유형 선택 (필수) */}
+          <div className="mb-6">
+            <FieldLabel text="회원 유형" required />
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setRole("user")}
+                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all font-bold ${role === "user"
+                    ? "border-[#0E8080] bg-[#0E8080]/10 text-[#0E8080]"
+                    : "border-gray-200 text-gray-500"
+                  }`}
+                style={{ minHeight: 56, fontSize: "1.05rem" }}
+              >
+                <User className="w-6 h-6" />
+                어르신 본인
+              </button>
+              <button
+                type="button"
+                onClick={() => setRole("guardian")}
+                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all font-bold ${role === "guardian"
+                    ? "border-[#0A2647] bg-[#0A2647]/10 text-[#0A2647]"
+                    : "border-gray-200 text-gray-500"
+                  }`}
+                style={{ minHeight: 56, fontSize: "1.05rem" }}
+              >
+                <Shield className="w-6 h-6" />
+                가족·보호자
+              </button>
+            </div>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
@@ -198,213 +208,220 @@ export function RegisterPage({ onRegister, onGoLogin }: RegisterPageProps) {
               </div>
             )}
 
-            {/* 이메일 */}
-            <div>
-              <label className={labelClass} style={labelStyle}>
-                이메일 주소
-              </label>
-              <div className="relative">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-400" />
-                <input
-                  type="email"
-                  placeholder="example@email.com"
-                  value={form.email}
-                  onChange={(e) => setField("email", e.target.value)}
-                  className={inputClass}
-                  style={inputStyle}
-                />
-              </div>
-              {errors.email && (
-                <p className="text-red-500 mt-1 font-bold" style={errStyle}>
-                  {errors.email}
-                </p>
-              )}
-            </div>
+            {/* ===== 필수 정보 ===== */}
+            <div className="pt-1">
+              <h2
+                className="text-[#0A2647] font-bold mb-4 pb-2 border-b-2 border-gray-100"
+                style={{ fontSize: "1.2rem" }}
+              >
+                기본 정보
+              </h2>
 
-            {/* 비밀번호 */}
-            <div>
-              <label className={labelClass} style={labelStyle}>
-                비밀번호
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-400" />
-                <input
-                  type={showPassword ? "text" : "password"}
-                  placeholder="8글자 이상 입력"
-                  value={form.password}
-                  onChange={(e) => setField("password", e.target.value)}
-                  className="w-full pl-12 pr-14 py-4 border border-gray-200 rounded-xl focus:outline-none focus:border-[#0E8080] bg-gray-50 font-bold"
-                  style={inputStyle}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                >
-                  {showPassword ? (
-                    <EyeOff className="w-6 h-6" />
-                  ) : (
-                    <Eye className="w-6 h-6" />
-                  )}
-                </button>
-              </div>
-              {errors.password && (
-                <p className="text-red-500 mt-1 font-bold" style={errStyle}>
-                  {errors.password}
-                </p>
-              )}
-            </div>
-
-            {/* 비밀번호 확인 */}
-            <div>
-              <label className={labelClass} style={labelStyle}>
-                비밀번호 확인
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-400" />
-                <input
-                  type={showPassword ? "text" : "password"}
-                  placeholder="비밀번호를 다시 입력"
-                  value={form.passwordConfirm}
-                  onChange={(e) => setField("passwordConfirm", e.target.value)}
-                  className={inputClass}
-                  style={inputStyle}
-                />
-              </div>
-              {errors.passwordConfirm && (
-                <p className="text-red-500 mt-1 font-bold" style={errStyle}>
-                  {errors.passwordConfirm}
-                </p>
-              )}
-            </div>
-
-            {/* 닉네임 */}
-            <div>
-              <label className={labelClass} style={labelStyle}>
-                닉네임
-              </label>
-              <div className="relative">
-                <User className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="사용하실 이름을 입력"
-                  value={form.nickname}
-                  onChange={(e) => setField("nickname", e.target.value)}
-                  className={inputClass}
-                  style={inputStyle}
-                />
-              </div>
-              {errors.nickname && (
-                <p className="text-red-500 mt-1 font-bold" style={errStyle}>
-                  {errors.nickname}
-                </p>
-              )}
-            </div>
-
-            {/* ===== 상세 모드 전용 필드 ===== */}
-            {mode === "detail" && (
-              <>
-                {/* 나이 */}
-                <div>
-                  <label className={labelClass} style={labelStyle}>
-                    나이
-                  </label>
-                  <div className="relative">
-                    <UserCircle className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-400" />
-                    <input
-                      type="number"
-                      min={0}
-                      max={150}
-                      placeholder="예: 68"
-                      value={form.age}
-                      onChange={(e) => setField("age", e.target.value)}
-                      className={inputClass}
-                      style={inputStyle}
-                    />
-                  </div>
-                  {errors.age && (
-                    <p className="text-red-500 mt-1 font-bold" style={errStyle}>
-                      {errors.age}
-                    </p>
-                  )}
+              {/* 이메일 (필수) */}
+              <div className="mb-5">
+                <FieldLabel text="이메일 주소" required />
+                <div className="relative">
+                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-400" />
+                  <input
+                    type="email"
+                    placeholder="example@email.com"
+                    value={form.email}
+                    onChange={(e) => setField("email", e.target.value)}
+                    className={inputClass}
+                    style={inputStyle}
+                  />
                 </div>
-
-                {/* 성별 */}
-                <div>
-                  <label className={labelClass} style={labelStyle}>
-                    성별
-                  </label>
-                  <div className="flex gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setField("gender", "M")}
-                      className={`flex-1 py-3 rounded-xl border-2 transition-all font-bold ${form.gender === "M"
-                          ? "border-[#0E8080] bg-[#0E8080]/10 text-[#0E8080]"
-                          : "border-gray-200 text-gray-500"
-                        }`}
-                      style={{ minHeight: 56, fontSize: "1.05rem" }}
-                    >
-                      남성
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setField("gender", "F")}
-                      className={`flex-1 py-3 rounded-xl border-2 transition-all font-bold ${form.gender === "F"
-                          ? "border-[#0E8080] bg-[#0E8080]/10 text-[#0E8080]"
-                          : "border-gray-200 text-gray-500"
-                        }`}
-                      style={{ minHeight: 56, fontSize: "1.05rem" }}
-                    >
-                      여성
-                    </button>
-                  </div>
-                </div>
-
-                {/* 기저질환 */}
-                <div>
-                  <label className={labelClass} style={labelStyle}>
-                    기저질환
-                  </label>
-                  <div className="relative">
-                    <ListChecks className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-400" />
-                    <input
-                      type="text"
-                      placeholder="예: 고혈압, 당뇨 (쉼표로 구분)"
-                      value={form.medical_history}
-                      onChange={(e) =>
-                        setField("medical_history", e.target.value)
-                      }
-                      className={inputClass}
-                      style={inputStyle}
-                    />
-                  </div>
-                  <p className="text-gray-400 mt-1 font-bold" style={errStyle}>
-                    여러 개는 쉼표(,)로 구분해 주세요.
+                {errors.email && (
+                  <p className="text-red-500 mt-1 font-bold" style={errStyle}>
+                    {errors.email}
                   </p>
-                </div>
+                )}
+              </div>
 
-                {/* 복용약 */}
-                <div>
-                  <label className={labelClass} style={labelStyle}>
-                    복용 중인 약
-                  </label>
-                  <div className="relative">
-                    <ListChecks className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-400" />
-                    <input
-                      type="text"
-                      placeholder="예: 아스피린, 메트포르민 (쉼표로 구분)"
-                      value={form.medications}
-                      onChange={(e) => setField("medications", e.target.value)}
-                      className={inputClass}
-                      style={inputStyle}
-                    />
-                  </div>
-                  <p className="text-gray-400 mt-1 font-bold" style={errStyle}>
-                    여러 개는 쉼표(,)로 구분해 주세요.
-                  </p>
+              {/* 비밀번호 (필수) */}
+              <div className="mb-5">
+                <FieldLabel text="비밀번호" required />
+                <div className="relative">
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-400" />
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="8글자 이상 입력"
+                    value={form.password}
+                    onChange={(e) => setField("password", e.target.value)}
+                    className="w-full pl-12 pr-14 py-4 border border-gray-200 rounded-xl focus:outline-none focus:border-[#0E8080] bg-gray-50 font-bold"
+                    style={inputStyle}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="w-6 h-6" />
+                    ) : (
+                      <Eye className="w-6 h-6" />
+                    )}
+                  </button>
                 </div>
-              </>
-            )}
+                {errors.password && (
+                  <p className="text-red-500 mt-1 font-bold" style={errStyle}>
+                    {errors.password}
+                  </p>
+                )}
+              </div>
+
+              {/* 비밀번호 확인 (필수) */}
+              <div className="mb-5">
+                <FieldLabel text="비밀번호 확인" required />
+                <div className="relative">
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-400" />
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="비밀번호를 다시 입력"
+                    value={form.passwordConfirm}
+                    onChange={(e) =>
+                      setField("passwordConfirm", e.target.value)
+                    }
+                    className={inputClass}
+                    style={inputStyle}
+                  />
+                </div>
+                {errors.passwordConfirm && (
+                  <p className="text-red-500 mt-1 font-bold" style={errStyle}>
+                    {errors.passwordConfirm}
+                  </p>
+                )}
+              </div>
+
+              {/* 닉네임 (필수) */}
+              <div>
+                <FieldLabel text="닉네임" required />
+                <div className="relative">
+                  <User className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="사용하실 이름을 입력"
+                    value={form.nickname}
+                    onChange={(e) => setField("nickname", e.target.value)}
+                    className={inputClass}
+                    style={inputStyle}
+                  />
+                </div>
+                {errors.nickname && (
+                  <p className="text-red-500 mt-1 font-bold" style={errStyle}>
+                    {errors.nickname}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* ===== 선택 정보 (건강 정보) ===== */}
+            <div className="pt-3">
+              <h2
+                className="text-[#0A2647] font-bold mb-1 pb-2 border-b-2 border-gray-100"
+                style={{ fontSize: "1.2rem" }}
+              >
+                건강 정보
+              </h2>
+              <p
+                className="text-gray-400 mb-4 font-bold"
+                style={{ fontSize: "0.95rem" }}
+              >
+                선택 입력이며, 나중에 프로필에서 추가할 수 있어요.
+              </p>
+
+              {/* 나이 (선택) */}
+              <div className="mb-5">
+                <FieldLabel text="나이" />
+                <div className="relative">
+                  <UserCircle className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-400" />
+                  <input
+                    type="number"
+                    min={0}
+                    max={150}
+                    placeholder="예: 68"
+                    value={form.age}
+                    onChange={(e) => setField("age", e.target.value)}
+                    className={inputClass}
+                    style={inputStyle}
+                  />
+                </div>
+                {errors.age && (
+                  <p className="text-red-500 mt-1 font-bold" style={errStyle}>
+                    {errors.age}
+                  </p>
+                )}
+              </div>
+
+              {/* 성별 (선택) */}
+              <div className="mb-5">
+                <FieldLabel text="성별" />
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setField("gender", "M")}
+                    className={`flex-1 py-3 rounded-xl border-2 transition-all font-bold ${form.gender === "M"
+                        ? "border-[#0E8080] bg-[#0E8080]/10 text-[#0E8080]"
+                        : "border-gray-200 text-gray-500"
+                      }`}
+                    style={{ minHeight: 56, fontSize: "1.05rem" }}
+                  >
+                    남성
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setField("gender", "F")}
+                    className={`flex-1 py-3 rounded-xl border-2 transition-all font-bold ${form.gender === "F"
+                        ? "border-[#0E8080] bg-[#0E8080]/10 text-[#0E8080]"
+                        : "border-gray-200 text-gray-500"
+                      }`}
+                    style={{ minHeight: 56, fontSize: "1.05rem" }}
+                  >
+                    여성
+                  </button>
+                </div>
+              </div>
+
+              {/* 기저질환 (선택) */}
+              <div className="mb-5">
+                <FieldLabel text="기저질환" />
+                <div className="relative">
+                  <ListChecks className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="예: 고혈압, 당뇨 (쉼표로 구분)"
+                    value={form.medical_history}
+                    onChange={(e) =>
+                      setField("medical_history", e.target.value)
+                    }
+                    className={inputClass}
+                    style={inputStyle}
+                  />
+                </div>
+                <p className="text-gray-400 mt-1 font-bold" style={errStyle}>
+                  여러 개는 쉼표(,)로 구분해 주세요.
+                </p>
+              </div>
+
+              {/* 복용약 (선택) */}
+              <div>
+                <FieldLabel text="복용 중인 약" />
+                <div className="relative">
+                  <ListChecks className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="예: 아스피린, 메트포르민 (쉼표로 구분)"
+                    value={form.medications}
+                    onChange={(e) => setField("medications", e.target.value)}
+                    className={inputClass}
+                    style={inputStyle}
+                  />
+                </div>
+                <p className="text-gray-400 mt-1 font-bold" style={errStyle}>
+                  여러 개는 쉼표(,)로 구분해 주세요.
+                </p>
+              </div>
+            </div>
 
             <button
               type="submit"
