@@ -1,17 +1,16 @@
 import { useState } from "react";
 import {
   Heart, Users, Bell, FileText, LogOut, Menu, X,
-  ChevronRight, Shield, User, Upload, Activity
+  ChevronRight, Shield, Upload, Activity
 } from "lucide-react";
 import { GuardianDashboard } from "../pages/GuardianDashboard";
 import { NotificationsPage } from "../pages/NotificationsPage";
 import { GuardianReportPage } from "../pages/GuardianReportPage";
-import { ProfilePage } from "../pages/ProfilePage";
 import { UploadPage } from "../pages/UploadPage";
 import type { ECGData } from "../pages/UploadPage";
 import { VisualizationPage } from "../pages/VisualizationPage";
 
-type GuardianScreen = "dashboard" | "notifications" | "report" | "profile" | "upload" | "visualization";
+type GuardianScreen = "dashboard" | "notifications" | "report" | "upload" | "visualization";
 
 const GUARDIAN_NAV: { id: GuardianScreen; label: string; icon: React.ElementType; ucId: string; badge?: number }[] = [
   { id: "dashboard",     label: "연계 사용자 대시보드", icon: Users,    ucId: "UC-09" },
@@ -20,7 +19,6 @@ const GUARDIAN_NAV: { id: GuardianScreen; label: string; icon: React.ElementType
 ];
 
 const CARE_NAV: { id: GuardianScreen; label: string; icon: React.ElementType; ucId: string }[] = [
-  { id: "profile",       label: "건강 정보 등록",     icon: User,     ucId: "UC-02" },
   { id: "upload",        label: "기기 데이터 올리기", icon: Upload,   ucId: "UC-04" },
   { id: "visualization", label: "심전도 분석",        icon: Activity, ucId: "UC-06" },
 ];
@@ -59,8 +57,6 @@ export function GuardianLayout({ onLogout }: GuardianLayoutProps) {
         return <NotificationsPage onViewReport={() => setScreen("report")} />;
       case "report":
         return <GuardianReportPage memberId={selectedMemberId} />;
-      case "profile":
-        return <ProfilePage />;
       case "upload":
         return <UploadPage onDataReady={handleECGReady} />;
       case "visualization":
