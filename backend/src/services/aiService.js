@@ -1,15 +1,14 @@
 const axios = require('axios');
 const FormData = require('form-data');
 
-exports.analyze = async ({ fileBuffer, fileName, userId }) => {
+exports.analyze = ({ fileBuffer, fileName, measurementId, userId }) => {
   const form = new FormData();
   form.append('file', fileBuffer, fileName);
-  form.append('user_id', userId);
+  form.append('measurement_id', measurementId.toString());
+  form.append('user_id', userId.toString());
 
-  const { data } = await axios.post(`${process.env.AI_SERVER_URL}/analyze`, form, {
+  return axios.post(`${process.env.AI_SERVER_URL}/analyze`, form, {
     headers: form.getHeaders(),
-    timeout: 60000,
+    timeout: 10000,
   });
-
-  return data;
 };

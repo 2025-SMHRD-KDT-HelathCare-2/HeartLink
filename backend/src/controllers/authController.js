@@ -9,6 +9,9 @@ exports.register = async (req, res, next) => {
     const user = await User.create({ email, password: hashed, nickname, role });
     res.status(201).json({ message: '회원가입 완료', userId: user._id });
   } catch (err) {
+    if (err.code === 11000) {
+      return res.status(409).json({ message: '이미 사용 중인 이메일입니다.' });
+    }
     next(err);
   }
 };

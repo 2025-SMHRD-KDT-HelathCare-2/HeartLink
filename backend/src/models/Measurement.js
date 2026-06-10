@@ -12,6 +12,11 @@ const measurementSchema = new mongoose.Schema(
     ecg_waveform_lite: { type: [Number], default: [] },                             // 시각화용 경량 파형(원본 아님)
     r_peaks: { type: [Number], default: [] },                                       // R-peak 좌표(마커용)
     measured_at: { type: Date, required: true },                                    // 측정 시각
+    status: {
+      type: String,
+      enum: ["pending", "processing", "completed", "failed"],
+      default: "pending",
+    },
   },
   {
     timestamps: { createdAt: "created_at", updatedAt: false }, // created_at만 사용

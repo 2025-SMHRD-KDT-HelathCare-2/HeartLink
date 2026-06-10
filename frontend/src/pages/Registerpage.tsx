@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Heart,
   Eye,
@@ -13,11 +14,6 @@ import {
 import { register, type RegisterPayload } from "../api/authApi";
 
 type Role = "user" | "guardian";
-
-interface RegisterPageProps {
-  onRegister: (role: Role) => void;
-  onGoLogin: () => void;
-}
 
 // 필수/선택 라벨 컴포넌트
 function FieldLabel({
@@ -52,7 +48,8 @@ function FieldLabel({
   );
 }
 
-export function RegisterPage({ onRegister, onGoLogin }: RegisterPageProps) {
+export function RegisterPage() {
+  const navigate = useNavigate();
   const [role, setRole] = useState<Role>("user");
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -125,7 +122,7 @@ export function RegisterPage({ onRegister, onGoLogin }: RegisterPageProps) {
       setSubmitting(true);
       await register(payload);
       // 가입 완료 후 상위 컴포넌트에 role 전달 (App.tsx에서 화면 전환)
-      onRegister(role);
+      navigate("/login");
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "회원가입에 실패했습니다.";
@@ -442,7 +439,7 @@ export function RegisterPage({ onRegister, onGoLogin }: RegisterPageProps) {
               이미 회원이신가요?{" "}
             </span>
             <button
-              onClick={onGoLogin}
+              onClick={() => navigate("/login")}
               className="text-[#0E8080] font-bold underline"
               style={{ fontSize: "1rem" }}
             >

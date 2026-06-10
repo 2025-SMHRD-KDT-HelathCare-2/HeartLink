@@ -17,6 +17,7 @@ app.use('/api/measurements', require('./src/routes/measurements'));
 app.use('/api/reports', require('./src/routes/reports'));
 app.use('/api/guardians', require('./src/routes/guardians'));
 app.use('/api/notifications', require('./src/routes/notifications'));
+app.use('/api/internal', require('./src/routes/internal'));
 
 app.use(errorHandler);
 

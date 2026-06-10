@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { login as loginApi } from "../api/authApi";
 import { Heart, Eye, EyeOff, Lock, Mail, User, Shield } from "lucide-react";
 
 type Role = "user" | "guardian";
@@ -12,6 +13,7 @@ export function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [failCount, setFailCount] = useState(0);
   const [locked, setLocked] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({ email: "", password: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -24,14 +26,19 @@ export function LoginPage() {
     return errs;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (locked) return;
     const errs = validate();
     setErrors(errs);
     if (Object.keys(errs).length > 0) return;
 
-    if (form.email !== "test@heartlink.kr" || form.password !== "Password1") {
+    try {
+      setSubmitting(true);
+      const { token, role: serverRole } = await loginApi({ email: form.email, password: form.password });
+      login({ email: form.email, role: serverRole }, serverRole, token);
+      navigate("/dashboard");
+    } catch (err) {
       const next = failCount + 1;
       setFailCount(next);
       if (next >= 5) {
@@ -39,14 +46,12 @@ export function LoginPage() {
         setTimeout(() => { setLocked(false); setFailCount(0); }, 10 * 60 * 1000);
         setErrors({ global: "로그인을 5번 틀렸습니다. 10분 후에 다시 시도해 주세요." });
       } else {
-        setErrors({ global: `이메일 또는 비밀번호가 틀렸습니다. (${next}/5번)` });
+        const message = err instanceof Error ? err.message : "이메일 또는 비밀번호가 틀렸습니다.";
+        setErrors({ global: `${message} (${next}/5번)` });
       }
-      return;
+    } finally {
+      setSubmitting(false);
     }
-
-    // 로그인 성공 — AuthContext에 저장 후 대시보드로
-    login({ email: form.email, role }, role, "mock-token");
-    navigate("/dashboard");
   };
 
   return (
@@ -106,10 +111,10 @@ export function LoginPage() {
               </div>
               {errors.password && <p className="text-red-500 mt-1 font-bold" style={{ fontSize: "1rem" }}>{errors.password}</p>}
             </div>
-            <button type="submit" disabled={locked}
+            <button type="submit" disabled={locked || submitting}
               className="w-full py-5 bg-gradient-to-r from-[#0A2647] to-[#0E8080] text-white rounded-xl hover:opacity-90 active:scale-95 transition-all disabled:opacity-50 font-bold"
               style={{ minHeight: 60, fontSize: "1.2rem" }}>
-              {locked ? "잠금 중 (10분 후 가능)" : "로그인"}
+              {locked ? "잠금 중 (10분 후 가능)" : submitting ? "로그인 중..." : "로그인"}
             </button>
             <div className="text-center">
               <button type="button" className="text-gray-400 hover:text-[#0E8080] underline font-bold" style={{ fontSize: "1rem" }}>
