@@ -1,13 +1,34 @@
+// src/middlewares/auth.js
 const jwt = require('jsonwebtoken');
 
 module.exports = (req, res, next) => {
-  const token = req.headers.authorization?.split(' ')[1];
-  if (!token) return res.status(401).json({ message: '토큰이 없습니다.' });
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({
+      message: '로그인이 필요한 서비스입니다. 로그인 후 이용해 주세요.',
+    });
+  }
+
+  const token = authHeader.split(' ')[1];
+
+  if (!token) {
+    return res.status(401).json({
+      message: '로그인이 필요한 서비스입니다. 로그인 후 이용해 주세요.',
+    });
+  }
 
   try {
     req.user = jwt.verify(token, process.env.JWT_SECRET);
     next();
-  } catch {
-    res.status(401).json({ message: '유효하지 않은 토큰입니다.' });
+  } catch (err) {
+    if (err.name === 'TokenExpiredError') {
+      return res.status(401).json({
+        message: '로그인이 만료되었습니다. 다시 로그인해 주세요.',
+      });
+    }
+    return res.status(401).json({
+      message: '로그인 정보가 올바르지 않습니다. 다시 로그인해 주세요.',
+    });
   }
 };
