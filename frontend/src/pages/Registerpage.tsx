@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Heart, Eye, EyeOff, Lock, Mail, User, Shield,
-  UserCircle, ListChecks, CheckCircle
+  UserCircle, CheckCircle
 } from "lucide-react";
 import { register, type RegisterPayload } from "../api/authApi";
 
@@ -241,6 +241,7 @@ export function RegisterPage() {
                 </div>
               </div>
 
+              {role === "user" && (
               <div className="pt-3">
                 <h2 className="text-[#0A2647] font-bold mb-1 pb-2 border-b-2 border-gray-100" style={{ fontSize: "1.2rem" }}>건강 정보</h2>
                 <p className="text-gray-400 mb-4 font-bold" style={{ fontSize: "0.95rem" }}>선택 입력이며, 나중에 프로필에서 추가할 수 있어요.</p>
@@ -267,26 +268,9 @@ export function RegisterPage() {
                   </div>
                 </div>
 
-                <div className="mb-5">
-                  <FieldLabel text="기저질환" />
-                  <div className="relative">
-                    <ListChecks className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-400" />
-                    <input type="text" placeholder="예: 고혈압, 당뇨 (쉼표로 구분)" value={form.medical_history}
-                      onChange={(e) => setField("medical_history", e.target.value)} className={inputClass} style={inputStyle} />
-                  </div>
-                  <p className="text-gray-400 mt-1 font-bold" style={errStyle}>여러 개는 쉼표(,)로 구분해 주세요.</p>
-                </div>
 
-                <div>
-                  <FieldLabel text="복용 중인 약" />
-                  <div className="relative">
-                    <ListChecks className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-400" />
-                    <input type="text" placeholder="예: 아스피린, 메트포르민 (쉼표로 구분)" value={form.medications}
-                      onChange={(e) => setField("medications", e.target.value)} className={inputClass} style={inputStyle} />
-                  </div>
-                  <p className="text-gray-400 mt-1 font-bold" style={errStyle}>여러 개는 쉼표(,)로 구분해 주세요.</p>
-                </div>
               </div>
+              )}
 
               <button type="submit" disabled={submitting}
                 className="w-full py-5 bg-gradient-to-r from-[#0A2647] to-[#0E8080] text-white rounded-xl hover:opacity-90 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-bold"
