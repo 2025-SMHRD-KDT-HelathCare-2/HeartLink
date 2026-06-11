@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Heart, Users, Bell, FileText, LogOut, Menu, X,
   ChevronRight, Shield, Upload, Activity
@@ -31,6 +32,7 @@ interface GuardianLayoutProps {
 
 export function GuardianLayout({ onLogout }: GuardianLayoutProps) {
   const [screen, setScreen] = useState<GuardianScreen>("dashboard");
+  const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedMemberId, setSelectedMemberId] = useState<number>(1);
   const [ecgData, setEcgData] = useState<ECGData | null>(null);
@@ -134,13 +136,16 @@ export function GuardianLayout({ onLogout }: GuardianLayoutProps) {
         </nav>
 
         <div className="p-4 border-t border-white/10">
-          <div className="flex items-center gap-3 mb-3 px-2">
+          <button
+            onClick={() => navigate("/guardian-mypage")}
+            className="flex items-center gap-3 mb-3 px-2 w-full hover:bg-white/10 rounded-xl py-1.5 transition-colors group"
+          >
             <div className="w-9 h-9 bg-[#0E8080] rounded-full flex items-center justify-center text-white text-sm font-bold">김</div>
-            <div>
+            <div className="text-left flex-1">
               <div className="text-white font-bold" style={{ fontSize: "1rem" }}>김보호자</div>
-              <div className="text-white/50 font-bold" style={{ fontSize: "0.85rem" }}>보호자</div>
+              <div className="text-white/50 font-bold" style={{ fontSize: "0.85rem" }}>마이페이지 →</div>
             </div>
-          </div>
+          </button>
           <button
             onClick={onLogout}
             className="w-full flex items-center gap-2 px-4 py-2.5 text-white/60 hover:text-white hover:bg-white/10 rounded-xl transition-colors font-bold"

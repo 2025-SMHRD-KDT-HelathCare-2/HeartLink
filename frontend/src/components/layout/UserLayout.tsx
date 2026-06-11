@@ -1,22 +1,24 @@
 import { useState } from "react";
-import { Heart, LogOut, Menu, X } from "lucide-react";
+import { Heart, LogOut, Menu, X, ChevronRight } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
 import { ReportPage } from "../../pages/ReportPage";
 import { ReportHistoryPage } from "../../pages/ReportHistoryPage";
 
 type UserScreen = "report" | "history";
-
-interface UserLayoutProps {
-  onLogout: () => void;
-}
 
 const NAV_ITEMS: { id: UserScreen; label: string; emoji: string }[] = [
   { id: "report",  label: "내 건강 결과", emoji: "❤️" },
   { id: "history", label: "지난 기록",    emoji: "📋" },
 ];
 
-export function UserLayout({ onLogout }: UserLayoutProps) {
+export function UserLayout({ onLogout }: { onLogout: () => void }) {
   const [screen, setScreen] = useState<UserScreen>("report");
   const [menuOpen, setMenuOpen] = useState(false);
+  const navigate = useNavigate();
+  const { user } = useAuth();
+
+  const nickname = (user as any)?.nickname || (user as any)?.email?.split("@")[0] || "사용자";
 
   const renderScreen = () => {
     switch (screen) {
@@ -48,12 +50,21 @@ export function UserLayout({ onLogout }: UserLayoutProps) {
           {menuOpen ? <X className="w-7 h-7" /> : <Menu className="w-7 h-7" />}
         </button>
 
+        {/* 데스크톱 - 이름 클릭 시 마이페이지 */}
         <div className="hidden lg:flex items-center gap-3">
-          <div className="w-11 h-11 bg-[#0E8080] rounded-full flex items-center justify-center text-white font-black" style={{ fontSize: "1.2rem" }}>홍</div>
-          <span className="text-white font-black" style={{ fontSize: "1.15rem" }}>홍길동 (74세)</span>
+          <button
+            onClick={() => navigate("/mypage")}
+            className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-white/10 transition-colors group"
+          >
+            <div className="w-10 h-10 bg-[#0E8080] rounded-full flex items-center justify-center text-white font-black" style={{ fontSize: "1.1rem" }}>
+              {nickname[0]}
+            </div>
+            <span className="text-white font-black" style={{ fontSize: "1.1rem" }}>{nickname}</span>
+            <ChevronRight className="w-4 h-4 text-white/50 group-hover:text-white transition-colors" />
+          </button>
           <button
             onClick={onLogout}
-            className="ml-2 flex items-center gap-2 px-4 py-2 text-white/60 hover:text-white hover:bg-white/10 rounded-xl transition-colors font-bold"
+            className="flex items-center gap-2 px-4 py-2 text-white/60 hover:text-white hover:bg-white/10 rounded-xl transition-colors font-bold"
             style={{ fontSize: "1rem" }}
           >
             <LogOut className="w-5 h-5" />
@@ -65,10 +76,18 @@ export function UserLayout({ onLogout }: UserLayoutProps) {
       {/* 모바일 드롭다운 */}
       {menuOpen && (
         <div className="bg-[#0A2647] border-t border-white/10 px-4 pb-4 lg:hidden z-20">
-          <div className="flex items-center gap-3 py-4 border-b border-white/10 mb-3">
-            <div className="w-11 h-11 bg-[#0E8080] rounded-full flex items-center justify-center text-white font-black" style={{ fontSize: "1.2rem" }}>홍</div>
-            <span className="text-white font-black" style={{ fontSize: "1.15rem" }}>홍길동 (74세)</span>
-          </div>
+          {/* 마이페이지 버튼 */}
+          <button
+            onClick={() => { setMenuOpen(false); navigate("/mypage"); }}
+            className="w-full flex items-center gap-3 py-4 border-b border-white/10 mb-3"
+          >
+            <div className="w-10 h-10 bg-[#0E8080] rounded-full flex items-center justify-center text-white font-black" style={{ fontSize: "1.1rem" }}>
+              {nickname[0]}
+            </div>
+            <span className="text-white font-black" style={{ fontSize: "1.1rem" }}>{nickname}</span>
+            <ChevronRight className="w-4 h-4 text-white/50 ml-auto" />
+          </button>
+
           {NAV_ITEMS.map(item => (
             <button
               key={item.id}
