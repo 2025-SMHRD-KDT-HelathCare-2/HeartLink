@@ -1,11 +1,19 @@
 import { useState, useMemo } from "react";
+import { useLocation } from "react-router-dom";
 import { Info } from "lucide-react";
 import { ECGChart } from "../components/charts/ECGChart";
 import { RiskGauge } from "../components/charts/RiskGauge";
 import { AnomalyTimeline } from "../components/charts/AnomalyTimeline";
-import type { ECGData } from "./UploadPage";
 
-function generateECG(points = 400): Array<{ x: number; y: number }> {
+interface ECGResponse {
+  ecgPoints: Array<{ x: number; y: number }>;
+  rPeaks: number[];
+  sampleRate: number;
+  fileName: string;
+}
+
+// 더미 데이터 (백엔드 연결 전 샘플)
+function generateDummyECG(points = 400): Array<{ x: number; y: number }> {
   const data = [];
   for (let i = 0; i < points; i++) {
     const t = (i / points) * 8;
@@ -33,43 +41,36 @@ function detectRPeaks(points: Array<{ x: number; y: number }>, threshold = 0.6):
   return peaks;
 }
 
-const ANOMALIES = [
-  { time: "06:32", type: "불규칙 심장 박동 의심 (심방세동)", severity: "high"   as const, score: 0.82 },
-  { time: "11:15", type: "심장이 너무 빠르게 뜀 (빈맥)",      severity: "medium" as const, score: 0.61 },
-  { time: "15:44", type: "심장이 너무 느리게 뜀 (서맥)",      severity: "low"    as const, score: 0.35 },
-  { time: "21:08", type: "불규칙 심장 박동 의심 (심방세동)", severity: "high"   as const, score: 0.78 },
+const DUMMY_ANOMALIES = [
+  { time: "06:32", type: "불규칙 심장 박동 의심", severity: "high"   as const, score: 0.82 },
+  { time: "11:15", type: "심장이 너무 빠르게 뜀", severity: "medium" as const, score: 0.61 },
+  { time: "15:44", type: "심장이 너무 느리게 뜀", severity: "low"    as const, score: 0.35 },
 ];
 
-interface VisualizationPageProps {
-  ecgData?: ECGData | null;
-}
-
-export function VisualizationPage({ ecgData }: VisualizationPageProps) {
-  const [period, setPeriod] = useState("일");
+export function VisualizationPage() {
+  const location = useLocation();
+  const ecgData = location.state?.ecgData as ECGResponse | undefined;
   const [zoom, setZoom] = useState(1);
 
-  const dummyData = useMemo(() => generateECG(400), []);
+  const dummyData = useMemo(() => generateDummyECG(400), []);
 
   const chartData = useMemo(() => {
-    if (ecgData && ecgData.points.length > 0) return ecgData.points;
+    if (ecgData?.ecgPoints?.length) return ecgData.ecgPoints;
     return dummyData;
   }, [ecgData, dummyData]);
 
   const rPeaks = useMemo(() => {
-    if (ecgData && ecgData.points.length > 0) {
-      const max = Math.max(...ecgData.points.map(p => p.y));
-      return detectRPeaks(ecgData.points, max * 0.6);
-    }
+    if (ecgData?.rPeaks?.length) return ecgData.rPeaks;
     return detectRPeaks(dummyData, 0.6);
   }, [ecgData, dummyData]);
 
   return (
     <div className="max-w-3xl mx-auto p-6">
       <div className="mb-8">
-        <h1 className="font-bold text-[#0A2647]" style={{ fontSize: "1.9rem" }}>심전도 분석 결과</h1>
+        <h1 className="font-black text-[#0A2647]" style={{ fontSize: "2rem" }}>심전도 그래프</h1>
         {ecgData ? (
           <p className="text-[#0E8080] mt-2 font-bold" style={{ fontSize: "1.1rem" }}>
-            📁 {ecgData.fileName} · {ecgData.points.length.toLocaleString()}개 샘플 · {ecgData.sampleRate}Hz
+            📁 {ecgData.fileName} · {ecgData.ecgPoints.length.toLocaleString()}개 샘플 · {ecgData.sampleRate}Hz
           </p>
         ) : (
           <p className="text-gray-600 mt-2 font-bold" style={{ fontSize: "1.1rem" }}>
@@ -78,24 +79,14 @@ export function VisualizationPage({ ecgData }: VisualizationPageProps) {
         )}
       </div>
 
+      {/* 파일 없을 때 안내 */}
       {!ecgData && (
         <div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-5 mb-6">
           <p className="text-amber-800 font-bold" style={{ fontSize: "1.05rem" }}>
-            📂 현재 샘플 데이터입니다. 실제 파형을 보려면 <strong>기기 데이터 올리기</strong>에서 파일을 업로드하세요.
+            📂 현재 샘플 데이터입니다. 실제 파형을 보려면 <strong>파일 올리기</strong>에서 CSV 파일을 업로드하세요.
           </p>
         </div>
       )}
-
-      {/* 기간 탭 */}
-      <div className="flex bg-gray-100 rounded-xl p-1 mb-6 w-fit">
-        {["일", "주", "월"].map(p => (
-          <button key={p} onClick={() => setPeriod(p)}
-            className={`px-8 py-3 rounded-lg transition-all font-bold ${period === p ? "bg-white shadow text-[#0A2647]" : "text-gray-500 hover:text-gray-700"}`}
-            style={{ minHeight: 52, fontSize: "1.1rem" }}>
-            {p}
-          </button>
-        ))}
-      </div>
 
       <div className="space-y-6">
         <ECGChart
@@ -106,10 +97,10 @@ export function VisualizationPage({ ecgData }: VisualizationPageProps) {
           onZoomOut={() => setZoom(z => Math.max(z - 0.5, 0.5))}
         />
         <RiskGauge score={72} />
-        <AnomalyTimeline anomalies={ANOMALIES} />
+        <AnomalyTimeline anomalies={DUMMY_ANOMALIES} />
       </div>
 
-      <div className="mt-6 bg-gray-50 border border-gray-200 rounded-xl p-5 text-gray-600 font-bold" style={{ fontSize: "1rem" }}>
+      <div className="mt-6 bg-gray-50 border border-gray-200 rounded-xl p-5 text-gray-500 font-bold" style={{ fontSize: "1rem" }}>
         <Info className="w-5 h-5 inline mr-2 text-gray-400" />
         이 서비스는 의료기기가 아니며 의사의 진단을 대신하지 않습니다.
       </div>
