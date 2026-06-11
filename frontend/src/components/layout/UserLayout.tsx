@@ -4,12 +4,16 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { ReportPage } from "../../pages/ReportPage";
 import { ReportHistoryPage } from "../../pages/ReportHistoryPage";
+import { UploadPage } from "../../pages/UploadPage";
+import { VisualizationPage } from "../../pages/VisualizationPage";
 
-type UserScreen = "report" | "history";
+type UserScreen = "report" | "history" | "upload" | "visualization";
 
 const NAV_ITEMS: { id: UserScreen; label: string; emoji: string }[] = [
-  { id: "report",  label: "내 건강 결과", emoji: "❤️" },
-  { id: "history", label: "지난 기록",    emoji: "📋" },
+  { id: "report",        label: "내 건강 결과",  emoji: "❤️" },
+  { id: "history",       label: "지난 기록",     emoji: "📋" },
+  { id: "upload",        label: "파일 올리기",   emoji: "📤" },
+  { id: "visualization", label: "심전도 그래프", emoji: "📈" },
 ];
 
 export function UserLayout({ onLogout }: { onLogout: () => void }) {
@@ -22,8 +26,10 @@ export function UserLayout({ onLogout }: { onLogout: () => void }) {
 
   const renderScreen = () => {
     switch (screen) {
-      case "report":  return <ReportPage />;
-      case "history": return <ReportHistoryPage />;
+      case "report":        return <ReportPage />;
+      case "history":       return <ReportHistoryPage />;
+      case "upload":        return <UploadPage />;
+      case "visualization": return <VisualizationPage />;
     }
   };
 
@@ -42,33 +48,25 @@ export function UserLayout({ onLogout }: { onLogout: () => void }) {
           </div>
         </div>
 
-        <button
-          onClick={() => setMenuOpen(!menuOpen)}
+        <button onClick={() => setMenuOpen(!menuOpen)}
           className="p-2 rounded-xl hover:bg-white/10 transition-colors lg:hidden"
-          style={{ minHeight: 48, minWidth: 48 }}
-        >
+          style={{ minHeight: 48, minWidth: 48 }}>
           {menuOpen ? <X className="w-7 h-7" /> : <Menu className="w-7 h-7" />}
         </button>
 
-        {/* 데스크톱 - 이름 클릭 시 마이페이지 */}
         <div className="hidden lg:flex items-center gap-3">
-          <button
-            onClick={() => navigate("/mypage")}
-            className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-white/10 transition-colors group"
-          >
+          <button onClick={() => navigate("/mypage")}
+            className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-white/10 transition-colors group">
             <div className="w-10 h-10 bg-[#0E8080] rounded-full flex items-center justify-center text-white font-black" style={{ fontSize: "1.1rem" }}>
               {nickname[0]}
             </div>
             <span className="text-white font-black" style={{ fontSize: "1.1rem" }}>{nickname}</span>
             <ChevronRight className="w-4 h-4 text-white/50 group-hover:text-white transition-colors" />
           </button>
-          <button
-            onClick={onLogout}
+          <button onClick={onLogout}
             className="flex items-center gap-2 px-4 py-2 text-white/60 hover:text-white hover:bg-white/10 rounded-xl transition-colors font-bold"
-            style={{ fontSize: "1rem" }}
-          >
-            <LogOut className="w-5 h-5" />
-            나가기
+            style={{ fontSize: "1rem" }}>
+            <LogOut className="w-5 h-5" />나가기
           </button>
         </div>
       </header>
@@ -76,36 +74,27 @@ export function UserLayout({ onLogout }: { onLogout: () => void }) {
       {/* 모바일 드롭다운 */}
       {menuOpen && (
         <div className="bg-[#0A2647] border-t border-white/10 px-4 pb-4 lg:hidden z-20">
-          {/* 마이페이지 버튼 */}
-          <button
-            onClick={() => { setMenuOpen(false); navigate("/mypage"); }}
-            className="w-full flex items-center gap-3 py-4 border-b border-white/10 mb-3"
-          >
+          <button onClick={() => { setMenuOpen(false); navigate("/mypage"); }}
+            className="w-full flex items-center gap-3 py-4 border-b border-white/10 mb-3">
             <div className="w-10 h-10 bg-[#0E8080] rounded-full flex items-center justify-center text-white font-black" style={{ fontSize: "1.1rem" }}>
               {nickname[0]}
             </div>
             <span className="text-white font-black" style={{ fontSize: "1.1rem" }}>{nickname}</span>
             <ChevronRight className="w-4 h-4 text-white/50 ml-auto" />
           </button>
-
           {NAV_ITEMS.map(item => (
-            <button
-              key={item.id}
+            <button key={item.id}
               onClick={() => { setScreen(item.id); setMenuOpen(false); }}
               className={`w-full flex items-center gap-4 px-4 py-5 rounded-xl mb-1 transition-all font-black ${screen === item.id ? "bg-white/20 text-white" : "text-white/60 hover:bg-white/10 hover:text-white"}`}
-              style={{ minHeight: 72 }}
-            >
+              style={{ minHeight: 72 }}>
               <span style={{ fontSize: "2rem" }}>{item.emoji}</span>
               <span style={{ fontSize: "1.3rem" }}>{item.label}</span>
             </button>
           ))}
-          <button
-            onClick={onLogout}
+          <button onClick={onLogout}
             className="w-full flex items-center gap-3 px-4 py-4 text-white/50 hover:text-white hover:bg-white/10 rounded-xl transition-colors font-bold mt-2"
-            style={{ minHeight: 56, fontSize: "1.1rem" }}
-          >
-            <LogOut className="w-6 h-6" />
-            로그아웃
+            style={{ minHeight: 56, fontSize: "1.1rem" }}>
+            <LogOut className="w-6 h-6" />로그아웃
           </button>
         </div>
       )}
@@ -118,21 +107,18 @@ export function UserLayout({ onLogout }: { onLogout: () => void }) {
         </p>
       </div>
 
-      {/* 메뉴 카드 */}
+      {/* 메뉴 카드 - 2x2 그리드 */}
       <div className="grid grid-cols-2 gap-4 p-4">
         {NAV_ITEMS.map(item => (
-          <button
-            key={item.id}
-            onClick={() => setScreen(item.id)}
-            className={`flex flex-col items-center justify-center gap-3 py-8 rounded-2xl border-4 transition-all font-black shadow-sm ${
+          <button key={item.id} onClick={() => setScreen(item.id)}
+            className={`flex flex-col items-center justify-center gap-3 py-6 rounded-2xl border-4 transition-all font-black shadow-sm ${
               screen === item.id
                 ? "bg-[#0A2647] border-[#0A2647] text-white shadow-lg"
                 : "bg-white border-gray-200 text-gray-800 hover:border-[#0A2647]/40"
             }`}
-            style={{ minHeight: 150 }}
-          >
-            <span style={{ fontSize: "2.8rem" }}>{item.emoji}</span>
-            <span style={{ fontSize: "1.35rem" }}>{item.label}</span>
+            style={{ minHeight: 120 }}>
+            <span style={{ fontSize: "2.2rem" }}>{item.emoji}</span>
+            <span style={{ fontSize: "1.15rem" }}>{item.label}</span>
           </button>
         ))}
       </div>
