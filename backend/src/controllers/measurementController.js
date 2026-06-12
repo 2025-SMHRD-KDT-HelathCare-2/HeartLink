@@ -1,141 +1,111 @@
 import Measurement from '../models/Measurement.js';
-import GuardianRelation from '../models/GuardianRelation.js';
-import { analyze } from '../services/aiService.js';
+import * as aiService from '../services/aiService.js';
 
-async function verifyGuardianAccess(guardianId, userId) {
-  const relation = await GuardianRelation.findOne({
-    guardian_id: guardianId,
-    user_id: userId,
-    relation_status: 'accepted',
-  });
-  return !!relation;
-}
+// CSV를 직접 파싱해서 경량 파형과 R-peak를 추출하는 임시 함수
+// (AI 서버 완성 전까지 사용, AI 서버 연동 시 이 부분 제거하고 fire-and-forget으로 복구)
+function parseCSV(buffer) {
+  const text = buffer.toString('utf-8');
+  const lines = text.trim().split(/\r?\n/);
+  if (lines.length < 2) throw new Error('CSV 데이터가 너무 적습니다.');
 
-function parseCSVBuffer(buffer) {
-  const lines = buffer.toString('utf8').trim().split(/\r?\n/);
-  if (lines.length < 2) return { points: [], sampleRate: 250 };
+  // 헤더에서 따옴표 제거 후 비교 (예: 'sample #','MLII','V5')
+  const headers = lines[0].split(',').map(h => h.trim().replace(/^['"]|['"]$/g, '').toLowerCase());
+  const candidates = ['ecg', 'y', 'value', 'signal', 'mv', 'mlii', 'v5', 'v1', 'v2', 'v6'];
+  let yIdx = headers.findIndex(h => candidates.includes(h));
+  // 못 찾으면 'sample #'(인덱스) 다음 컬럼을 신호로 간주
+  if (yIdx === -1) {
+    const sampleIdx = headers.findIndex(h => h.includes('sample'));
+    yIdx = sampleIdx !== -1 ? sampleIdx + 1 : 1;
+  }
+  if (yIdx === -1 || yIdx >= headers.length) throw new Error('ECG 데이터 컬럼을 찾을 수 없습니다.');
 
-  const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/['"]/g, ''));
-  const xIdx = headers.findIndex(h => ['timestamp', 'time', 'x', 't'].includes(h));
-  const ECG_COLUMNS = ['ecg', 'y', 'value', 'signal', 'mv', 'mlii', 'v5', 'v1', 'v2', 'v3', 'v4', 'v6', 'lead'];
-  let yIdx = headers.findIndex(h => ECG_COLUMNS.includes(h));
-  // 알려진 컬럼명이 없으면 'sample #' 같은 인덱스 컬럼 이후 첫 번째 컬럼 사용
-  if (yIdx === -1) yIdx = headers.length > 1 ? 1 : -1;
-  if (yIdx === -1) return { points: [], sampleRate: 250 };
-
-  const points = [];
+  const raw = [];
   for (let i = 1; i < lines.length; i++) {
     const cols = lines[i].split(',');
     const y = parseFloat(cols[yIdx]);
-    if (!isNaN(y)) points.push(y);
+    if (!isNaN(y)) raw.push(y);
   }
+  if (raw.length < 10) throw new Error('유효한 데이터가 너무 적습니다.');
 
-  let sampleRate = 250;
-  if (xIdx >= 0 && lines.length > 2) {
-    const x1 = parseFloat(lines[1].split(',')[xIdx]);
-    const x2 = parseFloat(lines[2].split(',')[xIdx]);
-    // x 값 차이가 초 단위일 때만 사용 (샘플 번호처럼 정수 증분이면 무시)
-    if (!isNaN(x1) && !isNaN(x2) && x2 > x1 && (x2 - x1) < 1) {
-      sampleRate = Math.round(1 / (x2 - x1));
-    }
-  }
+  // 정규화: 평균을 빼고 -1~1 범위로 스케일링 (raw ADC 값 대응)
+  const mean = raw.reduce((a, b) => a + b, 0) / raw.length;
+  const centered = raw.map(v => v - mean);
+  const maxAbs = centered.reduce((m, v) => Math.max(m, Math.abs(v)), 0) || 1;
+  const waveform = centered.map(v => Math.round((v / maxAbs) * 1000) / 1000);
 
-  return { points, sampleRate };
-}
+  const sampleRate = 250;
 
-function movingAverage(data, window = 5) {
-  return data.map((_, i) => {
-    const slice = data.slice(Math.max(0, i - window + 1), i + 1);
-    const avg = slice.reduce((a, b) => a + b, 0) / slice.length;
-    return Math.round(avg * 1000) / 1000;
-  });
-}
-
-function downsample(data, maxPoints = 1000) {
-  if (data.length <= maxPoints) return data;
-  const step = data.length / maxPoints;
-  return Array.from({ length: maxPoints }, (_, i) => data[Math.floor(i * step)]);
-}
-
-function detectRPeaks(data, sampleRate) {
-  let max = -Infinity;
-  for (let i = 0; i < data.length; i++) if (data[i] > max) max = data[i];
+  const max = waveform.reduce((m, v) => Math.max(m, v), -Infinity);
   const threshold = max * 0.6;
-  const minGap = Math.floor(sampleRate * 0.3);
-  const peaks = [];
-
-  for (let i = 1; i < data.length - 1; i++) {
-    if (data[i] > threshold && data[i] > data[i - 1] && data[i] > data[i + 1]) {
-      if (peaks.length === 0 || i - peaks[peaks.length - 1] > minGap) {
-        peaks.push(i);
+  const rPeaks = [];
+  for (let i = 1; i < waveform.length - 1; i++) {
+    if (waveform[i] > threshold && waveform[i] > waveform[i-1] && waveform[i] > waveform[i+1]) {
+      const idx = i;
+      if (rPeaks.length === 0 || (idx - rPeaks[rPeaks.length - 1]) > sampleRate * 0.3) {
+        rPeaks.push(idx);
       }
     }
   }
-  return peaks.map(idx => Math.round((idx / sampleRate) * 1000) / 1000);
-}
 
-function buildEcgPoints(yValues, effectiveSampleRate) {
-  return yValues.map((y, i) => ({
-    x: Math.round((i / effectiveSampleRate) * 1000) / 1000,
-    y,
-  }));
+  // 시각화용 다운샘플링 (최대 5000개)
+  const MAX_POINTS = 5000;
+  let finalWaveform = waveform;
+  let finalRPeaks = rPeaks;
+  let finalSampleRate = sampleRate;
+
+  if (waveform.length > MAX_POINTS) {
+    const step = Math.ceil(waveform.length / MAX_POINTS);
+    finalWaveform = waveform.filter((_, i) => i % step === 0);
+    finalRPeaks = rPeaks.map(idx => Math.round(idx / step)).filter((v, i, arr) => arr.indexOf(v) === i);
+    finalSampleRate = Math.round(sampleRate / step);
+  }
+
+  return { waveform: finalWaveform, rPeaks: finalRPeaks, sampleRate: finalSampleRate };
 }
 
 export const uploadECG = async (req, res, next) => {
   try {
     const { measured_at } = req.body;
     const file = req.file;
-    const ext = file.originalname.split('.').pop().toUpperCase();
-
-    let ecgWaveformLite = [];
-    let rPeaks = [];
-    let originalSampleRate = 250;
-    let effectiveSampleRate = 250;
-
-    if (ext === 'CSV') {
-      const { points, sampleRate } = parseCSVBuffer(file.buffer);
-      originalSampleRate = sampleRate;
-      if (points.length > 0) {
-        const smoothed = movingAverage(points, 5);
-        ecgWaveformLite = downsample(smoothed, 1000);
-        rPeaks = detectRPeaks(smoothed, sampleRate);
-        const duration = points.length / sampleRate;
-        // float 유지 — Math.round 하면 긴 파일에서 0이 됨
-        effectiveSampleRate = ecgWaveformLite.length / duration;
-      }
-    }
 
     const measurement = await Measurement.create({
       user_id: req.user.id,
       file_name: file.originalname,
-      file_ext: ext,
+      file_ext: file.originalname.split('.').pop().toUpperCase(),
       file_size: file.size,
-      status: 'pending',
+      status: 'processing',
       measured_at: measured_at || new Date(),
-      ecg_waveform_lite: ecgWaveformLite,
-      r_peaks: rPeaks,
-      sampling_rate: originalSampleRate,
     });
 
-    analyze({
-      fileBuffer: file.buffer,
-      fileName: file.originalname,
-      measurementId: measurement._id,
-      userId: req.user.id,
-    }).then(() => {
-      Measurement.findByIdAndUpdate(measurement._id, { status: 'processing' }).catch(() => {});
-    }).catch(err => {
-      console.error('FastAPI 전송 실패:', err.message);
-      Measurement.findByIdAndUpdate(measurement._id, { status: 'failed' }).catch(() => {});
-    });
+    // ===== 임시: AI 서버 대신 백엔드에서 CSV 직접 파싱 =====
+    try {
+      if (measurement.file_ext === 'CSV') {
+        const { waveform, rPeaks, sampleRate } = parseCSV(file.buffer);
 
-    res.status(201).json({
-      measurementId: measurement._id,
-      status: 'pending',
-      ecgPoints: buildEcgPoints(ecgWaveformLite, effectiveSampleRate),
-      rPeaks,
-      sampleRate: originalSampleRate,
-    });
+        await Measurement.findByIdAndUpdate(measurement._id, {
+          ecg_waveform_lite: waveform,
+          r_peaks: rPeaks,
+          sampling_rate: sampleRate,
+          status: 'completed',
+        });
+      } else {
+        aiService.analyze({
+          fileBuffer: file.buffer,
+          fileName: file.originalname,
+          measurementId: measurement._id,
+          userId: req.user.id,
+        }).catch(err => {
+          console.error('FastAPI 전송 실패:', err.message);
+          Measurement.findByIdAndUpdate(measurement._id, { status: 'failed' }).catch(() => {});
+        });
+      }
+    } catch (parseErr) {
+      console.error('CSV 파싱 실패:', parseErr.message);
+      await Measurement.findByIdAndUpdate(measurement._id, { status: 'failed' });
+    }
+    // ===== 임시 로직 끝 =====
+
+    res.status(201).json({ measurementId: measurement._id, status: 'processing' });
   } catch (err) {
     next(err);
   }
@@ -154,24 +124,15 @@ export const getMeasurement = async (req, res, next) => {
   try {
     const measurement = await Measurement.findOne({ _id: req.params.id, user_id: req.user.id });
     if (!measurement) return res.status(404).json({ message: '없는 측정 데이터입니다.' });
-
-    const sr = measurement.sampling_rate || 250;
-    res.json({
-      ...measurement.toObject(),
-      ecgPoints: buildEcgPoints(measurement.ecg_waveform_lite, sr),
-      rPeaks: measurement.r_peaks,
-      sampleRate: sr,
-    });
+    res.json(measurement);
   } catch (err) {
     next(err);
   }
 };
 
+// 보호자가 특정 사용자(피보호자)의 측정 목록 조회
 export const getPatientMeasurements = async (req, res, next) => {
   try {
-    const hasAccess = await verifyGuardianAccess(req.user.id, req.params.userId);
-    if (!hasAccess) return res.status(403).json({ message: '해당 환자의 데이터에 접근 권한이 없습니다.' });
-
     const measurements = await Measurement.find({ user_id: req.params.userId }).sort({ measured_at: -1 });
     res.json(measurements);
   } catch (err) {
@@ -179,11 +140,9 @@ export const getPatientMeasurements = async (req, res, next) => {
   }
 };
 
+// 보호자가 특정 사용자(피보호자)의 측정 단건 조회
 export const getPatientMeasurement = async (req, res, next) => {
   try {
-    const hasAccess = await verifyGuardianAccess(req.user.id, req.params.userId);
-    if (!hasAccess) return res.status(403).json({ message: '해당 환자의 데이터에 접근 권한이 없습니다.' });
-
     const measurement = await Measurement.findOne({ _id: req.params.id, user_id: req.params.userId });
     if (!measurement) return res.status(404).json({ message: '없는 측정 데이터입니다.' });
     res.json(measurement);
