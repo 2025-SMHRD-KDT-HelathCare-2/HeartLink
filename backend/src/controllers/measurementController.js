@@ -15,9 +15,12 @@ function parseCSVBuffer(buffer) {
   const lines = buffer.toString('utf8').trim().split(/\r?\n/);
   if (lines.length < 2) return { points: [], sampleRate: 250 };
 
-  const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+  const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/['"]/g, ''));
   const xIdx = headers.findIndex(h => ['timestamp', 'time', 'x', 't'].includes(h));
-  const yIdx = headers.findIndex(h => ['ecg', 'y', 'value', 'signal', 'mv'].includes(h));
+  const ECG_COLUMNS = ['ecg', 'y', 'value', 'signal', 'mv', 'mlii', 'v5', 'v1', 'v2', 'v3', 'v4', 'v6', 'lead'];
+  let yIdx = headers.findIndex(h => ECG_COLUMNS.includes(h));
+  // 알려진 컬럼명이 없으면 'sample #' 같은 인덱스 컬럼 이후 첫 번째 컬럼 사용
+  if (yIdx === -1) yIdx = headers.length > 1 ? 1 : -1;
   if (yIdx === -1) return { points: [], sampleRate: 250 };
 
   const points = [];
@@ -31,7 +34,8 @@ function parseCSVBuffer(buffer) {
   if (xIdx >= 0 && lines.length > 2) {
     const x1 = parseFloat(lines[1].split(',')[xIdx]);
     const x2 = parseFloat(lines[2].split(',')[xIdx]);
-    if (!isNaN(x1) && !isNaN(x2) && x2 > x1) {
+    // x 값 차이가 초 단위일 때만 사용 (샘플 번호처럼 정수 증분이면 무시)
+    if (!isNaN(x1) && !isNaN(x2) && x2 > x1 && (x2 - x1) < 1) {
       sampleRate = Math.round(1 / (x2 - x1));
     }
   }
@@ -54,7 +58,8 @@ function downsample(data, maxPoints = 1000) {
 }
 
 function detectRPeaks(data, sampleRate) {
-  const max = Math.max(...data);
+  let max = -Infinity;
+  for (let i = 0; i < data.length; i++) if (data[i] > max) max = data[i];
   const threshold = max * 0.6;
   const minGap = Math.floor(sampleRate * 0.3);
   const peaks = [];
@@ -84,16 +89,19 @@ export const uploadECG = async (req, res, next) => {
 
     let ecgWaveformLite = [];
     let rPeaks = [];
+    let originalSampleRate = 250;
     let effectiveSampleRate = 250;
 
     if (ext === 'CSV') {
       const { points, sampleRate } = parseCSVBuffer(file.buffer);
+      originalSampleRate = sampleRate;
       if (points.length > 0) {
         const smoothed = movingAverage(points, 5);
         ecgWaveformLite = downsample(smoothed, 1000);
         rPeaks = detectRPeaks(smoothed, sampleRate);
         const duration = points.length / sampleRate;
-        effectiveSampleRate = Math.round(ecgWaveformLite.length / duration);
+        // float 유지 — Math.round 하면 긴 파일에서 0이 됨
+        effectiveSampleRate = ecgWaveformLite.length / duration;
       }
     }
 
@@ -106,7 +114,7 @@ export const uploadECG = async (req, res, next) => {
       measured_at: measured_at || new Date(),
       ecg_waveform_lite: ecgWaveformLite,
       r_peaks: rPeaks,
-      sampling_rate: effectiveSampleRate,
+      sampling_rate: originalSampleRate,
     });
 
     analyze({
@@ -126,7 +134,7 @@ export const uploadECG = async (req, res, next) => {
       status: 'pending',
       ecgPoints: buildEcgPoints(ecgWaveformLite, effectiveSampleRate),
       rPeaks,
-      sampleRate: effectiveSampleRate,
+      sampleRate: originalSampleRate,
     });
   } catch (err) {
     next(err);

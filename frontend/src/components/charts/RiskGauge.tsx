@@ -18,7 +18,7 @@ export function RiskGauge({ score }: RiskGaugeProps) {
       </h3>
       <div className="flex flex-col items-center">
         <div style={{ height: 200, width: "100%", maxWidth: 320, margin: "0 auto" }}>
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height="100%" debounce={1}>
             <RadialBarChart cx="50%" cy="80%" innerRadius="60%" outerRadius="90%"
               startAngle={180} endAngle={0}
               data={[{ value: score, fill: color }]}>
