@@ -15,7 +15,9 @@ interface ECGChartProps {
 export function ECGChart({ data, rPeaks, zoom, onZoomIn, onZoomOut }: ECGChartProps) {
   const visibleCount = Math.floor(data.length / zoom);
   const visibleData = data.slice(0, visibleCount);
-  const visiblePeaks = rPeaks.filter(x => x <= (visibleData[visibleCount - 1]?.x ?? Infinity));
+  const maxX = visibleData[visibleCount - 1]?.x ?? Infinity;
+  // 너무 많은 ReferenceLine은 브라우저 프리징 유발 — 최대 30개만 표시
+  const visiblePeaks = rPeaks.filter(x => x <= maxX).slice(0, 30);
 
   return (
     <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
@@ -35,15 +37,15 @@ export function ECGChart({ data, rPeaks, zoom, onZoomIn, onZoomOut }: ECGChartPr
         </div>
       </div>
 
-      <div style={{ height: 200 }}>
-        <ResponsiveContainer width="100%" height="100%">
+      <div style={{ height: 200, width: "100%" }}>
+        <ResponsiveContainer width="100%" height="100%" debounce={1}>
           <LineChart data={visibleData} margin={{ top: 5, right: 10, left: -30, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
             <XAxis dataKey="x" tick={{ fontSize: 12, fontWeight: 700 }}
               label={{ value: "시간 (초)", position: "insideBottomRight", offset: 0, fontSize: 12 }} />
             <YAxis tick={{ fontSize: 12, fontWeight: 700 }} />
             <Tooltip
-              formatter={(val: number) => [`${val.toFixed(3)} mV`, "진폭"]}
+              formatter={(val) => [`${Number(val).toFixed(3)} mV`, "진폭"]}
               labelFormatter={l => `${l}초`} />
             {visiblePeaks.map(x => (
               <ReferenceLine key={x} x={x} stroke="#DC2626" strokeDasharray="2 2" strokeOpacity={0.7} />

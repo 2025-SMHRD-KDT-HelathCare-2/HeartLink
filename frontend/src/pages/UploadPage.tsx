@@ -48,9 +48,9 @@ export function UploadPage() {
 
     try {
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append("ecg_file", file);
 
-      const res = await api.post("/ecg/upload", formData, {
+      const res = await api.post("/measurements", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
@@ -61,7 +61,7 @@ export function UploadPage() {
         setUploadState("success");
         // 백엔드 응답 데이터를 들고 visualization 페이지로 이동
         setTimeout(() => {
-          navigate("/visualization", { state: { ecgData: res.data } });
+          navigate("/visualization", { state: { ecgData: { ...res.data, fileName: file.name } } });
         }, 800);
       }, 300);
 
