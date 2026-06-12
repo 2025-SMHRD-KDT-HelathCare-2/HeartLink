@@ -1,6 +1,6 @@
-const Notification = require('../models/Notification');
+import Notification from '../models/Notification.js';
 
-exports.getNotifications = async (req, res, next) => {
+export const getNotifications = async (req, res, next) => {
   try {
     const notifications = await Notification.find({ guardian_id: req.user.id }).sort({ sent_at: -1 });
     res.json(notifications);
@@ -9,9 +9,14 @@ exports.getNotifications = async (req, res, next) => {
   }
 };
 
-exports.markAsRead = async (req, res, next) => {
+export const markAsRead = async (req, res, next) => {
   try {
-    await Notification.findByIdAndUpdate(req.params.id, { is_read: true });
+    const notification = await Notification.findOneAndUpdate(
+      { _id: req.params.id, guardian_id: req.user.id },
+      { is_read: true },
+      { new: true }
+    );
+    if (!notification) return res.status(404).json({ message: '알림을 찾을 수 없습니다.' });
     res.json({ message: '읽음 처리 완료' });
   } catch (err) {
     next(err);

@@ -1,4 +1,4 @@
-module.exports = (req, res, next) => {
+export default (req, res, next) => {
   if (req.headers['x-internal-secret'] !== process.env.INTERNAL_SECRET) {
     return res.status(403).json({ message: '내부 인증 실패' });
   }

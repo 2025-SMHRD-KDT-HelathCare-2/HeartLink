@@ -1,10 +1,20 @@
-const router = require('express').Router();
-const auth = require('../middlewares/auth');
-const upload = require('../middlewares/upload');
-const { uploadECG, getMeasurements, getMeasurement } = require('../controllers/measurementController');
+import { Router } from 'express';
+import auth from '../middlewares/auth.js';
+import upload from '../middlewares/upload.js';
+import {
+  uploadECG,
+  getMeasurements,
+  getMeasurement,
+  getPatientMeasurements,
+  getPatientMeasurement,
+} from '../controllers/measurementController.js';
+
+const router = Router();
 
 router.post('/', auth, upload.single('ecg_file'), uploadECG);
 router.get('/', auth, getMeasurements);
+router.get('/patient/:userId', auth, getPatientMeasurements);
+router.get('/patient/:userId/:id', auth, getPatientMeasurement);
 router.get('/:id', auth, getMeasurement);
 
-module.exports = router;
+export default router;

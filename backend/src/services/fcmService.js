@@ -1,4 +1,4 @@
-const admin = require('firebase-admin');
+import admin from 'firebase-admin';
 
 if (!admin.apps.length) {
   admin.initializeApp({
@@ -6,7 +6,7 @@ if (!admin.apps.length) {
   });
 }
 
-exports.sendPush = async ({ deviceToken, title, body }) => {
+export const sendPush = async ({ deviceToken, title, body }) => {
   return admin.messaging().send({
     token: deviceToken,
     notification: { title, body },

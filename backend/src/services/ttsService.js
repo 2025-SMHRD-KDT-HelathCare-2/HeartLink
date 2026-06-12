@@ -1,7 +1,6 @@
-const axios = require('axios');
+import axios from 'axios';
 
-exports.synthesize = async ({ text, outputPath }) => {
-  // Google Cloud TTS REST API 사용
+export const synthesize = async ({ text }) => {
   const { data } = await axios.post(
     `https://texttospeech.googleapis.com/v1/text:synthesize?key=${process.env.GOOGLE_CLOUD_TTS_KEY}`,
     {
@@ -10,7 +9,5 @@ exports.synthesize = async ({ text, outputPath }) => {
       audioConfig: { audioEncoding: 'MP3' },
     }
   );
-
-  // data.audioContent는 base64 인코딩된 mp3
   return data.audioContent;
 };

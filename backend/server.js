@@ -1,9 +1,14 @@
-const express = require('express');
-const cors = require('cors');
-const connectDB = require('./src/config/db');
-const errorHandler = require('./src/middlewares/errorHandler');
-
-require('dotenv').config();
+import 'dotenv/config';
+import express from 'express';
+import cors from 'cors';
+import connectDB from './src/config/db.js';
+import errorHandler from './src/middlewares/errorHandler.js';
+import authRouter from './src/routes/auth.js';
+import measurementsRouter from './src/routes/measurements.js';
+import reportsRouter from './src/routes/reports.js';
+import guardiansRouter from './src/routes/guardians.js';
+import notificationsRouter from './src/routes/notifications.js';
+import internalRouter from './src/routes/internal.js';
 
 const app = express();
 
@@ -12,12 +17,12 @@ connectDB();
 app.use(cors());
 app.use(express.json());
 
-app.use('/api/auth', require('./src/routes/auth'));
-app.use('/api/measurements', require('./src/routes/measurements'));
-app.use('/api/reports', require('./src/routes/reports'));
-app.use('/api/guardians', require('./src/routes/guardians'));
-app.use('/api/notifications', require('./src/routes/notifications'));
-app.use('/api/internal', require('./src/routes/internal'));
+app.use('/api/auth', authRouter);
+app.use('/api/measurements', measurementsRouter);
+app.use('/api/reports', reportsRouter);
+app.use('/api/guardians', guardiansRouter);
+app.use('/api/notifications', notificationsRouter);
+app.use('/api/internal', internalRouter);
 
 app.use(errorHandler);
 
