@@ -2,16 +2,14 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Heart, Users, Bell, FileText, LogOut, Menu, X,
-  ChevronRight, Shield, Upload, Activity
+  ChevronRight, Shield, Activity
 } from "lucide-react";
 import { GuardianDashboard } from "../../pages/GuardianDashboard";
 import { NotificationsPage } from "../../pages/NotificationsPage";
 import { GuardianReportPage } from "../../pages/GuardianReportPage";
-import { UploadPage } from "../../pages/UploadPage";
-import type { ECGData } from "../../pages/UploadPage";
-import { VisualizationPage } from "../../pages/VisualizationPage";
+import { UploadVisualizationPage } from "../../pages/UploadVisualizationPage";
 
-type GuardianScreen = "dashboard" | "notifications" | "report" | "upload" | "visualization";
+type GuardianScreen = "dashboard" | "notifications" | "report" | "ecg";
 
 const GUARDIAN_NAV: { id: GuardianScreen; label: string; icon: React.ElementType; ucId: string; badge?: number }[] = [
   { id: "dashboard",     label: "연계 사용자 대시보드", icon: Users,    ucId: "UC-09" },
@@ -20,8 +18,7 @@ const GUARDIAN_NAV: { id: GuardianScreen; label: string; icon: React.ElementType
 ];
 
 const CARE_NAV: { id: GuardianScreen; label: string; icon: React.ElementType; ucId: string }[] = [
-  { id: "upload",        label: "기기 데이터 올리기", icon: Upload,   ucId: "UC-04" },
-  { id: "visualization", label: "심전도 분석",        icon: Activity, ucId: "UC-06" },
+  { id: "ecg", label: "심전도 올리기·보기", icon: Activity, ucId: "UC-04/06" },
 ];
 
 const ALL_NAV = [...GUARDIAN_NAV, ...CARE_NAV];
@@ -35,20 +32,10 @@ export function GuardianLayout({ onLogout }: GuardianLayoutProps) {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedMemberId, setSelectedMemberId] = useState<number>(1);
-  const [ecgData, setEcgData] = useState<ECGData | null>(null);
-
   const handleSelectMember = (id: number) => {
     setSelectedMemberId(id);
     setScreen("report");
     setSidebarOpen(false);
-  };
-
-  // 업로드 완료 → 데이터 저장 후 VisualizationPage로 이동
-  const handleECGReady = (data: ECGData) => {
-    setEcgData(data);
-    setTimeout(() => {
-      setScreen("visualization");
-    }, 800);
   };
 
   const renderScreen = () => {
@@ -59,10 +46,8 @@ export function GuardianLayout({ onLogout }: GuardianLayoutProps) {
         return <NotificationsPage onViewReport={() => setScreen("report")} />;
       case "report":
         return <GuardianReportPage memberId={selectedMemberId} />;
-      case "upload":
-        return <UploadPage onDataReady={handleECGReady} />;
-      case "visualization":
-        return <VisualizationPage ecgData={ecgData} />;
+      case "ecg":
+        return <UploadVisualizationPage />;
     }
   };
 
