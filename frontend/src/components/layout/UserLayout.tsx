@@ -4,16 +4,14 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { ReportPage } from "../../pages/ReportPage";
 import { ReportHistoryPage } from "../../pages/ReportHistoryPage";
-import { UploadPage } from "../../pages/UploadPage";
-import { VisualizationPage } from "../../pages/VisualizationPage";
+import { UploadVisualizationPage } from "../../pages/UploadVisualizationPage";
 
-type UserScreen = "report" | "history" | "upload" | "visualization";
+type UserScreen = "report" | "history" | "ecg";
 
 const NAV_ITEMS: { id: UserScreen; label: string; emoji: string }[] = [
-  { id: "report",        label: "내 건강 결과",  emoji: "❤️" },
-  { id: "history",       label: "지난 기록",     emoji: "📋" },
-  { id: "upload",        label: "파일 올리기",   emoji: "📤" },
-  { id: "visualization", label: "심전도 그래프", emoji: "📈" },
+  { id: "report",  label: "내 건강 결과", emoji: "❤️" },
+  { id: "history", label: "지난 기록",    emoji: "📋" },
+  { id: "ecg",     label: "심전도 올리기·보기", emoji: "📈" },
 ];
 
 export function UserLayout({ onLogout }: { onLogout: () => void }) {
@@ -26,10 +24,9 @@ export function UserLayout({ onLogout }: { onLogout: () => void }) {
 
   const renderScreen = () => {
     switch (screen) {
-      case "report":        return <ReportPage />;
-      case "history":       return <ReportHistoryPage />;
-      case "upload":        return <UploadPage />;
-      case "visualization": return <VisualizationPage />;
+      case "report":  return <ReportPage />;
+      case "history": return <ReportHistoryPage />;
+      case "ecg":     return <UploadVisualizationPage />;
     }
   };
 
@@ -88,7 +85,7 @@ export function UserLayout({ onLogout }: { onLogout: () => void }) {
               className={`w-full flex items-center gap-4 px-4 py-5 rounded-xl mb-1 transition-all font-black ${screen === item.id ? "bg-white/20 text-white" : "text-white/60 hover:bg-white/10 hover:text-white"}`}
               style={{ minHeight: 72 }}>
               <span style={{ fontSize: "2rem" }}>{item.emoji}</span>
-              <span style={{ fontSize: "1.3rem" }}>{item.label}</span>
+              <span style={{ fontSize: "1.2rem" }}>{item.label}</span>
             </button>
           ))}
           <button onClick={onLogout}
@@ -107,7 +104,7 @@ export function UserLayout({ onLogout }: { onLogout: () => void }) {
         </p>
       </div>
 
-      {/* 메뉴 카드 - 2x2 그리드 */}
+      {/* 메뉴 카드 */}
       <div className="grid grid-cols-2 gap-4 p-4">
         {NAV_ITEMS.map(item => (
           <button key={item.id} onClick={() => setScreen(item.id)}
@@ -115,10 +112,10 @@ export function UserLayout({ onLogout }: { onLogout: () => void }) {
               screen === item.id
                 ? "bg-[#0A2647] border-[#0A2647] text-white shadow-lg"
                 : "bg-white border-gray-200 text-gray-800 hover:border-[#0A2647]/40"
-            }`}
-            style={{ minHeight: 120 }}>
-            <span style={{ fontSize: "2.2rem" }}>{item.emoji}</span>
-            <span style={{ fontSize: "1.15rem" }}>{item.label}</span>
+            } ${item.id === "ecg" ? "col-span-2" : ""}`}
+            style={{ minHeight: item.id === "ecg" ? 100 : 130 }}>
+            <span style={{ fontSize: item.id === "ecg" ? "2rem" : "2.5rem" }}>{item.emoji}</span>
+            <span style={{ fontSize: "1.25rem" }}>{item.label}</span>
           </button>
         ))}
       </div>

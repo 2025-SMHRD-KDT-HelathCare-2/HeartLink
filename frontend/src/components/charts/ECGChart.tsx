@@ -3,6 +3,7 @@ import {
   ResponsiveContainer, ReferenceLine
 } from "recharts";
 import { ZoomIn, ZoomOut } from "lucide-react";
+import { useMemo } from "react";
 
 interface ECGChartProps {
   data: Array<{ x: number; y: number }>;
@@ -10,14 +11,25 @@ interface ECGChartProps {
   zoom: number;
   onZoomIn: () => void;
   onZoomOut: () => void;
+  revealPercent?: number; // 0~100, 지정 시 왼쪽부터 그만큼만 표시
 }
 
-export function ECGChart({ data, rPeaks, zoom, onZoomIn, onZoomOut }: ECGChartProps) {
+export function ECGChart({ data, rPeaks, zoom, onZoomIn, onZoomOut, revealPercent }: ECGChartProps) {
   const visibleCount = Math.floor(data.length / zoom);
-  const visibleData = data.slice(0, visibleCount);
-  const maxX = visibleData[visibleCount - 1]?.x ?? Infinity;
-  // 너무 많은 ReferenceLine은 브라우저 프리징 유발 — 최대 30개만 표시
-  const visiblePeaks = rPeaks.filter(x => x <= maxX).slice(0, 30);
+  const baseData = data.slice(0, visibleCount);
+
+  // reveal 애니메이션: revealPercent에 따라 왼쪽부터 점진적으로 표시
+  const displayData = useMemo(() => {
+    if (revealPercent === undefined || revealPercent >= 100) return baseData;
+    const cutoff = Math.floor((baseData.length * revealPercent) / 100);
+    return baseData.slice(0, Math.max(cutoff, 1));
+  }, [baseData, revealPercent]);
+
+  const maxX = baseData[baseData.length - 1]?.x ?? 0;
+  const visiblePeaks = rPeaks.filter(x => {
+    const limit = displayData[displayData.length - 1]?.x ?? 0;
+    return x <= limit;
+  });
 
   return (
     <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
@@ -37,15 +49,20 @@ export function ECGChart({ data, rPeaks, zoom, onZoomIn, onZoomOut }: ECGChartPr
         </div>
       </div>
 
-      <div style={{ height: 200, width: "100%" }}>
-        <ResponsiveContainer width="100%" height="100%" debounce={1}>
-          <LineChart data={visibleData} margin={{ top: 5, right: 10, left: -30, bottom: 5 }}>
+      <div style={{ height: 200 }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={displayData} margin={{ top: 5, right: 10, left: -30, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-            <XAxis dataKey="x" tick={{ fontSize: 12, fontWeight: 700 }}
-              label={{ value: "시간 (초)", position: "insideBottomRight", offset: 0, fontSize: 12 }} />
+            <XAxis
+              dataKey="x"
+              type="number"
+              domain={[0, maxX]}
+              tick={{ fontSize: 12, fontWeight: 700 }}
+              label={{ value: "시간 (초)", position: "insideBottomRight", offset: 0, fontSize: 12 }}
+            />
             <YAxis tick={{ fontSize: 12, fontWeight: 700 }} />
             <Tooltip
-              formatter={(val) => [`${Number(val).toFixed(3)} mV`, "진폭"]}
+              formatter={(val: number) => [`${val.toFixed(3)} mV`, "진폭"]}
               labelFormatter={l => `${l}초`} />
             {visiblePeaks.map(x => (
               <ReferenceLine key={x} x={x} stroke="#DC2626" strokeDasharray="2 2" strokeOpacity={0.7} />
