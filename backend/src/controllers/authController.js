@@ -84,11 +84,78 @@ export const login = async (req, res, next) => {
       { expiresIn: process.env.JWT_EXPIRES_IN || '30m' }
     );
 
+    const refreshToken = jwt.sign(
+      { id: user._id },
+      process.env.JWT_REFRESH_SECRET,
+      { expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '3d' }
+    );
+
+    await User.findByIdAndUpdate(user._id, { refresh_token: refreshToken });
+
     return res.json({
       message: `${user.nickname}님, 환영합니다!`,
       token,
+      refreshToken,
       role: user.role,
     });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// Sliding window: 요청마다 새 AT + 새 RT 발급 (3일 창 갱신)
+export const refreshToken = async (req, res, next) => {
+  try {
+    const { refreshToken: incomingRT } = req.body;
+
+    if (!incomingRT) {
+      return res.status(401).json({ message: '리프레시 토큰이 없습니다. 다시 로그인해 주세요.' });
+    }
+
+    let decoded;
+    try {
+      decoded = jwt.verify(incomingRT, process.env.JWT_REFRESH_SECRET);
+    } catch (err) {
+      return res.status(401).json({ message: '로그인이 만료되었습니다. 다시 로그인해 주세요.' });
+    }
+
+    const user = await User.findById(decoded.id);
+    if (!user || user.refresh_token !== incomingRT) {
+      return res.status(401).json({ message: '유효하지 않은 세션입니다. 다시 로그인해 주세요.' });
+    }
+
+    const newToken = jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRES_IN || '30m' }
+    );
+
+    const newRefreshToken = jwt.sign(
+      { id: user._id },
+      process.env.JWT_REFRESH_SECRET,
+      { expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '3d' }
+    );
+
+    await User.findByIdAndUpdate(user._id, { refresh_token: newRefreshToken });
+
+    return res.json({ token: newToken, refreshToken: newRefreshToken });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const logout = async (req, res, next) => {
+  try {
+    const { refreshToken: incomingRT } = req.body;
+
+    if (incomingRT) {
+      const decoded = jwt.decode(incomingRT);
+      if (decoded?.id) {
+        await User.findByIdAndUpdate(decoded.id, { refresh_token: null });
+      }
+    }
+
+    return res.json({ message: '로그아웃 되었습니다.' });
   } catch (err) {
     next(err);
   }

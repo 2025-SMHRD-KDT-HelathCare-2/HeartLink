@@ -74,7 +74,7 @@ export function LoginPage() {
         return;
       }
 
-      login({ email: form.email, role: data.role }, data.role, data.token);
+      login({ email: form.email, role: data.role }, data.role, data.token, data.refreshToken);
       navigate("/dashboard");
     } catch (err) {
       const message = err instanceof Error ? err.message : "로그인에 실패했습니다.";

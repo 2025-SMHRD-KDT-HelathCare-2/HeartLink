@@ -18,7 +18,7 @@ export default (req, res, next) => {
     next();
   } catch (err) {
     if (err.name === 'TokenExpiredError') {
-      return res.status(401).json({ message: '로그인이 만료되었습니다. 다시 로그인해 주세요.' });
+      return res.status(401).json({ code: 'TOKEN_EXPIRED', message: '로그인이 만료되었습니다. 다시 로그인해 주세요.' });
     }
     return res.status(401).json({ message: '로그인 정보가 올바르지 않습니다. 다시 로그인해 주세요.' });
   }
