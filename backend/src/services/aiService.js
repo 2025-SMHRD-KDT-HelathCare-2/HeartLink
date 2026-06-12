@@ -1,7 +1,7 @@
-const axios = require('axios');
-const FormData = require('form-data');
+import axios from 'axios';
+import FormData from 'form-data';
 
-exports.analyze = ({ fileBuffer, fileName, measurementId, userId }) => {
+export const analyze = ({ fileBuffer, fileName, measurementId, userId }) => {
   const form = new FormData();
   form.append('file', fileBuffer, fileName);
   form.append('measurement_id', measurementId.toString());

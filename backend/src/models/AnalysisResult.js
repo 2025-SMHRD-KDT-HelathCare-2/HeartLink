@@ -1,34 +1,28 @@
-// src/models/AnalysisResult.js
-const mongoose = require("mongoose");
+import mongoose from 'mongoose';
 
 const analysisResultSchema = new mongoose.Schema(
   {
-    measurement_id: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Measurement",
-      required: true,
-      unique: true, // measurement와 1:1
-    },
-    user_id: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true }, // 사용자 참조
-    arrhythmia_class: { type: String, enum: ["N", "SVEB", "VEB", "F", "Q"] },       // 부정맥 분류
-    arrhythmia_prob: { type: Number },                                              // 부정맥 분류 확률
-    af_detected: { type: Boolean },                                                 // 심방세동 의심 여부
-    af_prob: { type: Number },                                                      // AF 확률
-    hrv_rmssd: { type: Number },                                                    // HRV-RMSSD
-    hrv_sdnn: { type: Number },                                                     // HRV-SDNN
-    hrv_lfhf: { type: Number },                                                     // HRV-LF/HF
-    anomaly_detected: { type: Boolean },                                            // 이상 탐지 여부
-    risk_score: { type: Number, required: true, min: 0, max: 100 },                 // 위험도 점수(0~100)
-    risk_level: { type: String, required: true, enum: ["high", "mid", "low"] },     // 위험도 단계
-    analyzed_at: { type: Date, required: true },                                    // 분석 시각
+    measurement_id:   { type: mongoose.Schema.Types.ObjectId, ref: 'Measurement', required: true, unique: true },
+    user_id:          { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    arrhythmia_class: { type: String, enum: ['N', 'SVEB', 'VEB', 'F', 'Q'] },
+    arrhythmia_prob:  { type: Number },
+    af_detected:      { type: Boolean },
+    af_prob:          { type: Number },
+    hrv_rmssd:        { type: Number },
+    hrv_sdnn:         { type: Number },
+    hrv_lfhf:         { type: Number },
+    anomaly_detected: { type: Boolean },
+    risk_score:       { type: Number, required: true, min: 0, max: 100 },
+    risk_level:       { type: String, required: true, enum: ['high', 'mid', 'low'] },
+    analyzed_at:      { type: Date, required: true },
   },
   {
-    timestamps: { createdAt: "created_at", updatedAt: false },
-    collection: "analysis_results",
+    timestamps: { createdAt: 'created_at', updatedAt: false },
+    collection: 'analysis_results',
   }
 );
 
 analysisResultSchema.index({ user_id: 1, analyzed_at: -1 });
 analysisResultSchema.index({ risk_level: 1 });
 
-module.exports = mongoose.model("AnalysisResult", analysisResultSchema);
+export default mongoose.model('AnalysisResult', analysisResultSchema);

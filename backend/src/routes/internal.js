@@ -1,7 +1,9 @@
-const router = require('express').Router();
-const internalAuth = require('../middlewares/internalAuth');
-const { notify } = require('../controllers/internalController');
+import { Router } from 'express';
+import internalAuth from '../middlewares/internalAuth.js';
+import { notify } from '../controllers/internalController.js';
+
+const router = Router();
 
 router.post('/notify', internalAuth, notify);
 
-module.exports = router;
+export default router;

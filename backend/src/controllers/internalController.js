@@ -1,7 +1,7 @@
-const Measurement = require('../models/Measurement');
-const AnalysisResult = require('../models/AnalysisResult');
+import Measurement from '../models/Measurement.js';
+import AnalysisResult from '../models/AnalysisResult.js';
 
-exports.notify = async (req, res, next) => {
+export const notify = async (req, res, next) => {
   try {
     const {
       measurement_id,

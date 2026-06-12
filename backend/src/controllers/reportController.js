@@ -1,7 +1,17 @@
-const Report = require('../models/Report');
-const AnalysisResult = require('../models/AnalysisResult');
+import Report from '../models/Report.js';
+import AnalysisResult from '../models/AnalysisResult.js';
+import GuardianRelation from '../models/GuardianRelation.js';
 
-exports.getReportList = async (req, res, next) => {
+async function verifyGuardianAccess(guardianId, userId) {
+  const relation = await GuardianRelation.findOne({
+    guardian_id: guardianId,
+    user_id: userId,
+    relation_status: 'accepted',
+  });
+  return !!relation;
+}
+
+export const getReportList = async (req, res, next) => {
   try {
     const reports = await Report.find({ user_id: req.user.id }).sort({ createdAt: -1 });
     res.json(reports);
@@ -10,7 +20,7 @@ exports.getReportList = async (req, res, next) => {
   }
 };
 
-exports.getReport = async (req, res, next) => {
+export const getReport = async (req, res, next) => {
   try {
     const report = await Report.findOne({ analysis_id: req.params.analysisId, user_id: req.user.id });
     if (!report) return res.status(404).json({ message: '리포트가 없습니다.' });
@@ -20,13 +30,45 @@ exports.getReport = async (req, res, next) => {
   }
 };
 
-exports.generateReport = async (req, res, next) => {
+export const generateReport = async (req, res, next) => {
   try {
     const existing = await Report.findOne({ analysis_id: req.params.analysisId, user_id: req.user.id });
     if (existing) return res.json(existing);
 
-    // TODO: AI 서버 또는 Gemini MCP 연동으로 리포트 생성
+    // TODO: Gemini 연동으로 리포트 생성
     res.status(501).json({ message: '리포트 생성 미구현' });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const getPatientReportList = async (req, res, next) => {
+  try {
+    const hasAccess = await verifyGuardianAccess(req.user.id, req.params.userId);
+    if (!hasAccess) return res.status(403).json({ message: '해당 환자의 데이터에 접근 권한이 없습니다.' });
+
+    const reports = await Report.find({ user_id: req.params.userId }).sort({ createdAt: -1 });
+    res.json(reports);
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const getPatientReport = async (req, res, next) => {
+  try {
+    const hasAccess = await verifyGuardianAccess(req.user.id, req.params.userId);
+    if (!hasAccess) return res.status(403).json({ message: '해당 환자의 데이터에 접근 권한이 없습니다.' });
+
+    const report = await Report.findOne({ analysis_id: req.params.analysisId, user_id: req.params.userId });
+    if (!report) return res.status(404).json({ message: '리포트가 없습니다.' });
+
+    res.json({
+      _id: report._id,
+      analysis_id: report.analysis_id,
+      user_id: report.user_id,
+      guardianReport: report.guardianReport,
+      createdAt: report.createdAt,
+    });
   } catch (err) {
     next(err);
   }

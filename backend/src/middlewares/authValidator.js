@@ -1,5 +1,4 @@
-// src/middlewares/authValidator.js
-const { body, validationResult } = require('express-validator');
+import { body, validationResult } from 'express-validator';
 
 const handleValidationErrors = (req, res, next) => {
   const errors = validationResult(req);
@@ -10,7 +9,7 @@ const handleValidationErrors = (req, res, next) => {
   next();
 };
 
-const registerRules = [
+export const registerRules = [
   body('email')
     .trim()
     .notEmpty().withMessage('이메일 주소를 입력해 주세요.')
@@ -52,7 +51,7 @@ const registerRules = [
   handleValidationErrors,
 ];
 
-const loginRules = [
+export const loginRules = [
   body('email')
     .trim()
     .notEmpty().withMessage('이메일 주소를 입력해 주세요.')
@@ -64,5 +63,3 @@ const loginRules = [
 
   handleValidationErrors,
 ];
-
-module.exports = { registerRules, loginRules };

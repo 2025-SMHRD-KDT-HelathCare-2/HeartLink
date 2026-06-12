@@ -1,9 +1,10 @@
-const router = require('express').Router();
-const { register, login } = require('../controllers/authController');
-const { registerRules, loginRules } = require('../middlewares/authValidator');
+import { Router } from 'express';
+import { register, login } from '../controllers/authController.js';
+import { registerRules, loginRules } from '../middlewares/authValidator.js';
 
-// validator 미들웨어가 먼저 검증하고, 통과하면 controller로 넘어갑니다.
+const router = Router();
+
 router.post('/register', registerRules, register);
 router.post('/login',    loginRules,    login);
 
-module.exports = router;
+export default router;
