@@ -103,16 +103,6 @@ export function GuardianLayout({ onLogout }: GuardianLayoutProps) {
             </div>
           </div>
 
-          <div className="border-t border-white/10" />
-
-          <div>
-            <p className="text-white/30 font-bold px-4 pb-2" style={{ fontSize: "0.8rem", letterSpacing: "0.06em" }}>
-              사용자 대신 처리
-            </p>
-            <div className="space-y-1">
-              {CARE_NAV.map(item => <NavBtn key={item.id} {...item} />)}
-            </div>
-          </div>
         </nav>
 
         <div className="p-4 border-t border-white/10">
