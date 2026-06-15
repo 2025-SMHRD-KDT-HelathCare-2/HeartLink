@@ -1,5 +1,7 @@
 import GuardianRelation from '../models/GuardianRelation.js';
 import User from '../models/User.js';
+import Measurement from '../models/Measurement.js';
+import AnalysisResult from '../models/AnalysisResult.js';
 
 export const getGuardians = async (req, res, next) => {
   try {
@@ -65,6 +67,44 @@ export const deleteGuardian = async (req, res, next) => {
     });
     if (!relation) return res.status(404).json({ message: '없는 보호자 관계입니다.' });
     res.json({ message: '보호자 관계가 해제되었습니다.' });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// 보호자 입장에서 수락된 환자 목록 + 최신 측정/위험도 조회
+export const getPatients = async (req, res, next) => {
+  try {
+    const relations = await GuardianRelation.find({
+      guardian_id: req.user.id,
+      relation_status: 'accepted',
+    }).populate('user_id', 'nickname age gender');
+
+    const patients = await Promise.all(
+      relations.map(async rel => {
+        const user = rel.user_id;
+        const latest = await Measurement.findOne({ user_id: user._id, status: 'completed' })
+          .sort({ measured_at: -1 });
+
+        let analysis = null;
+        if (latest) {
+          analysis = await AnalysisResult.findOne({ measurement_id: latest._id });
+        }
+
+        return {
+          relation_id: rel._id,
+          user_id: user._id,
+          nickname: user.nickname,
+          age: user.age,
+          gender: user.gender,
+          latest_measured_at: latest?.measured_at ?? null,
+          risk_score: analysis?.risk_score ?? null,
+          risk_level: analysis?.risk_level ?? null,
+        };
+      })
+    );
+
+    res.json(patients);
   } catch (err) {
     next(err);
   }

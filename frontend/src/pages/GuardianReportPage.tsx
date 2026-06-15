@@ -1,95 +1,87 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Download, Share2, AlertTriangle, Info, ChevronLeft, ChevronRight, Clock, FileText, Sparkles } from "lucide-react";
+import { Download, Share2, AlertTriangle, ChevronLeft, ChevronRight, Clock, FileText, Sparkles, Loader2 } from "lucide-react";
+import api from "../api/authApi";
+import type { Patient } from "../components/layout/GuardianLayout";
 
-const MEMBERS = [
-  { id: 1, name: "김할머니", age: 74, relation: "어머니" },
-  { id: 2, name: "박할아버지", age: 81, relation: "아버지" },
-  { id: 3, name: "이순자", age: 68, relation: "이모" },
-];
-
-// 각 멤버별 이전 리포트 목록 (최대 5개)
-const MEMBER_HISTORY: Record<number, Array<{ date: string; riskLevel: "상"|"중"|"하"; riskScore: number }>> = {
-  1: [
-    { date: "2026-06-01 09:32", riskLevel: "상", riskScore: 78 },
-    { date: "2026-05-28 08:10", riskLevel: "중", riskScore: 52 },
-    { date: "2026-05-25 11:20", riskLevel: "하", riskScore: 22 },
-    { date: "2026-05-22 09:00", riskLevel: "중", riskScore: 48 },
-    { date: "2026-05-19 14:30", riskLevel: "하", riskScore: 18 },
-  ],
-  2: [
-    { date: "2026-05-29 14:15", riskLevel: "중", riskScore: 45 },
-    { date: "2026-05-26 10:00", riskLevel: "하", riskScore: 20 },
-    { date: "2026-05-23 09:30", riskLevel: "하", riskScore: 15 },
-    { date: "2026-05-20 13:00", riskLevel: "중", riskScore: 40 },
-    { date: "2026-05-17 08:45", riskLevel: "하", riskScore: 25 },
-  ],
-  3: [
-    { date: "2026-05-27 08:45", riskLevel: "하", riskScore: 18 },
-    { date: "2026-05-24 09:00", riskLevel: "하", riskScore: 12 },
-    { date: "2026-05-21 10:30", riskLevel: "하", riskScore: 20 },
-    { date: "2026-05-18 08:15", riskLevel: "하", riskScore: 16 },
-    { date: "2026-05-15 09:45", riskLevel: "하", riskScore: 14 },
-  ],
-};
-
-const MEMBER_REPORTS: Record<number, {
-  name: string; age: number; riskLevel: "상"|"중"|"하"; riskScore: number;
-  date: string; summary: string; action: string; findings: string[];
-}> = {
-  1: {
-    name: "김할머니", age: 74, riskLevel: "상", riskScore: 78, date: "2026-06-01 09:32",
-    summary: "심장이 불규칙하게 뛰는 증상이 감지되어 즉각적인 병원 방문이 필요합니다.",
-    action: "오늘 중으로 심장내과 응급 진료를 받으세요.",
-    findings: [
-      "심장 불규칙 박동 3회 감지",
-      "심장 박동수 분당 112회 — 정상(60~100회)보다 빠름",
-      "위험 신호 강도 82%",
-    ],
-  },
-  2: {
-    name: "박할아버지", age: 81, riskLevel: "중", riskScore: 45, date: "2026-05-29 14:15",
-    summary: "가벼운 심장 리듬 이상이 감지되었습니다. 3일 안에 병원 방문을 권고합니다.",
-    action: "3일 안에 내과 또는 심장내과를 방문하세요.",
-    findings: [
-      "심장 박동 리듬 이상 1회 감지",
-      "위험 신호 강도 61%",
-    ],
-  },
-  3: {
-    name: "이순자", age: 68, riskLevel: "하", riskScore: 18, date: "2026-05-27 08:45",
-    summary: "심장 건강 상태가 좋습니다. 정기 측정을 유지하세요.",
-    action: "정기 검진을 통한 지속적인 모니터링을 권고합니다.",
-    findings: [
-      "모든 수치 정상 범위",
-      "위험 신호 강도 35%",
-    ],
-  },
-};
-
-const RISK_CONFIG = {
-  상: { color: "#DC2626", bg: "#FEF2F2", border: "#FECACA", label: "위험" },
-  중: { color: "#D97706", bg: "#FFFBEB", border: "#FDE68A", label: "주의" },
-  하: { color: "#16A34A", bg: "#F0FDF4", border: "#BBF7D0", label: "양호" },
-};
-
-interface GuardianReportPageProps {
-  memberId?: number;
+interface Analysis {
+  risk_score: number;
+  risk_level: "high" | "mid" | "low";
+  arrhythmia_class?: string;
+  arrhythmia_prob?: number;
+  af_detected?: boolean;
+  af_prob?: number;
+  hrv_rmssd?: number;
+  anomaly_detected?: boolean;
 }
 
-export function GuardianReportPage({ memberId = 1 }: GuardianReportPageProps) {
-  const navigate = useNavigate();
-  const [selectedId, setSelectedId] = useState(memberId);
-  const [selectedHistoryIdx, setSelectedHistoryIdx] = useState<number | null>(null);
-  const report = MEMBER_REPORTS[selectedId] || MEMBER_REPORTS[1];
-  const config = RISK_CONFIG[report.riskLevel];
-  const history = MEMBER_HISTORY[selectedId] || [];
+interface Measurement {
+  _id: string;
+  measured_at: string;
+  status: string;
+  analysis: Analysis | null;
+}
 
-  // 이전 리포트 선택 시 해당 데이터로 표시 (더미)
-  const displayReport = selectedHistoryIdx !== null
-    ? { ...report, date: history[selectedHistoryIdx].date, riskLevel: history[selectedHistoryIdx].riskLevel, riskScore: history[selectedHistoryIdx].riskScore }
-    : report;
-  const displayConfig = RISK_CONFIG[displayReport.riskLevel];
+const RISK_CONFIG = {
+  high: { color: "#DC2626", bg: "#FEF2F2", border: "#FECACA", label: "위험", kr: "상" },
+  mid:  { color: "#D97706", bg: "#FFFBEB", border: "#FDE68A", label: "주의", kr: "중" },
+  low:  { color: "#16A34A", bg: "#F0FDF4", border: "#BBF7D0", label: "양호", kr: "하" },
+};
+const DEFAULT_CFG = { color: "#9CA3AF", bg: "#F9FAFB", border: "#E5E7EB", label: "미분석", kr: "-" };
+
+const ARRHYTHMIA_LABEL: Record<string, string> = {
+  N: "정상 박동", SVEB: "심실 상부 이소성 박동", VEB: "심실 이소성 박동",
+  F: "융합 박동", Q: "분류 불가",
+};
+
+function buildFindings(a: Analysis): string[] {
+  const list: string[] = [];
+  if (a.arrhythmia_class && a.arrhythmia_class !== "N") {
+    list.push(`부정맥 감지: ${ARRHYTHMIA_LABEL[a.arrhythmia_class] ?? a.arrhythmia_class}${a.arrhythmia_prob ? ` (확률 ${Math.round(a.arrhythmia_prob * 100)}%)` : ""}`);
+  }
+  if (a.af_detected) {
+    list.push(`심방세동(AF) 감지${a.af_prob ? ` — 확률 ${Math.round(a.af_prob * 100)}%` : ""}`);
+  }
+  if (a.hrv_rmssd !== undefined) {
+    list.push(`심박 변이도 RMSSD: ${a.hrv_rmssd.toFixed(1)} ms`);
+  }
+  if (a.anomaly_detected) {
+    list.push("이상 신호 감지됨");
+  }
+  if (list.length === 0) list.push("모든 주요 수치 정상 범위");
+  return list;
+}
+
+interface GuardianReportPageProps {
+  patients: Patient[];
+  selectedUserId: string | null;
+  onSelectUser: (userId: string) => void;
+}
+
+export function GuardianReportPage({ patients, selectedUserId, onSelectUser }: GuardianReportPageProps) {
+  const navigate = useNavigate();
+  const [measurements, setMeasurements]   = useState<Measurement[]>([]);
+  const [loading, setLoading]             = useState(false);
+  const [error, setError]                 = useState("");
+  const [selectedMeasIdx, setSelectedMeasIdx] = useState(0);
+
+  const currentPatient = patients.find(p => p.user_id === selectedUserId) ?? patients[0] ?? null;
+  const patientIdx     = patients.findIndex(p => p.user_id === selectedUserId);
+
+  useEffect(() => {
+    if (!selectedUserId) return;
+    setLoading(true);
+    setError("");
+    setSelectedMeasIdx(0);
+    api.get(`/measurements/patient/${selectedUserId}`)
+      .then(r => setMeasurements(r.data.filter((m: Measurement) => m.status === "completed")))
+      .catch(e => setError(e instanceof Error ? e.message : "불러오기 실패"))
+      .finally(() => setLoading(false));
+  }, [selectedUserId]);
+
+  const displayed = measurements[selectedMeasIdx] ?? null;
+  const analysis  = displayed?.analysis ?? null;
+  const cfg       = analysis ? RISK_CONFIG[analysis.risk_level] : DEFAULT_CFG;
 
   return (
     <div className="max-w-2xl mx-auto p-6">
@@ -97,164 +89,178 @@ export function GuardianReportPage({ memberId = 1 }: GuardianReportPageProps) {
         <h1 className="font-bold text-[#0A2647]" style={{ fontSize: "1.9rem" }}>건강 결과 보고서</h1>
       </div>
 
-      {/* 가족 선택 탭 */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 mb-6 overflow-hidden">
-        <div className="p-4 border-b border-gray-100">
-          <p className="text-gray-500 font-bold" style={{ fontSize: "1rem" }}>리포트를 볼 가족을 선택하세요</p>
+      {/* 환자 선택 탭 */}
+      {patients.length > 0 && (
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 mb-6 overflow-hidden">
+          <div className="p-4 border-b border-gray-100">
+            <p className="text-gray-500 font-bold" style={{ fontSize: "1rem" }}>리포트를 볼 가족을 선택하세요</p>
+          </div>
+          <div className="flex">
+            {patients.map((p, i) => {
+              const pc = p.risk_level ? RISK_CONFIG[p.risk_level] : DEFAULT_CFG;
+              const active = p.user_id === selectedUserId;
+              return (
+                <button key={p.user_id}
+                  onClick={() => onSelectUser(p.user_id)}
+                  className={`flex-1 flex flex-col items-center gap-1 py-4 transition-all border-b-4 ${
+                    active ? "border-[#0A2647] bg-blue-50" : "border-transparent hover:bg-gray-50"
+                  } ${i !== 0 ? "border-l border-gray-100" : ""}`}
+                  style={{ minHeight: 80 }}>
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold"
+                    style={{ backgroundColor: pc.color, fontSize: "1rem" }}>
+                    {p.nickname[0]}
+                  </div>
+                  <span className="font-bold text-gray-800" style={{ fontSize: "1rem" }}>{p.nickname}</span>
+                  <span className="px-2 py-0.5 rounded-full text-white font-bold"
+                    style={{ backgroundColor: pc.color, fontSize: "0.8rem" }}>
+                    {pc.label}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
-        <div className="flex">
-          {MEMBERS.map((m, i) => {
-            const r = MEMBER_REPORTS[m.id];
-            const c = RISK_CONFIG[r.riskLevel];
-            const active = selectedId === m.id;
-            return (
-              <button key={m.id}
-                onClick={() => { setSelectedId(m.id); setSelectedHistoryIdx(null); }}
-                className={`flex-1 flex flex-col items-center gap-1 py-4 transition-all border-b-4 ${
-                  active ? "border-[#0A2647] bg-blue-50" : "border-transparent hover:bg-gray-50"
-                } ${i !== 0 ? "border-l border-gray-100" : ""}`}
-                style={{ minHeight: 80 }}>
-                <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold"
-                  style={{ backgroundColor: c.color, fontSize: "1rem" }}>
-                  {m.name[0]}
-                </div>
-                <span className="font-bold text-gray-800" style={{ fontSize: "1rem" }}>{m.name}</span>
-                <span className="px-2 py-0.5 rounded-full text-white font-bold"
-                  style={{ backgroundColor: c.color, fontSize: "0.8rem" }}>
-                  {c.label}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
+      )}
 
-      {/* 이전/다음 네비게이션 */}
+      {/* 환자 이전/다음 네비게이션 */}
       <div className="flex items-center justify-between mb-6">
         <button
-          onClick={() => {
-            const idx = MEMBERS.findIndex(m => m.id === selectedId);
-            if (idx > 0) { setSelectedId(MEMBERS[idx - 1].id); setSelectedHistoryIdx(null); }
-          }}
-          disabled={MEMBERS.findIndex(m => m.id === selectedId) === 0}
+          onClick={() => patientIdx > 0 && onSelectUser(patients[patientIdx - 1].user_id)}
+          disabled={patientIdx <= 0}
           className="flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-30 font-bold transition-colors"
           style={{ fontSize: "1rem" }}>
           <ChevronLeft className="w-5 h-5" />이전
         </button>
         <span className="text-gray-500 font-bold" style={{ fontSize: "1rem" }}>
-          {MEMBERS.findIndex(m => m.id === selectedId) + 1} / {MEMBERS.length}
+          {patientIdx + 1} / {patients.length}
         </span>
         <button
-          onClick={() => {
-            const idx = MEMBERS.findIndex(m => m.id === selectedId);
-            if (idx < MEMBERS.length - 1) { setSelectedId(MEMBERS[idx + 1].id); setSelectedHistoryIdx(null); }
-          }}
-          disabled={MEMBERS.findIndex(m => m.id === selectedId) === MEMBERS.length - 1}
+          onClick={() => patientIdx < patients.length - 1 && onSelectUser(patients[patientIdx + 1].user_id)}
+          disabled={patientIdx >= patients.length - 1}
           className="flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-30 font-bold transition-colors"
           style={{ fontSize: "1rem" }}>
           다음<ChevronRight className="w-5 h-5" />
         </button>
       </div>
 
-      {/* 이전 리포트 목록 */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 mb-6 overflow-hidden">
-        <div className="p-4 border-b border-gray-100 flex items-center gap-2">
-          <FileText className="w-5 h-5 text-gray-400" />
-          <p className="text-gray-700 font-bold" style={{ fontSize: "1rem" }}>최근 리포트 (최대 5개)</p>
+      {loading ? (
+        <div className="flex items-center justify-center gap-3 py-20 text-gray-400">
+          <Loader2 className="w-6 h-6 animate-spin" />
+          <span className="font-bold" style={{ fontSize: "1.1rem" }}>불러오는 중...</span>
         </div>
-        <div className="divide-y divide-gray-50">
-          {history.map((h, i) => {
-            const hc = RISK_CONFIG[h.riskLevel];
-            const isSelected = selectedHistoryIdx === i;
-            return (
-              <button key={i} onClick={() => setSelectedHistoryIdx(isSelected ? null : i)}
-                className={`w-full flex items-center gap-4 px-5 py-4 text-left transition-colors ${isSelected ? "bg-blue-50" : "hover:bg-gray-50"}`}>
-                <div className="w-2 h-10 rounded-full flex-shrink-0" style={{ backgroundColor: hc.color }} />
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="px-3 py-1 rounded-full text-white font-bold"
-                      style={{ backgroundColor: hc.color, fontSize: "0.9rem" }}>
-                      {hc.label} {h.riskScore}점
-                    </span>
-                    {i === 0 && <span className="px-2 py-0.5 bg-blue-100 text-blue-600 rounded-full font-bold" style={{ fontSize: "0.8rem" }}>최신</span>}
+      ) : error ? (
+        <div className="text-center py-20 text-red-400 font-bold">{error}</div>
+      ) : measurements.length === 0 ? (
+        <div className="text-center py-20 text-gray-400 font-bold" style={{ fontSize: "1.1rem" }}>
+          아직 측정 기록이 없습니다.
+        </div>
+      ) : (
+        <>
+          {/* 이전 측정 목록 */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 mb-6 overflow-hidden">
+            <div className="p-4 border-b border-gray-100 flex items-center gap-2">
+              <FileText className="w-5 h-5 text-gray-400" />
+              <p className="text-gray-700 font-bold" style={{ fontSize: "1rem" }}>
+                최근 측정 기록 ({measurements.length}건)
+              </p>
+            </div>
+            <div className="divide-y divide-gray-50">
+              {measurements.slice(0, 5).map((m, i) => {
+                const mc = m.analysis ? RISK_CONFIG[m.analysis.risk_level] : DEFAULT_CFG;
+                const isSelected = selectedMeasIdx === i;
+                return (
+                  <button key={m._id} onClick={() => setSelectedMeasIdx(i)}
+                    className={`w-full flex items-center gap-4 px-5 py-4 text-left transition-colors ${isSelected ? "bg-blue-50" : "hover:bg-gray-50"}`}>
+                    <div className="w-2 h-10 rounded-full shrink-0" style={{ backgroundColor: mc.color }} />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="px-3 py-1 rounded-full text-white font-bold"
+                          style={{ backgroundColor: mc.color, fontSize: "0.9rem" }}>
+                          {mc.label} {m.analysis?.risk_score ?? "?"}점
+                        </span>
+                        {i === 0 && <span className="px-2 py-0.5 bg-blue-100 text-blue-600 rounded-full font-bold" style={{ fontSize: "0.8rem" }}>최신</span>}
+                      </div>
+                      <div className="flex items-center gap-1 text-gray-400 mt-1 font-bold" style={{ fontSize: "0.9rem" }}>
+                        <Clock className="w-3 h-3" />
+                        {new Date(m.measured_at).toLocaleString("ko-KR")}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 위험도 배너 */}
+          {displayed && (
+            <>
+              <div className="rounded-2xl p-6 mb-6 border-2" style={{ backgroundColor: cfg.bg, borderColor: cfg.border }}>
+                <div className="flex items-center gap-4 mb-4">
+                  <AlertTriangle className="w-10 h-10 shrink-0" style={{ color: cfg.color }} />
+                  <div className="flex-1">
+                    <div style={{ color: cfg.color, fontSize: "1.8rem", fontWeight: 900 }}>
+                      위험도 {cfg.kr} — {cfg.label}
+                    </div>
+                    <div className="text-gray-600 font-bold mt-1" style={{ fontSize: "1rem" }}>
+                      {currentPatient?.nickname}{currentPatient?.age ? ` (${currentPatient.age}세)` : ""} · {new Date(displayed.measured_at).toLocaleString("ko-KR")}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1 text-gray-400 mt-1 font-bold" style={{ fontSize: "0.9rem" }}>
-                    <Clock className="w-3 h-3" />{h.date}
+                  <div className="text-right shrink-0">
+                    <div style={{ color: cfg.color, fontSize: "2.8rem", fontWeight: 900, lineHeight: 1 }}>
+                      {analysis?.risk_score ?? "—"}
+                    </div>
+                    <div className="text-gray-400 font-bold" style={{ fontSize: "1rem" }}>/ 100점</div>
                   </div>
                 </div>
+                <div className="w-full bg-white rounded-full h-4 overflow-hidden">
+                  <div className="h-4 rounded-full" style={{ width: `${analysis?.risk_score ?? 0}%`, backgroundColor: cfg.color }} />
+                </div>
+              </div>
+
+              {/* 주요 발견 */}
+              {analysis && (
+                <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
+                  <h3 className="text-[#0A2647] font-bold mb-4" style={{ fontSize: "1.3rem" }}>주요 발견</h3>
+                  <ul className="space-y-3">
+                    {buildFindings(analysis).map((f, i) => (
+                      <li key={i} className="flex items-start gap-3">
+                        <span className="w-7 h-7 rounded-full flex items-center justify-center text-white shrink-0 font-bold"
+                          style={{ backgroundColor: cfg.color, fontSize: "0.9rem" }}>
+                          {i + 1}
+                        </span>
+                        <span className="text-gray-700 font-bold" style={{ fontSize: "1.05rem" }}>{f}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* AI 상세 리포트 */}
+              <button
+                onClick={() => navigate(`/guardian-report-detail/${selectedUserId}`)}
+                className="w-full flex items-center justify-center gap-3 py-5 bg-linear-to-r from-[#0A2647] to-[#0E8080] text-white rounded-2xl hover:opacity-90 transition-all font-black mb-6 shadow-lg"
+                style={{ minHeight: 68, fontSize: "1.2rem" }}
+              >
+                <Sparkles className="w-7 h-7" />
+                AI 상세 리포트 보기
               </button>
-            );
-          })}
-        </div>
-      </div>
 
-      {/* 위험도 배너 */}
-      <div className="rounded-2xl p-6 mb-6 border-2" style={{ backgroundColor: displayConfig.bg, borderColor: displayConfig.border }}>
-        <div className="flex items-center gap-4 mb-4">
-          <AlertTriangle className="w-10 h-10 flex-shrink-0" style={{ color: displayConfig.color }} />
-          <div className="flex-1">
-            <div style={{ color: displayConfig.color, fontSize: "1.8rem", fontWeight: 900 }}>
-              위험도 {displayReport.riskLevel} — {displayConfig.label}
-            </div>
-            <div className="text-gray-600 font-bold mt-1" style={{ fontSize: "1rem" }}>
-              {report.name} ({report.age}세) · {displayReport.date}
-            </div>
-          </div>
-          <div className="text-right flex-shrink-0">
-            <div style={{ color: displayConfig.color, fontSize: "2.8rem", fontWeight: 900, lineHeight: 1 }}>{displayReport.riskScore}</div>
-            <div className="text-gray-400 font-bold" style={{ fontSize: "1rem" }}>/ 100점</div>
-          </div>
-        </div>
-        <div className="w-full bg-white rounded-full h-4 overflow-hidden mb-4">
-          <div className="h-4 rounded-full" style={{ width: `${displayReport.riskScore}%`, backgroundColor: displayConfig.color }} />
-        </div>
-        <p className="text-gray-700 font-bold leading-relaxed" style={{ fontSize: "1.1rem" }}>{report.summary}</p>
-      </div>
-
-      {/* 주요 발견 */}
-      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
-        <h3 className="text-[#0A2647] font-bold mb-4" style={{ fontSize: "1.3rem" }}>주요 발견</h3>
-        <ul className="space-y-3">
-          {report.findings.map((f, i) => (
-            <li key={i} className="flex items-start gap-3">
-              <span className="w-7 h-7 rounded-full flex items-center justify-center text-white flex-shrink-0 font-bold"
-                style={{ backgroundColor: displayConfig.color, fontSize: "0.9rem" }}>
-                {i + 1}
-              </span>
-              <span className="text-gray-700 font-bold" style={{ fontSize: "1.05rem" }}>{f}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      {/* AI 상세 리포트 생성 */}
-      <button
-        onClick={() => navigate(`/guardian-report-detail/${selectedId}`)}
-        className="w-full flex items-center justify-center gap-3 py-5 bg-gradient-to-r from-[#0A2647] to-[#0E8080] text-white rounded-2xl hover:opacity-90 transition-all font-black mb-6 shadow-lg"
-        style={{ minHeight: 68, fontSize: "1.2rem" }}
-      >
-        <Sparkles className="w-7 h-7" />
-        AI 상세 리포트 보기
-      </button>
-
-      {/* 저장·공유 */}
-      <div className="grid grid-cols-2 gap-4 mb-6">
-        <button onClick={() => alert(`${report.name} 리포트 PDF 저장`)}
-          className="flex items-center justify-center gap-2 py-4 bg-[#0A2647] text-white rounded-xl hover:bg-[#144272] transition-colors font-bold"
-          style={{ minHeight: 60, fontSize: "1.1rem" }}>
-          <Download className="w-6 h-6" />PDF 저장
-        </button>
-        <button onClick={() => alert("병원 공유")}
-          className="flex items-center justify-center gap-2 py-4 border-2 border-[#0A2647] text-[#0A2647] rounded-xl hover:bg-[#0A2647]/5 transition-colors font-bold"
-          style={{ minHeight: 60, fontSize: "1.1rem" }}>
-          <Share2 className="w-6 h-6" />병원에 공유
-        </button>
-      </div>
-
-      <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-500 font-bold" style={{ fontSize: "0.95rem" }}>
-        <Info className="w-4 h-4 inline mr-2 text-gray-400" />
-        이 리포트는 참고용이며 의사의 진단을 대신하지 않습니다.
-      </div>
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <button onClick={() => alert("PDF 저장 준비 중")}
+                  className="flex items-center justify-center gap-2 py-4 bg-[#0A2647] text-white rounded-xl hover:bg-[#144272] transition-colors font-bold"
+                  style={{ minHeight: 60, fontSize: "1.1rem" }}>
+                  <Download className="w-6 h-6" />PDF 저장
+                </button>
+                <button onClick={() => alert("병원 공유 준비 중")}
+                  className="flex items-center justify-center gap-2 py-4 border-2 border-[#0A2647] text-[#0A2647] rounded-xl hover:bg-[#0A2647]/5 transition-colors font-bold"
+                  style={{ minHeight: 60, fontSize: "1.1rem" }}>
+                  <Share2 className="w-6 h-6" />병원 공유
+                </button>
+              </div>
+            </>
+          )}
+        </>
+      )}
     </div>
   );
 }

@@ -53,5 +53,6 @@ app.use('/api/internal', internalRouter);
 
 app.use(errorHandler);
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+const PORT = process.env.BACKEND_PORT || 3000;
+const server = app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+server.on('error', (err) => console.error(`[ERROR] app.listen failed:`, err.message));
