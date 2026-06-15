@@ -8,6 +8,11 @@ type Role = "user" | "guardian";
 
 function RoleToast({ role }: { role: Role }) {
   const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => setVisible(true), 50);
+    return () => clearTimeout(t);
+  }, []);
   const [displayRole, setDisplayRole] = useState<Role>(role);
 
   useEffect(() => {
@@ -29,11 +34,11 @@ function RoleToast({ role }: { role: Role }) {
           ? "bg-[#0E8080]/10 border-[#0E8080]/30 text-[#0E8080]"
           : "bg-[#0A2647]/10 border-[#0A2647]/30 text-[#0A2647]"
       }`}
-      style={{ fontSize: "0.95rem" }}
+      style={{ fontSize: "0.95rem", minHeight: "3.5rem" }}
     >
-      <span>
+      <span style={{ wordBreak: "keep-all", lineHeight: "1.8", whiteSpace: "pre-line" }}>
         {isUser
-          ? "측정하는 본인의 페이지입니다. 잘 모르실 경우 보호자와 함께 진행해 주세요."
+          ? "측정하는 본인의 페이지입니다.\n잘 모르실 경우,\n보호자와 함께 진행해 주세요."
           : "측정 결과를 지켜볼 수 있는 보호자 계정입니다."}
       </span>
     </div>
@@ -74,7 +79,7 @@ export function LoginPage() {
         return;
       }
 
-      login({ email: form.email, role: data.role }, data.role, data.token, data.refreshToken);
+      login({ email: form.email, role: data.role }, data.role, data.token);
       navigate("/dashboard");
     } catch (err) {
       const message = err instanceof Error ? err.message : "로그인에 실패했습니다.";
