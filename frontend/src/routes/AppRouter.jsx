@@ -7,6 +7,7 @@ import { UserLayout } from "../components/layout/UserLayout";
 import { GuardianLayout } from "../components/layout/GuardianLayout";
 import { MyPage } from "../pages/MyPage";
 import { GuardianMyPage } from "../pages/GuardianMyPage";
+import { GuardianReportDetailPage } from "../pages/GuardianReportDetailPage";
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth();
@@ -30,11 +31,12 @@ export default function AppRouter() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/login"            element={<PublicRoute><LoginPage /></PublicRoute>} />
-        <Route path="/signup"           element={<PublicRoute><RegisterPage /></PublicRoute>} />
-        <Route path="/mypage"           element={<PrivateRoute><MyPage /></PrivateRoute>} />
-        <Route path="/guardian-mypage"  element={<PrivateRoute><GuardianMyPage /></PrivateRoute>} />
-        <Route path="/*"                element={<PrivateRoute><RoleRouter /></PrivateRoute>} />
+        <Route path="/login"                        element={<PublicRoute><LoginPage /></PublicRoute>} />
+        <Route path="/signup"                       element={<PublicRoute><RegisterPage /></PublicRoute>} />
+        <Route path="/mypage"                        element={<PrivateRoute><MyPage /></PrivateRoute>} />
+        <Route path="/guardian-mypage"               element={<PrivateRoute><GuardianMyPage /></PrivateRoute>} />
+        <Route path="/guardian-report-detail/:memberId" element={<PrivateRoute><GuardianReportDetailPage /></PrivateRoute>} />
+        <Route path="/*"                             element={<PrivateRoute><RoleRouter /></PrivateRoute>} />
       </Routes>
     </BrowserRouter>
   );

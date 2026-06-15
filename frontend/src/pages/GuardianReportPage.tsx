@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Download, Share2, AlertTriangle, Info, ChevronLeft, ChevronRight, Clock, FileText } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Download, Share2, AlertTriangle, Info, ChevronLeft, ChevronRight, Clock, FileText, Sparkles } from "lucide-react";
 
 const MEMBERS = [
   { id: 1, name: "김할머니", age: 74, relation: "어머니" },
@@ -77,6 +78,7 @@ interface GuardianReportPageProps {
 }
 
 export function GuardianReportPage({ memberId = 1 }: GuardianReportPageProps) {
+  const navigate = useNavigate();
   const [selectedId, setSelectedId] = useState(memberId);
   const [selectedHistoryIdx, setSelectedHistoryIdx] = useState<number | null>(null);
   const report = MEMBER_REPORTS[selectedId] || MEMBER_REPORTS[1];
@@ -225,13 +227,15 @@ export function GuardianReportPage({ memberId = 1 }: GuardianReportPageProps) {
         </ul>
       </div>
 
-      {/* 권고 행동 */}
-      <div className="rounded-2xl p-5 mb-6 border-2" style={{ backgroundColor: displayConfig.bg, borderColor: displayConfig.border }}>
-        <div className="flex items-start gap-3">
-          <Info className="w-6 h-6 flex-shrink-0 mt-0.5" style={{ color: displayConfig.color }} />
-          <p className="font-bold" style={{ color: displayConfig.color, fontSize: "1.1rem" }}>{report.action}</p>
-        </div>
-      </div>
+      {/* AI 상세 리포트 생성 */}
+      <button
+        onClick={() => navigate(`/guardian-report-detail/${selectedId}`)}
+        className="w-full flex items-center justify-center gap-3 py-5 bg-gradient-to-r from-[#0A2647] to-[#0E8080] text-white rounded-2xl hover:opacity-90 transition-all font-black mb-6 shadow-lg"
+        style={{ minHeight: 68, fontSize: "1.2rem" }}
+      >
+        <Sparkles className="w-7 h-7" />
+        AI 상세 리포트 보기
+      </button>
 
       {/* 저장·공유 */}
       <div className="grid grid-cols-2 gap-4 mb-6">

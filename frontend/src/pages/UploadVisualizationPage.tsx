@@ -3,7 +3,6 @@ import { Upload, AlertCircle, Activity, Info } from "lucide-react";
 import api from "../api/authApi";
 import { ECGChart } from "../components/charts/ECGChart";
 import { RiskGauge } from "../components/charts/RiskGauge";
-import { AnomalyTimeline } from "../components/charts/AnomalyTimeline";
 
 type Phase = "upload" | "uploading" | "processing" | "error" | "result";
 
@@ -14,12 +13,6 @@ interface ECGResult {
 }
 
 const DEFAULT_SAMPLE_RATE = 250;
-
-const DUMMY_ANOMALIES = [
-  { time: "06:32", type: "불규칙 심장 박동 의심", severity: "high"   as const, score: 0.82 },
-  { time: "11:15", type: "심장이 너무 빠르게 뜀", severity: "medium" as const, score: 0.61 },
-  { time: "15:44", type: "심장이 너무 느리게 뜀", severity: "low"    as const, score: 0.35 },
-];
 
 export function UploadVisualizationPage() {
   const [phase, setPhase] = useState<Phase>("upload");
@@ -255,7 +248,6 @@ export function UploadVisualizationPage() {
             revealPercent={revealProgress}
           />
           <RiskGauge score={72} />
-          <AnomalyTimeline anomalies={DUMMY_ANOMALIES} />
 
           <button
             onClick={() => {
