@@ -144,6 +144,30 @@ export const refreshToken = async (req, res, next) => {
   }
 };
 
+export const getMe = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user.id).select('-password -refresh_token');
+    if (!user) return res.status(404).json({ message: '사용자를 찾을 수 없습니다.' });
+    res.json(user);
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const updateMe = async (req, res, next) => {
+  try {
+    const { medical_history, medications } = req.body;
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      { medical_history, medications },
+      { new: true }
+    ).select('-password -refresh_token');
+    res.json(user);
+  } catch (err) {
+    next(err);
+  }
+};
+
 export const logout = async (req, res, next) => {
   try {
     const { refreshToken: incomingRT } = req.body;

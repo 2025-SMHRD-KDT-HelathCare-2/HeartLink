@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { Save, Check, UserPlus, ChevronLeft, User, Pill, Heart } from "lucide-react";
+import api from "../api/authApi";
 
 type Tab = "profile" | "guardian";
 
@@ -13,17 +14,27 @@ export function MyPage() {
   const { user } = useAuth();
   const [tab, setTab] = useState<Tab>("profile");
 
-  // 회원정보 수정
   const [diseases, setDiseases] = useState<string[]>([]);
   const [medSearch, setMedSearch] = useState("");
   const [medications, setMedications] = useState<string[]>([]);
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState("");
+  const [profileLoading, setProfileLoading] = useState(true);
 
-  // 보호자 등록
-  const [guardianId, setGuardianId] = useState("");
+  const [guardianEmail, setGuardianEmail] = useState("");
   const [guardianError, setGuardianError] = useState("");
   const [guardianSent, setGuardianSent] = useState(false);
   const [sending, setSending] = useState(false);
+
+  useEffect(() => {
+    api.get("/auth/me")
+      .then(res => {
+        setDiseases(res.data.medical_history ?? []);
+        setMedications(res.data.medications ?? []);
+      })
+      .catch(() => {})
+      .finally(() => setProfileLoading(false));
+  }, []);
 
   const toggleDisease = (d: string) =>
     setDiseases(prev =>
@@ -40,29 +51,37 @@ export function MyPage() {
     m => m.includes(medSearch) && !medications.includes(m)
   );
 
-  const handleSaveProfile = (e: React.FormEvent) => {
+  const handleSaveProfile = async (e: { preventDefault(): void }) => {
     e.preventDefault();
-    // TODO: profileApi 연결
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+    setSaveError("");
+    try {
+      await api.patch("/auth/me", { medical_history: diseases, medications });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "저장 중 오류가 발생했습니다.");
+    }
   };
 
-  const handleGuardianRequest = async (e: React.FormEvent) => {
+  const handleGuardianRequest = async (e: { preventDefault(): void }) => {
     e.preventDefault();
-    if (!guardianId.trim()) { setGuardianError("보호자 아이디를 입력해 주세요."); return; }
+    if (!guardianEmail.trim()) { setGuardianError("보호자 이메일을 입력해 주세요."); return; }
     setGuardianError("");
     setSending(true);
-    // TODO: guardianApi.connectMember(guardianId) 연결
-    setTimeout(() => {
-      setSending(false);
+    setGuardianSent(false);
+    try {
+      await api.post("/guardians", { guardian_email: guardianEmail.trim() });
       setGuardianSent(true);
-      setGuardianId("");
-    }, 800);
+      setGuardianEmail("");
+    } catch (err) {
+      setGuardianError(err instanceof Error ? err.message : "요청 중 오류가 발생했습니다.");
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
     <div className="max-w-2xl mx-auto p-5">
-      {/* 헤더 */}
       <div className="flex items-center gap-3 mb-7">
         <button
           onClick={() => navigate(-1)}
@@ -78,7 +97,6 @@ export function MyPage() {
         </div>
       </div>
 
-      {/* 탭 */}
       <div className="flex bg-gray-100 rounded-xl p-1 mb-6">
         <button
           onClick={() => setTab("profile")}
@@ -98,86 +116,90 @@ export function MyPage() {
         </button>
       </div>
 
-      {/* 건강 정보 수정 */}
       {tab === "profile" && (
-        <form onSubmit={handleSaveProfile} className="space-y-6">
-          {/* 기저질환 */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-            <h3 className="text-[#0A2647] font-black mb-2" style={{ fontSize: "1.3rem" }}>기저질환</h3>
-            <p className="text-gray-500 mb-4 font-bold" style={{ fontSize: "1rem" }}>앓고 계신 질환을 모두 선택해 주세요.</p>
-            <div className="flex flex-wrap gap-3">
-              {DISEASES.map(d => (
-                <button
-                  key={d}
-                  type="button"
-                  onClick={() => toggleDisease(d)}
-                  className={`px-4 py-3 rounded-xl border-2 transition-all font-bold ${diseases.includes(d) ? "border-[#0E8080] bg-[#0E8080]/10 text-[#0E8080]" : "border-gray-200 text-gray-600 hover:border-gray-300"}`}
-                  style={{ minHeight: 52, fontSize: "1rem" }}
-                >
-                  {diseases.includes(d) && <span className="mr-1">✓</span>}
-                  {d}
-                </button>
-              ))}
+        profileLoading ? (
+          <div className="text-center py-16 text-gray-400 font-bold" style={{ fontSize: "1.1rem" }}>불러오는 중...</div>
+        ) : (
+          <form onSubmit={handleSaveProfile} className="space-y-6">
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+              <h3 className="text-[#0A2647] font-black mb-2" style={{ fontSize: "1.3rem" }}>기저질환</h3>
+              <p className="text-gray-500 mb-4 font-bold" style={{ fontSize: "1rem" }}>앓고 계신 질환을 모두 선택해 주세요.</p>
+              <div className="flex flex-wrap gap-3">
+                {DISEASES.map(d => (
+                  <button
+                    key={d}
+                    type="button"
+                    onClick={() => toggleDisease(d)}
+                    className={`px-4 py-3 rounded-xl border-2 transition-all font-bold ${diseases.includes(d) ? "border-[#0E8080] bg-[#0E8080]/10 text-[#0E8080]" : "border-gray-200 text-gray-600 hover:border-gray-300"}`}
+                    style={{ minHeight: 52, fontSize: "1rem" }}
+                  >
+                    {diseases.includes(d) && <span className="mr-1">✓</span>}
+                    {d}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
 
-          {/* 복용약 */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-            <h3 className="text-[#0A2647] font-black mb-2" style={{ fontSize: "1.3rem" }}>복용 중인 약</h3>
-            <p className="text-gray-500 mb-4 font-bold" style={{ fontSize: "1rem" }}>약 이름을 검색해서 추가하세요.</p>
-            <div className="relative">
-              <Pill className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                type="text"
-                placeholder="약 이름 검색"
-                value={medSearch}
-                onChange={e => setMedSearch(e.target.value)}
-                className="w-full pl-12 pr-4 py-4 border border-gray-200 rounded-xl focus:outline-none focus:border-[#0E8080] bg-gray-50 font-bold"
-                style={{ fontSize: "1.05rem" }}
-              />
-              {medSearch && filteredMeds.length > 0 && (
-                <div className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-xl shadow-lg mt-1 z-10">
-                  {filteredMeds.map(med => (
-                    <button
-                      key={med}
-                      type="button"
-                      onClick={() => addMed(med)}
-                      className="w-full text-left px-4 py-4 hover:bg-gray-50 font-bold"
-                      style={{ fontSize: "1.05rem" }}
-                    >
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+              <h3 className="text-[#0A2647] font-black mb-2" style={{ fontSize: "1.3rem" }}>복용 중인 약</h3>
+              <p className="text-gray-500 mb-4 font-bold" style={{ fontSize: "1rem" }}>약 이름을 검색해서 추가하세요.</p>
+              <div className="relative">
+                <Pill className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="약 이름 검색"
+                  value={medSearch}
+                  onChange={e => setMedSearch(e.target.value)}
+                  className="w-full pl-12 pr-4 py-4 border border-gray-200 rounded-xl focus:outline-none focus:border-[#0E8080] bg-gray-50 font-bold"
+                  style={{ fontSize: "1.05rem" }}
+                />
+                {medSearch && filteredMeds.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-xl shadow-lg mt-1 z-10">
+                    {filteredMeds.map(med => (
+                      <button
+                        key={med}
+                        type="button"
+                        onClick={() => addMed(med)}
+                        className="w-full text-left px-4 py-4 hover:bg-gray-50 font-bold"
+                        style={{ fontSize: "1.05rem" }}
+                      >
+                        {med}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {medications.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-4">
+                  {medications.map(med => (
+                    <span key={med} className="inline-flex items-center gap-1 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg font-bold" style={{ fontSize: "1rem" }}>
                       {med}
-                    </button>
+                      <button
+                        type="button"
+                        onClick={() => setMedications(prev => prev.filter(m => m !== med))}
+                        className="hover:text-red-500 ml-1 text-lg"
+                      >×</button>
+                    </span>
                   ))}
                 </div>
               )}
             </div>
-            {medications.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-4">
-                {medications.map(med => (
-                  <span key={med} className="inline-flex items-center gap-1 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg font-bold" style={{ fontSize: "1rem" }}>
-                    {med}
-                    <button
-                      type="button"
-                      onClick={() => setMedications(prev => prev.filter(m => m !== med))}
-                      className="hover:text-red-500 ml-1 text-lg"
-                    >×</button>
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
 
-          <button
-            type="submit"
-            className="w-full py-5 bg-gradient-to-r from-[#0A2647] to-[#0E8080] text-white rounded-xl hover:opacity-90 transition-all flex items-center justify-center gap-2 font-black"
-            style={{ minHeight: 64, fontSize: "1.2rem" }}
-          >
-            {saved ? <><Check className="w-6 h-6" />저장 완료!</> : <><Save className="w-6 h-6" />저장하기</>}
-          </button>
-        </form>
+            {saveError && (
+              <p className="text-red-500 font-bold text-center" style={{ fontSize: "1rem" }}>{saveError}</p>
+            )}
+
+            <button
+              type="submit"
+              className="w-full py-5 bg-gradient-to-r from-[#0A2647] to-[#0E8080] text-white rounded-xl hover:opacity-90 transition-all flex items-center justify-center gap-2 font-black"
+              style={{ minHeight: 64, fontSize: "1.2rem" }}
+            >
+              {saved ? <><Check className="w-6 h-6" />저장 완료!</> : <><Save className="w-6 h-6" />저장하기</>}
+            </button>
+          </form>
+        )
       )}
 
-      {/* 보호자 등록 */}
       {tab === "guardian" && (
         <div className="space-y-6">
           <div className="bg-blue-50 border-2 border-blue-200 rounded-2xl p-5">
@@ -197,8 +219,8 @@ export function MyPage() {
                 <input
                   type="email"
                   placeholder="보호자의 이메일 주소"
-                  value={guardianId}
-                  onChange={e => { setGuardianId(e.target.value); setGuardianError(""); setGuardianSent(false); }}
+                  value={guardianEmail}
+                  onChange={e => { setGuardianEmail(e.target.value); setGuardianError(""); setGuardianSent(false); }}
                   className="w-full pl-12 pr-4 py-4 border border-gray-200 rounded-xl focus:outline-none focus:border-[#0A2647] bg-gray-50 font-bold"
                   style={{ minHeight: 56, fontSize: "1.1rem" }}
                 />

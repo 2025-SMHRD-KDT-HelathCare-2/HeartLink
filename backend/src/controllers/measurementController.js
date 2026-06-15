@@ -1,4 +1,5 @@
 import Measurement from '../models/Measurement.js';
+import AnalysisResult from '../models/AnalysisResult.js';
 import * as aiService from '../services/aiService.js';
 
 // CSV를 직접 파싱해서 경량 파형과 R-peak를 추출하는 임시 함수
@@ -114,7 +115,17 @@ export const uploadECG = async (req, res, next) => {
 export const getMeasurements = async (req, res, next) => {
   try {
     const measurements = await Measurement.find({ user_id: req.user.id }).sort({ measured_at: -1 });
-    res.json(measurements);
+
+    const ids = measurements.map(m => m._id);
+    const analyses = await AnalysisResult.find({ measurement_id: { $in: ids } });
+    const analysisMap = new Map(analyses.map(a => [a.measurement_id.toString(), a]));
+
+    const result = measurements.map(m => ({
+      ...m.toObject(),
+      analysis: analysisMap.get(m._id.toString()) ?? null,
+    }));
+
+    res.json(result);
   } catch (err) {
     next(err);
   }
