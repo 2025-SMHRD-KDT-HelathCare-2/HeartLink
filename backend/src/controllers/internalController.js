@@ -56,21 +56,25 @@ export const notify = async (req, res, next) => {
       risk_level,
     } = req.body;
 
-    const analysis = await AnalysisResult.create({
-      measurement_id,
-      user_id,
-      arrhythmia_class,
-      arrhythmia_prob,
-      af_detected,
-      af_prob,
-      hrv_rmssd,
-      hrv_sdnn,
-      hrv_lfhf,
-      anomaly_detected,
-      risk_score,
-      risk_level,
-      analyzed_at: new Date(),
-    });
+    const analysis = await AnalysisResult.findOneAndUpdate(
+      { measurement_id },
+      {
+        measurement_id,
+        user_id,
+        arrhythmia_class,
+        arrhythmia_prob,
+        af_detected,
+        af_prob,
+        hrv_rmssd,
+        hrv_sdnn,
+        hrv_lfhf,
+        anomaly_detected,
+        risk_score,
+        risk_level,
+        analyzed_at: new Date(),
+      },
+      { upsert: true, new: true }
+    );
 
     await Measurement.findByIdAndUpdate(measurement_id, { status: 'completed' });
 
