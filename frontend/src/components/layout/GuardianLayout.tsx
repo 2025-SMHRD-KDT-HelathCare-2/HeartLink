@@ -2,24 +2,21 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Heart, Users, Bell, FileText, LogOut, Menu, X,
-  ChevronRight, Shield, Activity
+  ChevronRight, Shield
 } from "lucide-react";
 import { GuardianDashboard } from "../../pages/GuardianDashboard";
 import { NotificationsPage } from "../../pages/NotificationsPage";
 import { GuardianReportPage } from "../../pages/GuardianReportPage";
-import { UploadVisualizationPage } from "../../pages/UploadVisualizationPage";
 
-type GuardianScreen = "dashboard" | "notifications" | "report" | "ecg";
+type GuardianScreen = "dashboard" | "notifications" | "report";
 
 const GUARDIAN_NAV: { id: GuardianScreen; label: string; icon: React.ElementType; ucId: string; badge?: number }[] = [
-  { id: "dashboard",     label: "연계 사용자 대시보드", icon: Users,    ucId: "UC-09" },
+  { id: "dashboard",     label: "요약 현황", icon: Users,    ucId: "UC-09" },
   { id: "notifications", label: "위험도 알림 수신",     icon: Bell,     ucId: "UC-10", badge: 2 },
   { id: "report",        label: "보호자용 리포트",      icon: FileText, ucId: "UC-11" },
 ];
 
-const CARE_NAV: { id: GuardianScreen; label: string; icon: React.ElementType; ucId: string }[] = [
-  { id: "ecg", label: "심전도 올리기·보기", icon: Activity, ucId: "UC-04/06" },
-];
+const CARE_NAV: { id: GuardianScreen; label: string; icon: React.ElementType; ucId: string }[] = [];
 
 const ALL_NAV = [...GUARDIAN_NAV, ...CARE_NAV];
 
@@ -46,8 +43,7 @@ export function GuardianLayout({ onLogout }: GuardianLayoutProps) {
         return <NotificationsPage onViewReport={() => setScreen("report")} />;
       case "report":
         return <GuardianReportPage memberId={selectedMemberId} />;
-      case "ecg":
-        return <UploadVisualizationPage />;
+
     }
   };
 
@@ -68,7 +64,6 @@ export function GuardianLayout({ onLogout }: GuardianLayoutProps) {
         <Icon className="w-5 h-5 flex-shrink-0" />
         <div className="flex-1">
           <div className="font-bold" style={{ fontSize: "1rem" }}>{label}</div>
-          <div className={`font-bold ${active ? "text-white/70" : "text-white/30"}`} style={{ fontSize: "0.85rem" }}>{ucId}</div>
         </div>
         {badge && badge > 0 && (
           <span className="bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">{badge}</span>
@@ -158,7 +153,6 @@ export function GuardianLayout({ onLogout }: GuardianLayoutProps) {
           <div className="flex items-center gap-2">
             <Heart className="w-5 h-5 text-[#0E8080] fill-current" />
             <div className="text-gray-800 font-bold" style={{ fontSize: "1.1rem" }}>{currentNav?.label}</div>
-            <div className="text-gray-400 font-bold ml-1" style={{ fontSize: "0.9rem" }}>{currentNav?.ucId}</div>
           </div>
         </header>
 
