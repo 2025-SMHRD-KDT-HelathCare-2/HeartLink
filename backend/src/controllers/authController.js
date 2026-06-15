@@ -156,12 +156,13 @@ export const getMe = async (req, res, next) => {
 
 export const updateMe = async (req, res, next) => {
   try {
-    const { medical_history, medications } = req.body;
-    const user = await User.findByIdAndUpdate(
-      req.user.id,
-      { medical_history, medications },
-      { new: true }
-    ).select('-password -refresh_token');
+    const { medical_history, medications, phone } = req.body;
+    const update = {};
+    if (medical_history !== undefined) update.medical_history = medical_history;
+    if (medications     !== undefined) update.medications     = medications;
+    if (phone           !== undefined) update.phone           = phone;
+    const user = await User.findByIdAndUpdate(req.user.id, update, { new: true })
+      .select('-password -refresh_token');
     res.json(user);
   } catch (err) {
     next(err);
