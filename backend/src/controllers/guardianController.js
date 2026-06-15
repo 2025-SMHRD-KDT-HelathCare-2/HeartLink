@@ -20,7 +20,7 @@ export const addGuardian = async (req, res, next) => {
     const { guardian_email } = req.body;
     if (!guardian_email) return res.status(400).json({ message: '보호자 이메일을 입력해 주세요.' });
 
-    const guardianUser = await User.findOne({ email: guardian_email, role: 'guardian' });
+    const guardianUser = await User.findOne({ email: guardian_email.toLowerCase().trim(), role: 'guardian' });
     if (!guardianUser) return res.status(404).json({ message: '해당 이메일의 보호자 계정을 찾을 수 없습니다.' });
 
     if (guardianUser._id.toString() === req.user.id) {
