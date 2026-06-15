@@ -6,14 +6,16 @@ import {
   acceptRelation,
   deleteGuardian,
   getPendingRequests,
+  getPatients,
 } from '../controllers/guardianController.js';
 
 const router = Router();
 
-router.get('/', auth, getGuardians);
-router.get('/requests', auth, getPendingRequests);
-router.post('/', auth, addGuardian);
+router.get('/',          auth, getGuardians);
+router.get('/patients',  auth, getPatients);
+router.get('/requests',  auth, getPendingRequests);
+router.post('/',         auth, addGuardian);
 router.patch('/:id/accept', auth, acceptRelation);
-router.delete('/:id', auth, deleteGuardian);
+router.delete('/:id',    auth, deleteGuardian);
 
 export default router;
