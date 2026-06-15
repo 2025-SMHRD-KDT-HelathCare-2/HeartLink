@@ -10,6 +10,7 @@ const userSchema = new mongoose.Schema(
     gender:           { type: String, enum: ['M', 'F'] },
     medical_history:  { type: [String], default: [] },
     medications:      { type: [String], default: [] },
+    phone:            { type: String, maxlength: 20 },
     device_token:     { type: String, maxlength: 255 },
     refresh_token:    { type: String, default: null },
   },
