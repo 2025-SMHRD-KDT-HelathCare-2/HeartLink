@@ -174,7 +174,7 @@ def calculate_risk(af_detected, af_prob, arr_class, arr_prob,
 
 
 def predict(ecg_beat, ecg_window, hrv_features, heart_rate=75.0,
-            age=70, gender='F', medical_history=None):
+            age=70, gender='F', medical_history=None, r_peaks=None):
     """
     전체 예측 파이프라인
 
@@ -185,6 +185,7 @@ def predict(ecg_beat, ecg_window, hrv_features, heart_rate=75.0,
     hrv_features: np.ndarray (3,)    [rmssd, sdnn, lfhf]
     heart_rate  : float, 평균 BPM
     age, gender, medical_history: 위험도 보정용 사용자 정보
+    r_peaks     : list, R-peak 인덱스 (부정맥 카운트용)
 
     Returns
     -------
@@ -192,7 +193,7 @@ def predict(ecg_beat, ecg_window, hrv_features, heart_rate=75.0,
     """
     if medical_history is None:
         medical_history = []
-        
+
     # 트랙 1: 부정맥 분류
     # 입력 shape: (1, 1, 200) → [배치, 채널, 길이]
     # ResNet1D 마지막 레이어 nn.Linear → 로짓 출력이므로 softmax 적용
@@ -223,6 +224,24 @@ def predict(ecg_beat, ecg_window, hrv_features, heart_rate=75.0,
     hrv_sdnn  = float(hrv_features[1])
     hrv_lfhf  = float(hrv_features[2])
 
+    # 전체 R-peak별 beat 분류 → 비정상 beat 횟수 카운트
+    # 윈도우(7500샘플) 안에 있는 R-peak만 처리
+    arrhythmia_count = 0
+    if r_peaks is not None and len(r_peaks) > 0:
+        win_len = len(ecg_window)
+        for peak in r_peaks:
+            start, end = peak - 90, peak + 110
+            if start < 0 or end > win_len:
+                continue
+            seg = ecg_window[start:end].astype(np.float32)
+            max_val = np.max(np.abs(seg))
+            if max_val > 0:
+                seg = seg / max_val
+            out = sess_track1.run(None, {'input': seg.reshape(1, 1, 200)})[0]
+            cls = CLASS_NAMES[int(np.argmax(softmax(out[0])))]
+            if cls != 'N':
+                arrhythmia_count += 1
+
     # 위험도 산출
     risk_score, risk_level = calculate_risk(
         af_detected, af_prob, arr_class, arr_prob,
@@ -240,6 +259,7 @@ def predict(ecg_beat, ecg_window, hrv_features, heart_rate=75.0,
         'hrv_sdnn':         hrv_sdnn,
         'hrv_lfhf':         hrv_lfhf,
         'anomaly_detected': anomaly_detected,
+        'arrhythmia_count': arrhythmia_count,
         'risk_score':       risk_score,
         'risk_level':       risk_level,
         'analyzed_at':      datetime.now(timezone.utc).isoformat(),
