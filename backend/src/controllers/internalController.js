@@ -6,7 +6,7 @@ import { sendSMS } from '../services/smsService.js';
 
 const RISK_LABEL = { high: '위험', mid: '주의', low: '양호' };
 
-async function sendHighRiskSMS(userId, riskScore) {
+export async function sendHighRiskSMS(userId, riskScore) {
   const [user, relations] = await Promise.all([
     User.findById(userId).select('phone nickname'),
     GuardianRelation.find({ userId, relationStatus: 'accepted' })
