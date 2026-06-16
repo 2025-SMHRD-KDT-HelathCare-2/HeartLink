@@ -16,24 +16,34 @@
 #
 # [MCP 연동]
 # 백엔드 MCP 서버(포트 3001)에서 MongoDB 환자 과거 데이터 조회
+# mcp 패키지로 MCP 프로토콜 표준에 맞게 연결
 # 가져온 데이터를 프롬프트에 추가해 더 정확한 리포트 생성
 # ==================================================
 
 import asyncio
 import json
 import re
-import google.generativeai as genai
-import httpx
+from google import genai
+from mcp import ClientSession
+from mcp.client.streamable_http import streamablehttp_client
 from utils.config import GEMINI_API_KEY, MCP_URL
 
 # Gemini API 초기화 (서버 시작 시 한 번만)
-genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel('gemini-2.5-flash')
+client = genai.Client(api_key=GEMINI_API_KEY)
 
 
 async def get_patient_history(user_id: str) -> dict:
     """
     MCP 서버에서 환자 과거 데이터 조회
+    --------------------------------------------------
+    백엔드가 @mongodb-js/mcp-server 공식 패키지로 MCP 서버 구성
+    Python mcp 패키지로 MCP 프로토콜 표준에 맞게 연결
+    MongoDB 공식 aggregate 툴로 analysis_results 컬렉션에서 조회
+
+    왜 aggregate 툴이냐면?
+    - @mongodb-js/mcp-server가 제공하는 표준 MongoDB MCP 툴
+    - 커스텀 툴 없이 바로 사용 가능
+    - pipeline으로 정렬, 제한, 필드 선택 한 번에 처리
 
     Parameters
     ----------
@@ -41,29 +51,60 @@ async def get_patient_history(user_id: str) -> dict:
 
     Returns
     -------
-    dict: 환자 과거 데이터
-        - past_risk_levels   : 최근 7일 위험도
-        - past_hrv           : 최근 7일 HRV
-        - arrhythmia_history : 부정맥 이력
+    dict:
+        - past_risk_levels   : 최근 7일 위험도 (high/mid/low)
+        - past_hrv           : 최근 7일 HRV RMSSD (ms)
+        - arrhythmia_history : 최근 부정맥 이력 (N/SVEB/VEB/F/Q)
     """
     try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            response = await client.post(
-                MCP_URL,
-                json={
-                    "method": "tools/call",
-                    "params": {
-                        "name": "get_patient_history",
-                        "arguments": {"user_id": user_id}
+        async with streamablehttp_client(MCP_URL) as (read, write, _):
+            async with ClientSession(read, write) as session:
+                await session.initialize()
+
+                # MongoDB aggregate 툴 호출
+                # analysisresults 컬렉션에서 해당 유저의 최근 7일 데이터 조회
+                # $match: 유저 필터링
+                # $sort: 최신순 정렬
+                # $limit: 최근 7개만
+                # $project: 필요한 필드만 선택
+                result = await session.call_tool(
+                    "aggregate",
+                    arguments={
+                        "collection": "analysisresults",
+                        "pipeline": [
+                            {"$match": {"userId": user_id}},
+                            {"$sort": {"analyzedAt": -1}},
+                            {"$limit": 7},
+                            {"$project": {
+                                "riskLevel": 1,
+                                "hrvRmssd": 1,
+                                "arrhythmiaClass": 1,
+                                "analyzedAt": 1
+                            }}
+                        ]
                     }
-                }
-            )
-            if response.status_code == 200:
-                return response.json()
-            return {}
+                )
+
+                if result.content:
+                    raw = result.content[0].text
+                    match = re.search(r'\[[\s\S]*\]', raw)
+                    results = json.loads(match.group()) if match else []
+
+                    # 필요한 데이터만 추출해서 반환
+                    past_risk   = [r.get("riskLevel", "") for r in results]
+                    past_hrv    = [r.get("hrvRmssd", 0) for r in results]
+                    arr_history = [r.get("arrhythmiaClass", "N") for r in results]
+
+                    return {
+                        "past_risk_levels":   past_risk,
+                        "past_hrv":           past_hrv,
+                        "arrhythmia_history": arr_history
+                    }
+                return {}
+
     except Exception as e:
         # MCP 서버 오류 시 빈 딕셔너리 반환
-        # 현재 분석 데이터만으로 리포트 생성
+        # 현재 분석 데이터만으로 리포트 생성 (과거 데이터 없이도 동작)
         print(f"MCP 서버 오류: {e}")
         return {}
 
@@ -202,7 +243,11 @@ async def generate_report(
 
     try:
         # generate_content는 동기 함수 → asyncio.to_thread로 이벤트 루프 블로킹 방지
-        response = await asyncio.to_thread(model.generate_content, prompt)
+        response = await asyncio.to_thread(
+            client.models.generate_content,
+            model="gemini-2.5-flash",
+            contents=prompt
+        )
         text = response.text.strip()
 
         # JSON 파싱: 정규식으로 { } 블록만 추출
