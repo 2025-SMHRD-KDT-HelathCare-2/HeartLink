@@ -1,9 +1,16 @@
 import Measurement from '../models/Measurement.js';
 import AnalysisResult from '../models/AnalysisResult.js';
 import Report from '../models/Report.js';
+import Notification from '../models/Notification.js';
 import User from '../models/User.js';
 import * as aiService from '../services/aiService.js';
 import { sendHighRiskSMS } from './internalController.js';
+
+const RISK_MESSAGES = {
+  high: '심장이 불규칙하게 뛰는 증상이 감지됐어요. 병원 방문을 권해 드려요.',
+  mid:  '심장 박동이 평소보다 조금 빨랐어요. 무리하지 말고 쉬어 주세요.',
+  low:  '오늘 심장 상태는 양호했어요. 좋은 컨디션을 유지하고 계세요.',
+};
 
 // CSV를 직접 파싱해서 경량 파형과 R-peak를 추출하는 임시 함수
 // (AI 서버 완성 전까지 사용, AI 서버 연동 시 이 부분 제거하고 fire-and-forget으로 복구)
@@ -132,6 +139,17 @@ export const uploadECG = async (req, res, next) => {
       );
 
       await Measurement.findByIdAndUpdate(measurement._id, { status: 'completed' });
+
+      await Notification.create({
+        analysisId:  analysis._id,
+        userId:      req.user.id,
+        riskLevel:   data.risk_level,
+        channel:     'app',
+        message:     RISK_MESSAGES[data.risk_level] ?? RISK_MESSAGES.low,
+        sendStatus:  'success',
+        isRead:      false,
+        sentAt:      new Date(),
+      });
 
       if (data.risk_level === 'high') {
         sendHighRiskSMS(req.user.id, data.risk_score).catch(err =>

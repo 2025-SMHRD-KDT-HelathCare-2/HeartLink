@@ -1,29 +1,13 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChevronLeft, Bell, AlertTriangle, AlertCircle, Info, CheckCircle2 } from "lucide-react";
-// import { getMyNotifications, markNotificationRead, type AppNotification } from "../api/notificationApi";
-
-type RiskLevel = "상" | "중" | "하";
-interface AppNotification {
-  id: string;
-  level: RiskLevel;
-  message: string;
-  createdAt: string;
-  isRead: boolean;
-}
+import { ChevronLeft, Bell, AlertTriangle, AlertCircle, Info } from "lucide-react";
+import { getMyNotifications, markNotificationRead, type AppNotification } from "../api/notificationApi";
 
 const LEVEL_META = {
-  상: { color: "#DC2626", bg: "#FEF2F2", border: "#FECACA", label: "위험", icon: AlertTriangle },
-  중: { color: "#D97706", bg: "#FFFBEB", border: "#FDE68A", label: "주의", icon: AlertCircle },
-  하: { color: "#16A34A", bg: "#F0FDF4", border: "#BBF7D0", label: "양호", icon: Info },
+  상: { color: "#DC2626", bg: "#FEF2F2", border: "#FECACA", icon: AlertTriangle },
+  중: { color: "#D97706", bg: "#FFFBEB", border: "#FDE68A", icon: AlertCircle },
+  하: { color: "#16A34A", bg: "#F0FDF4", border: "#BBF7D0", icon: Info },
 };
-
-// ===== 임시 더미 (백엔드 완성 시 제거) =====
-const DUMMY: AppNotification[] = [
-  { id: "1", level: "상", message: "심장이 불규칙하게 뛰는 증상이 감지되었어요. 병원 방문을 권해 드려요.", createdAt: "2026-06-16T09:32:00", isRead: false },
-  { id: "2", level: "중", message: "심장 박동이 평소보다 조금 빨랐어요. 무리하지 말고 쉬어 주세요.", createdAt: "2026-06-14T14:10:00", isRead: true },
-  { id: "3", level: "하", message: "오늘 심장 상태는 양호했어요. 좋은 컨디션을 유지하고 계세요.", createdAt: "2026-06-12T08:05:00", isRead: true },
-];
 
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -39,24 +23,15 @@ export function UserNotificationsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    (async () => {
-      try {
-        // 백엔드 완성 시 주석 해제
-        // const data = await getMyNotifications();
-        // setItems(data);
-        await new Promise(r => setTimeout(r, 400));
-        setItems(DUMMY);
-      } catch (err) {
-        console.error("알림 조회 실패", err);
-      } finally {
-        setLoading(false);
-      }
-    })();
+    getMyNotifications()
+      .then(setItems)
+      .catch(err => console.error("알림 조회 실패", err))
+      .finally(() => setLoading(false));
   }, []);
 
   const markRead = (id: string) => {
     setItems(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
-    // markNotificationRead(id);  // 백엔드 완성 시 주석 해제
+    markNotificationRead(id).catch(() => {});
   };
 
   return (
