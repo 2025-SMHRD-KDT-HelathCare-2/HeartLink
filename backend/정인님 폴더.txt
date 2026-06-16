@@ -1,1 +1,11 @@
-** push 체크
+ai 서버 구동 방법
+
+
+# 1. ai-server 폴더로 이동
+cd C:\Users\moon\Desktop\AI\HeartLink\HeartLink\ai-server
+
+# 2. venv 활성화
+venv\Scripts\activate
+
+# 3. 서버 실행 (설치는 최초 1회만)
+python -m uvicorn main:app --reload --port 8000
