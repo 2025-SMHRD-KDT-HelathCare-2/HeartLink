@@ -1,25 +1,47 @@
 import mongoose from 'mongoose';
+const { Schema } = mongoose;
 
-const userSchema = new mongoose.Schema(
+const userSchema = new Schema(
   {
-    email:            { type: String, required: true, unique: true, maxlength: 100 },
-    password:         { type: String, required: true, maxlength: 255 },
-    nickname:         { type: String, required: true, maxlength: 50 },
-    role:             { type: String, required: true, enum: ['user', 'guardian'] },
-    age:              { type: Number },
-    gender:           { type: String, enum: ['M', 'F'] },
-    medical_history:  { type: [String], default: [] },
-    medications:      { type: [String], default: [] },
-    phone:            { type: String, maxlength: 20 },
-    device_token:     { type: String, maxlength: 255 },
-    refresh_token:    { type: String, default: null },
+    email: { type: String, required: true, unique: true, sparse: true },
+    password: { type: String }, // 소셜 가입자는 없음
+
+    // 소셜 로그인
+    provider: {
+      type: String,
+      enum: ['local', 'google', 'naver', 'kakao'],
+      default: 'local',
+      required: true,
+    },
+    providerId: { type: String },
+    profileImage: { type: String },
+
+    nickname: { type: String, required: true, maxlength: 50 },
+    role: { type: String, enum: ['user', 'guardian'], required: true },
+
+    // 휴대폰 인증
+    phone: { type: String, maxlength: 20 },
+    phoneVerified: { type: Boolean, default: false, required: true },
+
+    age: { type: Number },
+    gender: { type: String, enum: ['M', 'F'] },
+    medicalHistory: { type: [String], default: [] },
+    medications: { type: [String], default: [] },
+    deviceToken: { type: String },
   },
-  {
-    timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },
-    collection: 'users',
-  }
+  { timestamps: true }
 );
 
 userSchema.index({ role: 1 });
+userSchema.index(
+  { provider: 1, providerId: 1 },
+  { unique: true, partialFilterExpression: { providerId: { $exists: true, $type: 'string' } } }
+);
+
+userSchema.index(
+  { phone: 1 },
+  { unique: true, partialFilterExpression: { phone: { $exists: true, $type: 'string' } } }
+);
+
 
 export default mongoose.model('User', userSchema);

@@ -1,25 +1,27 @@
 import mongoose from 'mongoose';
+const { Schema } = mongoose;
 
-const reportSchema = new mongoose.Schema(
+const reportSchema = new Schema(
   {
-    analysis_id:          { type: mongoose.Schema.Types.ObjectId, ref: 'AnalysisResult', required: true },
-    user_id:              { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    report_type:          { type: String, required: true, enum: ['self', 'guardian'] },
-    report_category:      { type: String, required: true, enum: ['emergency_alert', 'full_report'] },
-    report_text_user:     { type: String, maxlength: 5000 },
-    report_text_guardian: { type: String, maxlength: 5000 },
-    recommended_action:   { type: String, maxlength: 1000 },
-    tts_audio_url:        { type: String, maxlength: 1000 },
-    pdf_url:              { type: String, maxlength: 1000 },
-    risk_level:           { type: String, required: true, enum: ['high', 'mid', 'low'] },
+    analysisId: { type: Schema.Types.ObjectId, ref: 'AnalysisResult', required: true },
+    userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    reportType: { type: String, enum: ['self', 'guardian'], required: true },
+    reportCategory: {
+      type: String,
+      enum: ['emergency_alert', 'full_report'],
+      required: true,
+    },
+    reportTextUser: { type: String, maxlength: 5000 },
+    reportTextGuardian: { type: String, maxlength: 5000 },
+    recommendedAction: { type: String, maxlength: 1000 },
+    ttsAudioUrl: { type: String, maxlength: 1000 },
+    pdfUrl: { type: String, maxlength: 1000 },
+    riskLevel: { type: String, enum: ['high', 'mid', 'low'], required: true },
   },
-  {
-    timestamps: { createdAt: 'created_at', updatedAt: false },
-    collection: 'reports',
-  }
+  { timestamps: { createdAt: 'createdAt', updatedAt: false } }
 );
 
-reportSchema.index({ analysis_id: 1 });
-reportSchema.index({ user_id: 1, created_at: -1 });
+reportSchema.index({ analysisId: 1 });
+reportSchema.index({ userId: 1, createdAt: -1 });
 
 export default mongoose.model('Report', reportSchema);
