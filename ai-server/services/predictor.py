@@ -57,7 +57,7 @@ def softmax(x):
 def calculate_risk(af_detected, af_prob, arr_class, arr_prob,
                    hrv_sdnn, hrv_rmssd, hrv_lfhf, anomaly_detected,
                    heart_rate=75.0,
-                   age=70, gender='F', medical_history=[]):
+                   age=70, gender='F', medical_history=None):
     """
     위험도 산출 함수
     3단계로 계산: ECG 점수 → 임상 보정 → 최종 등급
@@ -77,6 +77,8 @@ def calculate_risk(af_detected, af_prob, arr_class, arr_prob,
     gender          : str,   성별 ('M'/'F')
     medical_history : list,  과거력 리스트
     """
+    if medical_history is None:
+        medical_history = []
 
     # ==================================================
     # 1단계: ECG 분석 점수 (0~100)
@@ -172,7 +174,7 @@ def calculate_risk(af_detected, af_prob, arr_class, arr_prob,
 
 
 def predict(ecg_beat, ecg_window, hrv_features, heart_rate=75.0,
-            age=70, gender='F', medical_history=[]):
+            age=70, gender='F', medical_history=None):
     """
     전체 예측 파이프라인
 
@@ -188,9 +190,12 @@ def predict(ecg_beat, ecg_window, hrv_features, heart_rate=75.0,
     -------
     dict: 분석 결과 전체
     """
-
+    if medical_history is None:
+        medical_history = []
+        
     # 트랙 1: 부정맥 분류
     # 입력 shape: (1, 1, 200) → [배치, 채널, 길이]
+    # ResNet1D 마지막 레이어 nn.Linear → 로짓 출력이므로 softmax 적용
     input1    = ecg_beat.reshape(1, 1, 200).astype(np.float32)
     output1   = sess_track1.run(None, {'input': input1})[0]  # (1, 5)
     probs1    = softmax(output1[0])
@@ -200,6 +205,7 @@ def predict(ecg_beat, ecg_window, hrv_features, heart_rate=75.0,
 
     # 트랙 2: AFib 감지
     # 입력 shape: (1, 1, 7500) → [배치, 채널, 길이]
+    # ResNet1D 마지막 레이어 nn.Linear → 로짓 출력이므로 softmax 적용 (트랙 1과 동일)
     input2      = ecg_window.reshape(1, 1, 7500).astype(np.float32)
     output2     = sess_track2.run(None, {'input': input2})[0]  # (1, 2)
     probs2      = softmax(output2[0])
@@ -229,6 +235,7 @@ def predict(ecg_beat, ecg_window, hrv_features, heart_rate=75.0,
         'arrhythmia_prob':  arr_prob,
         'af_detected':      af_detected,
         'af_prob':          af_prob,
+        'heart_rate':       heart_rate,
         'hrv_rmssd':        hrv_rmssd,
         'hrv_sdnn':         hrv_sdnn,
         'hrv_lfhf':         hrv_lfhf,

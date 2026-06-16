@@ -13,7 +13,8 @@
 # ==================================================
 
 import numpy as np
-from scipy.signal import butter, filtfilt, resample as sp_resample, find_peaks
+from scipy.signal import butter, filtfilt, resample as sp_resample, find_peaks, welch
+from scipy.interpolate import interp1d
 
 
 def bandpass_filter(signal, lowcut=0.5, highcut=40.0, fs=250, order=4):
@@ -94,23 +95,45 @@ def calculate_hrv(r_peaks, fs=250):
     HRV 특징값 계산
     - RMSSD: 연속 RR간격 차이의 제곱평균제곱근 (부교감신경 활동)
     - SDNN: RR간격 표준편차 (자율신경 전체 활동)
-    - LF/HF ratio: 저주파/고주파 비율 (교감/부교감 균형)
+    - LF/HF ratio: Welch PSD로 LF(0.04~0.15Hz) / HF(0.15~0.4Hz) 파워 비율
     정상 범위: SDNN 30~60ms, RMSSD 18~45ms, LF/HF 0.5~2.0
     """
     if len(r_peaks) < 2:
         return 0.0, 0.0, 1.0
 
-    rr_intervals = np.diff(r_peaks) / fs * 1000
+    rr_intervals = np.diff(r_peaks) / fs * 1000  # ms
     rmssd = float(np.sqrt(np.mean(np.diff(rr_intervals) ** 2)))
     sdnn  = float(np.std(rr_intervals))
 
-    if len(rr_intervals) >= 4:
-        mid  = len(rr_intervals) // 2
-        lf   = float(np.std(rr_intervals[:mid]))
-        hf   = float(np.std(rr_intervals[mid:]))
-        lfhf = lf / hf if hf > 0 else 1.0
-    else:
-        lfhf = 1.0
+    lfhf = 1.0
+    if len(rr_intervals) >= 8:
+        try:
+            # 각 RR interval의 발생 시각 (초): 두 번째 R-peak 위치 기준
+            t_rr = r_peaks[1:] / fs  # rr_intervals와 동일한 길이
+
+            # 4Hz로 균일 보간 (Welch PSD 계산을 위해 등간격 필요)
+            fs_interp = 4.0
+            t_uniform = np.arange(t_rr[0], t_rr[-1], 1.0 / fs_interp)
+
+            if len(t_uniform) >= 16:
+                f_interp  = interp1d(t_rr, rr_intervals, kind='linear',
+                                     bounds_error=False,
+                                     fill_value=(rr_intervals[0], rr_intervals[-1]))
+                rr_interp = f_interp(t_uniform)
+
+                # Welch PSD
+                nperseg       = min(len(rr_interp), 64)
+                freqs, psd    = welch(rr_interp, fs=fs_interp, nperseg=nperseg)
+
+                lf_idx = (freqs >= 0.04) & (freqs < 0.15)
+                hf_idx = (freqs >= 0.15) & (freqs < 0.40)
+
+                if lf_idx.any() and hf_idx.any():
+                    lf_power = np.trapz(psd[lf_idx], freqs[lf_idx])
+                    hf_power = np.trapz(psd[hf_idx], freqs[hf_idx])
+                    lfhf = float(lf_power / hf_power) if hf_power > 0 else 1.0
+        except Exception:
+            lfhf = 1.0
 
     return rmssd, sdnn, lfhf
 
@@ -187,9 +210,13 @@ def preprocess_ecg(signal_raw, fs_original=250):
             beat = (b / max_val).astype(np.float32) if max_val > 0 else b.astype(np.float32)
 
     # 30초 윈도우 추출 (7500샘플)
+    # beat와 동일하게 -1~1로 정규화
+    # 모델 학습 시 정규화된 데이터로 학습했으므로 동일하게 맞춰야 함
     window = np.zeros(7500, dtype=np.float32)
     if len(signal) >= 7500:
-        window = signal[:7500].astype(np.float32)
+        w = signal[:7500].astype(np.float32)
+        max_val = np.max(np.abs(w))
+        window = (w / max_val).astype(np.float32) if max_val > 0 else w
     else:
         window[:len(signal)] = signal.astype(np.float32)
 
