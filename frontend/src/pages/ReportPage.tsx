@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
-import { ChevronDown, ChevronUp, AlertTriangle, CheckCircle, Info, Clock, Volume2, StopCircle } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { AlertTriangle, CheckCircle, Info, Clock, Volume2 } from "lucide-react";
 
 const RISK_LEVELS = [
   {
@@ -88,8 +89,8 @@ function useTTS() {
 
 export function ReportPage() {
   const [selectedIdx, setSelectedIdx] = useState(0);
-  const [expanded, setExpanded] = useState(false);
   const { playing, speak, stop } = useTTS();
+  const navigate = useNavigate();
   const report = RISK_LEVELS[selectedIdx];
   const RiskIcon = report.icon;
 
@@ -151,21 +152,13 @@ export function ReportPage() {
         <p className="text-gray-800 leading-relaxed font-black" style={{ fontSize: "1.4rem" }}>{report.summary}</p>
       </div>
 
-      {/* 리포트 듣기 버튼 */}
+      {/* 최근 AI리포트 듣기 버튼 - 상세 페이지로 이동 */}
       <button
-        onClick={() => playing ? stop() : speak(report.ttsText)}
-        className={`w-full flex items-center justify-center gap-3 py-6 rounded-2xl border-4 transition-all font-black mb-6 ${
-          playing
-            ? "bg-red-50 border-red-500 text-red-600"
-            : "bg-white border-[#0A2647] text-[#0A2647] hover:bg-[#0A2647] hover:text-white"
-        }`}
+        onClick={() => navigate("/report-detail")}
+        className="w-full flex items-center justify-center gap-3 py-6 rounded-2xl border-4 border-[#0A2647] text-[#0A2647] bg-white hover:bg-[#0A2647] hover:text-white transition-all font-black mb-6"
         style={{ minHeight: 80, fontSize: "1.4rem" }}
       >
-        {playing ? (
-          <><StopCircle style={{ width: 34, height: 34 }} />듣는 중... (멈추려면 누르세요)</>
-        ) : (
-          <><Volume2 style={{ width: 34, height: 34 }} />🔊 리포트 듣기</>
-        )}
+        <Volume2 style={{ width: 34, height: 34 }} />🔊 최근 AI리포트 듣기
       </button>
 
       {/* 지금 하셔야 할 일 */}
@@ -183,22 +176,6 @@ export function ReportPage() {
         </ul>
       </div>
 
-      {/* 더 자세히 보기 */}
-      <button
-        onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center justify-center gap-2 py-5 text-[#0E8080] hover:text-[#0A2647] transition-colors bg-white rounded-2xl border-2 border-gray-200 mb-5 font-bold"
-        style={{ minHeight: 68, fontSize: "1.2rem" }}
-      >
-        {expanded ? <ChevronUp style={{ width: 28, height: 28 }} /> : <ChevronDown style={{ width: 28, height: 28 }} />}
-        {expanded ? "간략히 보기" : "더 자세히 보기"}
-      </button>
-
-      {expanded && (
-        <div className="bg-white rounded-2xl p-7 shadow-sm border-2 border-gray-100 mb-6">
-          <h3 className="text-[#0A2647] font-black mb-4" style={{ fontSize: "1.4rem" }}>상세 내용</h3>
-          <p className="text-gray-700 leading-relaxed font-bold" style={{ fontSize: "1.2rem" }}>{report.detail}</p>
-        </div>
-      )}
 
       <div className="bg-gray-50 border-2 border-gray-200 rounded-xl p-5 text-gray-500 leading-relaxed font-bold" style={{ fontSize: "1rem" }}>
         <Info className="w-5 h-5 inline mr-2 text-gray-400" />

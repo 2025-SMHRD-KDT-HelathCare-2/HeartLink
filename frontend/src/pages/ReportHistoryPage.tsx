@@ -1,140 +1,191 @@
-import { useState } from "react";
-import { Download, ChevronLeft, ChevronRight, Filter } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { Download, ChevronLeft, ChevronRight, Filter, FileText } from "lucide-react";
+// import api from "../api/authApi";  // 백엔드 연동 시 주석 해제
 
-const ALL_REPORTS = Array.from({ length: 18 }, (_, i) => {
+// ===== 백엔드 응답 구조 =====
+interface ReportHistoryItem {
+  id: string;
+  date: string;   // "2026-06-01"
+  time: string;   // "09:32"
+  level: "상" | "중" | "하";
+  score: number;
+}
+
+const LEVEL_META = {
+  상: { color: "#DC2626", label: "위험" },
+  중: { color: "#F59E0B", label: "주의" },
+  하: { color: "#16A34A", label: "양호" },
+};
+
+// ===== 임시 더미: 1년치(약 130개, 3일 간격) =====
+function generateDummyReports(): ReportHistoryItem[] {
   const levels = ["상", "중", "하"] as const;
-  const level = levels[i % 3];
-  const colors = { 상: "#DC2626", 중: "#F59E0B", 하: "#16A34A" };
-  const labels = { 상: "위험", 중: "주의", 하: "양호" };
-  const scores = { 상: 65 + Math.round(Math.random() * 25), 중: 35 + Math.round(Math.random() * 20), 하: 5 + Math.round(Math.random() * 20) };
-  const d = new Date(2026, 5, 1);
-  d.setDate(d.getDate() - i * 2);
-  return {
-    id: `RPT-${String(i + 1).padStart(4, "0")}`,
-    date: d.toISOString().slice(0, 10),
-    time: `${String(8 + Math.round(Math.random() * 12)).padStart(2, "0")}:${String(Math.round(Math.random() * 59)).padStart(2, "0")}`,
-    level,
-    label: labels[level],
-    color: colors[level],
-    score: scores[level],
-  };
-});
+  return Array.from({ length: 130 }, (_, i) => {
+    const level = levels[i % 3];
+    const scoreRange = { 상: [65, 90], 중: [35, 55], 하: [5, 25] }[level];
+    const d = new Date(2026, 5, 16);
+    d.setDate(d.getDate() - i * 3);
+    return {
+      id: `RPT-${String(i + 1).padStart(4, "0")}`,
+      date: d.toISOString().slice(0, 10),
+      time: `${String(8 + (i % 12)).padStart(2, "0")}:${String((i * 7) % 60).padStart(2, "0")}`,
+      level,
+      score: scoreRange[0] + ((i * 13) % (scoreRange[1] - scoreRange[0])),
+    };
+  });
+}
 
-const PAGE_SIZE = 5;
+const PERIOD_OPTIONS = ["전체", "1주일", "1개월", "3개월", "6개월", "1년"] as const;
+const PAGE_SIZE = 8;
 
 export function ReportHistoryPage() {
-  const [periodFilter, setPeriodFilter] = useState("전체");
+  const [reports, setReports] = useState<ReportHistoryItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [periodFilter, setPeriodFilter] = useState<typeof PERIOD_OPTIONS[number]>("전체");
   const [levelFilter, setLevelFilter] = useState("전체");
   const [page, setPage] = useState(1);
 
-  const filtered = ALL_REPORTS.filter(r => {
-    if (levelFilter !== "전체" && r.level !== levelFilter) return false;
-    if (periodFilter === "1주일") return new Date(r.date) >= new Date(2026, 4, 25);
-    if (periodFilter === "1개월") return new Date(r.date) >= new Date(2026, 4, 1);
-    return true;
-  });
+  // ===== 백엔드 연동 =====
+  useEffect(() => {
+    (async () => {
+      try {
+        // 백엔드 완성 시 주석 해제 (period 파라미터로 서버 필터링도 가능)
+        // const res = await api.get("/reports", { params: { period: periodFilter } });
+        // setReports(res.data);
 
-  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+        // 임시 더미
+        await new Promise(r => setTimeout(r, 400));
+        setReports(generateDummyReports());
+      } catch (err) {
+        console.error("리포트 이력 조회 실패", err);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
+
+  const filtered = useMemo(() => {
+    const now = new Date(2026, 5, 16);
+    return reports.filter(r => {
+      if (levelFilter !== "전체" && r.level !== levelFilter) return false;
+      if (periodFilter === "전체") return true;
+      const cutoff = new Date(now);
+      const daysMap: Record<string, number> = {
+        "1주일": 7, "1개월": 30, "3개월": 90, "6개월": 180, "1년": 365,
+      };
+      cutoff.setDate(cutoff.getDate() - daysMap[periodFilter]);
+      return new Date(r.date) >= cutoff;
+    });
+  }, [reports, levelFilter, periodFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  // 필터 바뀌면 1페이지로
+  useEffect(() => { setPage(1); }, [periodFilter, levelFilter]);
 
   return (
     <div className="max-w-3xl mx-auto p-5">
       <div className="mb-7">
-        <h1 className="font-black text-[#0A2647]" style={{ fontSize: "2.2rem" }}>지난 기록</h1>
-        <p className="text-gray-500 mt-1 font-bold" style={{ fontSize: "1.15rem" }}>예전 건강 결과를 확인하고 저장할 수 있어요.</p>
+        <h1 className="font-black text-[#0A2647]" style={{ fontSize: "2.1rem" }}>지난 기록</h1>
+        <p className="text-gray-500 mt-2 font-bold" style={{ fontSize: "1.1rem" }}>최근 1년간의 건강 결과를 확인하고 저장할 수 있어요.</p>
       </div>
 
       {/* 필터 */}
-      <div className="bg-white rounded-2xl p-6 shadow-sm border-2 border-gray-100 mb-6">
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
         <div className="flex items-center gap-2 mb-5">
-          <Filter className="w-6 h-6 text-gray-400" />
-          <h4 className="text-gray-800 font-black" style={{ fontSize: "1.2rem" }}>기간 · 위험도 선택</h4>
+          <Filter className="w-5 h-5 text-gray-400" />
+          <h4 className="text-gray-700 font-bold" style={{ fontSize: "1.1rem" }}>기간 · 위험도 선택</h4>
         </div>
-        <div className="grid grid-cols-2 gap-5">
-          <div>
-            <label className="block text-gray-700 mb-3 font-black" style={{ fontSize: "1.15rem" }}>기간</label>
-            <div className="flex flex-wrap gap-2">
-              {["전체", "1주일", "1개월"].map(p => (
-                <button key={p} onClick={() => { setPeriodFilter(p); setPage(1); }}
-                  className={`px-5 py-3 rounded-xl border-2 transition-all font-black ${periodFilter === p ? "border-[#0E8080] bg-[#0E8080]/10 text-[#0E8080]" : "border-gray-200 text-gray-600"}`}
-                  style={{ minHeight: 56, fontSize: "1.1rem" }}>
-                  {p}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div>
-            <label className="block text-gray-700 mb-3 font-black" style={{ fontSize: "1.15rem" }}>위험도</label>
-            <div className="flex flex-wrap gap-2">
-              {["전체", "상", "중", "하"].map(l => (
-                <button key={l} onClick={() => { setLevelFilter(l); setPage(1); }}
-                  className={`px-5 py-3 rounded-xl border-2 transition-all font-black ${levelFilter === l ? "border-[#0A2647] bg-[#0A2647]/10 text-[#0A2647]" : "border-gray-200 text-gray-600"}`}
-                  style={{ minHeight: 56, fontSize: "1.1rem" }}>
-                  {l}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
 
-      {/* 목록 */}
-      <div className="bg-white rounded-2xl shadow-sm border-2 border-gray-100 overflow-hidden mb-6">
-        <div className="p-5 border-b-2 border-gray-100 font-black text-gray-600" style={{ fontSize: "1.1rem" }}>
-          총 {filtered.length}건
-        </div>
-        {paged.length === 0 ? (
-          <div className="p-12 text-center text-gray-400 font-bold" style={{ fontSize: "1.2rem" }}>해당하는 결과가 없습니다.</div>
-        ) : (
-          paged.map((r, i) => (
-            <div key={r.id} className={`flex items-center gap-4 p-5 border-b-2 border-gray-50 last:border-0 hover:bg-gray-50 transition-colors ${i % 2 === 0 ? "" : "bg-gray-50/50"}`}>
-              <div className="w-3 h-16 rounded-full flex-shrink-0" style={{ backgroundColor: r.color }} />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-3 flex-wrap mb-1">
-                  <span className="px-4 py-1.5 rounded-full text-white font-black" style={{ backgroundColor: r.color, fontSize: "1.1rem" }}>
-                    위험도 {r.level} — {r.label}
-                  </span>
-                  <span className="font-black text-gray-700" style={{ fontSize: "1.1rem" }}>{r.score}점</span>
-                </div>
-                <div className="text-gray-500 font-bold" style={{ fontSize: "1rem" }}>{r.date} {r.time}</div>
-              </div>
-              <button onClick={() => alert(`${r.id} 저장`)}
-                className="flex items-center gap-2 px-5 py-4 bg-[#0A2647] text-white rounded-xl hover:bg-[#144272] transition-colors flex-shrink-0 font-black"
-                style={{ minHeight: 60, fontSize: "1.1rem" }}>
-                <Download className="w-5 h-5" />
-                저장
-              </button>
-            </div>
-          ))
-        )}
-      </div>
-
-      {/* 페이지네이션 */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2">
-          <button onClick={() => setPage(p => Math.max(p - 1, 1))} disabled={page === 1}
-            className="p-3 rounded-xl border-2 border-gray-200 hover:bg-gray-50 disabled:opacity-40"
-            style={{ minHeight: 56, minWidth: 56 }}>
-            <ChevronLeft className="w-7 h-7 text-gray-600" />
-          </button>
-          {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
-            <button key={p} onClick={() => setPage(p)}
-              className={`rounded-xl border-2 font-black transition-colors ${page === p ? "bg-[#0A2647] text-white border-[#0A2647]" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}
-              style={{ minWidth: 56, minHeight: 56, fontSize: "1.1rem" }}>
+        {/* 기간 */}
+        <p className="text-gray-500 font-bold mb-2" style={{ fontSize: "1rem" }}>기간</p>
+        <div className="flex flex-wrap gap-2 mb-5">
+          {PERIOD_OPTIONS.map(p => (
+            <button key={p} onClick={() => setPeriodFilter(p)}
+              className={`px-4 py-2.5 rounded-xl border-2 transition-all font-bold ${periodFilter === p ? "border-[#0A2647] bg-[#0A2647]/10 text-[#0A2647]" : "border-gray-200 text-gray-500"}`}
+              style={{ fontSize: "1rem" }}>
               {p}
             </button>
           ))}
-          <button onClick={() => setPage(p => Math.min(p + 1, totalPages))} disabled={page === totalPages}
-            className="p-3 rounded-xl border-2 border-gray-200 hover:bg-gray-50 disabled:opacity-40"
-            style={{ minHeight: 56, minWidth: 56 }}>
-            <ChevronRight className="w-7 h-7 text-gray-600" />
-          </button>
+        </div>
+
+        {/* 위험도 */}
+        <p className="text-gray-500 font-bold mb-2" style={{ fontSize: "1rem" }}>위험도</p>
+        <div className="flex flex-wrap gap-2">
+          {["전체", "상", "중", "하"].map(l => (
+            <button key={l} onClick={() => setLevelFilter(l)}
+              className={`px-4 py-2.5 rounded-xl border-2 transition-all font-bold ${levelFilter === l ? "border-[#0E8080] bg-[#0E8080]/10 text-[#0E8080]" : "border-gray-200 text-gray-500"}`}
+              style={{ fontSize: "1rem" }}>
+              {l === "전체" ? "전체" : `${l} (${LEVEL_META[l as "상"|"중"|"하"].label})`}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* 결과 개수 */}
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-gray-600 font-bold" style={{ fontSize: "1.05rem" }}>
+          총 <span className="text-[#0A2647]">{filtered.length}</span>개의 기록
+        </p>
+      </div>
+
+      {/* 로딩 */}
+      {loading ? (
+        <div className="flex items-center justify-center py-16">
+          <div className="w-8 h-8 border-4 border-[#0E8080] border-t-transparent rounded-full animate-spin" />
+        </div>
+      ) : paged.length === 0 ? (
+        <div className="bg-white rounded-2xl p-12 shadow-sm border border-gray-100 text-center">
+          <FileText className="w-12 h-12 mx-auto text-gray-300 mb-3" />
+          <p className="text-gray-400 font-bold" style={{ fontSize: "1.1rem" }}>해당 조건의 기록이 없습니다.</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {paged.map(r => {
+            const meta = LEVEL_META[r.level];
+            return (
+              <div key={r.id} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center gap-4">
+                <div className="w-2 h-14 rounded-full flex-shrink-0" style={{ backgroundColor: meta.color }} />
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <span className="text-gray-800 font-black" style={{ fontSize: "1.15rem" }}>{r.date}</span>
+                    <span className="text-gray-400 font-bold" style={{ fontSize: "1rem" }}>{r.time}</span>
+                  </div>
+                  <span className="inline-block px-3 py-1 rounded-full text-white font-bold mt-1"
+                    style={{ backgroundColor: meta.color, fontSize: "0.9rem" }}>
+                    {meta.label} {r.score}점
+                  </span>
+                </div>
+                <button onClick={() => alert(`${r.date} 리포트 PDF 저장`)}
+                  className="p-3 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors flex-shrink-0"
+                  style={{ minHeight: 52, minWidth: 52 }}>
+                  <Download className="w-6 h-6 text-gray-600" />
+                </button>
+              </div>
+            );
+          })}
         </div>
       )}
 
-      <p className="mt-5 text-center text-gray-400 font-bold" style={{ fontSize: "1rem" }}>
-        저장된 파일은 병원에 가져가실 수 있어요.
-      </p>
+      {/* 페이지네이션 */}
+      {!loading && totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2 mt-6">
+          <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
+            className="p-3 rounded-xl border border-gray-200 hover:bg-gray-50 disabled:opacity-30 transition-colors"
+            style={{ minHeight: 48, minWidth: 48 }}>
+            <ChevronLeft className="w-5 h-5 text-gray-600" />
+          </button>
+          <span className="px-4 font-bold text-gray-600" style={{ fontSize: "1.05rem" }}>
+            {page} / {totalPages}
+          </span>
+          <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
+            className="p-3 rounded-xl border border-gray-200 hover:bg-gray-50 disabled:opacity-30 transition-colors"
+            style={{ minHeight: 48, minWidth: 48 }}>
+            <ChevronRight className="w-5 h-5 text-gray-600" />
+          </button>
+        </div>
+      )}
     </div>
   );
 }
