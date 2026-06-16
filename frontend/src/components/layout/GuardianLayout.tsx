@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Heart, Users, Bell, FileText, LogOut, Menu, X,
@@ -27,26 +27,6 @@ interface GuardianLayoutProps {
 export function GuardianLayout({ onLogout }: GuardianLayoutProps) {
   const [screen, setScreen] = useState<GuardianScreen>("dashboard");
   const navigate = useNavigate();
-  const { showToast } = useToast();
-
-  // 보호자 접속 시 쌓인 알림 요약 토스트 (1회)
-  useEffect(() => {
-    // 백엔드 완성 시: const data = await getGuardianNotifications(); 안 읽은 알림 집계
-    const unreadCount = 3; // TODO: 실제 안읽은 알림 수
-    const urgentCount = 1; // TODO: 위험도 '상' 개수
-    if (unreadCount > 0) {
-      const timer = setTimeout(() => {
-        showToast({
-          level: urgentCount > 0 ? "상" : "중",
-          title: `새 알림 ${unreadCount}건`,
-          message: urgentCount > 0
-            ? `위험 알림 ${urgentCount}건이 있어요. 주간 알림함을 확인해 주세요.`
-            : "연결된 사용자의 새로운 알림이 있어요.",
-        });
-      }, 600);
-      return () => clearTimeout(timer);
-    }
-  }, []);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedMemberId, setSelectedMemberId] = useState<number>(1);
   const handleSelectMember = (id: number) => {

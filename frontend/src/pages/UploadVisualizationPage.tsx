@@ -72,6 +72,7 @@ export function UploadVisualizationPage() {
 
   const pollMeasurement = async (measurementId: string) => {
     const maxAttempts = 30;
+
     for (let i = 0; i < maxAttempts; i++) {
       await new Promise(r => setTimeout(r, 2000));
       const res = await api.get(`/measurements/${measurementId}`);
@@ -79,6 +80,7 @@ export function UploadVisualizationPage() {
       if (data.status === "completed") return data;
       if (data.status === "failed") throw new Error("분석에 실패했습니다.");
       setProgress(prev => Math.min(prev + 2, 95));
+
     }
     throw new Error("분석이 너무 오래 걸립니다. 잠시 후 다시 확인해 주세요.");
   };
@@ -165,9 +167,8 @@ export function UploadVisualizationPage() {
 
       {/* 업로드 카드 - 결과 나오면 페이드 아웃 */}
       <div
-        className={`transition-all duration-700 ${
-          showUploadCard ? "opacity-100 max-h-[1000px]" : "opacity-0 max-h-0 overflow-hidden pointer-events-none"
-        }`}
+        className={`transition-all duration-700 ${showUploadCard ? "opacity-100 max-h-[1000px]" : "opacity-0 max-h-0 overflow-hidden pointer-events-none"
+          }`}
       >
         <div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-5 mb-6">
           <p className="text-amber-800 font-bold" style={{ fontSize: "1.1rem" }}>📋 어떻게 사용하나요?</p>
@@ -184,9 +185,8 @@ export function UploadVisualizationPage() {
             onDragLeave={() => setDragging(false)}
             onDrop={handleDrop}
             onClick={() => fileRef.current?.click()}
-            className={`border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-all ${
-              dragging ? "border-[#0E8080] bg-[#0E8080]/5" : "border-gray-300 hover:border-[#0E8080] hover:bg-gray-50"
-            }`}
+            className={`border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-all ${dragging ? "border-[#0E8080] bg-[#0E8080]/5" : "border-gray-300 hover:border-[#0E8080] hover:bg-gray-50"
+              }`}
           >
             <input
               ref={fileRef}
@@ -269,8 +269,8 @@ export function UploadVisualizationPage() {
               data={chartData}
               rPeaks={rPeaks}
               zoom={1}
-              onZoomIn={() => {}}
-              onZoomOut={() => {}}
+              onZoomIn={() => { }}
+              onZoomOut={() => { }}
               revealPercent={revealProgress}
             />
           )}
