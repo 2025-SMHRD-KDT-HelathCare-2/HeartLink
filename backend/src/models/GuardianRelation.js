@@ -1,22 +1,25 @@
 import mongoose from 'mongoose';
+const { Schema } = mongoose;
 
-const guardianRelationSchema = new mongoose.Schema(
+const guardianRelationSchema = new Schema(
   {
-    user_id:          { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    guardian_id:      { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    guardian_name:    { type: String, required: true, maxlength: 50 },
-    guardian_contact: { type: String, required: true, maxlength: 20 },
-    guardian_email:   { type: String, maxlength: 100 },
-    notify_permission: { type: Boolean, required: true, default: false },
-    relation_status:  { type: String, required: true, enum: ['pending', 'accepted'], default: 'pending' },
+    userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    guardianId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    guardianName: { type: String, required: true, maxlength: 50 },
+    guardianContact: { type: String, required: true, maxlength: 20 },
+    guardianEmail: { type: String, maxlength: 100 },
+    notifyPermission: { type: Boolean, required: true, default: true },
+    relationStatus: {
+      type: String,
+      enum: ['pending', 'accepted'],
+      required: true,
+      default: 'pending',
+    },
   },
-  {
-    timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },
-    collection: 'guardian_relations',
-  }
+  { timestamps: true }
 );
 
-guardianRelationSchema.index({ user_id: 1 });
-guardianRelationSchema.index({ guardian_id: 1 });
+guardianRelationSchema.index({ userId: 1 });
+guardianRelationSchema.index({ guardianId: 1 });
 
 export default mongoose.model('GuardianRelation', guardianRelationSchema);
