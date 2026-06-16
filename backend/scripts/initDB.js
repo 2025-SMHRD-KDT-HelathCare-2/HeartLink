@@ -60,7 +60,7 @@ const collections = [
 
   /* 2) phone_verifications */
   {
-    name: 'phone_verifications',
+    name: 'phoneverifications',
     validator: {
       $jsonSchema: {
         bsonType: 'object',
@@ -84,7 +84,7 @@ const collections = [
 
   /* 3) guardian_relations */
   {
-    name: 'guardian_relations',
+    name: 'guardianrelations',
     validator: {
       $jsonSchema: {
         bsonType: 'object',
@@ -136,7 +136,7 @@ const collections = [
 
   /* 5) analysis_results */
   {
-    name: 'analysis_results',
+    name: 'analysisresults',
     validator: {
       $jsonSchema: {
         bsonType: 'object',
@@ -145,14 +145,14 @@ const collections = [
           measurementId: { bsonType: 'objectId', description: '측정 참조' },
           userId: { bsonType: 'objectId', description: '사용자 참조' },
           arrhythmiaClass: { enum: ['N', 'SVEB', 'VEB', 'F', 'Q'], description: '부정맥 분류' },
-          arrhythmiaProb: { bsonType: 'double', description: '부정맥 확률' },
+          arrhythmiaProb: { bsonType: ['int', 'long', 'double', 'decimal'], description: '부정맥 확률' },
           afDetected: { bsonType: 'bool', description: '심방세동 의심 여부' },
-          afProb: { bsonType: 'double', description: 'AF 확률' },
-          hrvRmssd: { bsonType: 'double', description: 'HRV-RMSSD' },
-          hrvSdnn: { bsonType: 'double', description: 'HRV-SDNN' },
-          hrvLfhf: { bsonType: 'double', description: 'HRV-LF/HF' },
+          afProb: { bsonType: ['int', 'long', 'double', 'decimal'], description: 'AF 확률' },
+          hrvRmssd: { bsonType: ['int', 'long', 'double', 'decimal'], description: 'HRV-RMSSD' },
+          hrvSdnn: { bsonType: ['int', 'long', 'double', 'decimal'], description: 'HRV-SDNN' },
+          hrvLfhf: { bsonType: ['int', 'long', 'double', 'decimal'], description: 'HRV-LF/HF' },
           anomalyDetected: { bsonType: 'bool', description: '이상 탐지 여부' },
-          riskScore: { bsonType: 'int', minimum: 0, maximum: 100, description: '위험도 점수' },
+          riskScore: { bsonType: ['int', 'long', 'double'], minimum: 0, maximum: 100, description: '위험도 점수' },
           riskLevel: { enum: ['high', 'mid', 'low'], description: '위험도 단계' },
           analyzedAt: { bsonType: 'date', description: '분석 시각' },
           createdAt: { bsonType: 'date', description: '저장 일자' },
