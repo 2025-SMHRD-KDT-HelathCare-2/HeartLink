@@ -77,8 +77,11 @@ def detect_r_peaks(signal, fs=250):
     integrated = np.convolve(squared, np.ones(window_size)/window_size, mode='same')
 
     # 5단계: 피크 검출
-    # threshold: 이동평균값의 50% 이상인 피크만 검출
-    # distance: 최소 300ms 간격 (200BPM 이상은 부정맥으로 간주)
+    #   Pan-Tompkins 원논문의 적응형 임계값을 단순화하여 평균의 50%로 고정
+    # distance: 최소 300ms 간격
+    #   의학적으로 심실빈맥 기준이 200BPM
+    #   200BPM = 60초/200 = 0.3초 = 300ms
+    #   이보다 빠른 박동은 물리적으로 불가능하므로 잡음으로 간주
     threshold = np.mean(integrated) * 0.5
     distance  = int(fs * 0.3)
     peaks, _  = find_peaks(integrated, height=threshold, distance=distance)
@@ -128,6 +131,16 @@ def calculate_heart_rate(r_peaks, fs=250):
 def preprocess_ecg(signal_raw, fs_original=250):
     """
     ECG 전처리 전체 파이프라인
+    --------------------------------------------------
+    코랩 학습 전처리와 동일한 방식으로 구현
+    - 리샘플링: 250Hz 통일 (MIT-BIH 360Hz → 250Hz, AF DB 250Hz 유지)
+    - 밴드패스: 0.5~40Hz (학습 때와 동일)
+    - beat 추출: R-peak 기준 앞 90샘플 + 뒤 110샘플 = 200샘플
+    - 윈도우: 30초 = 7500샘플 (갤럭시 워치 ECG 측정 시간과 동일)
+    
+    학습 때와 다른 점:
+    - 학습: .atr annotation 파일로 R-peak 가져옴
+    - 서비스: Pan-Tompkins 알고리즘으로 R-peak 직접 감지
 
     Parameters
     ----------
