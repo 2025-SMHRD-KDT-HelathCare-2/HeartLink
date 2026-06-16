@@ -15,6 +15,9 @@ const analysisResultSchema = new Schema(
     hrvSdnn: { type: Number },
     hrvLfhf: { type: Number },
 
+    heart_rate: { type: Number },
+    arrhythmia_count: { type: Number },
+
     anomalyDetected: { type: Boolean },
     riskScore: { type: Number, required: true, min: 0, max: 100 },
     riskLevel: { type: String, enum: ['high', 'mid', 'low'], required: true },

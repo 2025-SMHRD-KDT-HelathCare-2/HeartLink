@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import { LoginPage } from "../pages/LoginPage";
 import { RegisterPage } from "../pages/Registerpage";
 import { OAuthCallbackPage } from "../pages/OAuthCallbackPage";
+import { SocialRoleSelectPage } from "../pages/SocialRoleSelectPage";
 import { UserLayout } from "../components/layout/UserLayout";
 import { GuardianLayout } from "../components/layout/GuardianLayout";
 import { MyPage } from "../pages/MyPage";
@@ -37,6 +38,7 @@ export default function AppRouter() {
         <Route path="/login"                             element={<PublicRoute><LoginPage /></PublicRoute>} />
         <Route path="/signup"                            element={<PublicRoute><RegisterPage /></PublicRoute>} />
         <Route path="/oauth/callback"                    element={<OAuthCallbackPage />} />
+        <Route path="/social-role"                       element={<SocialRoleSelectPage />} />
         <Route path="/mypage"                            element={<PrivateRoute><MyPage /></PrivateRoute>} />
         <Route path="/guardian-mypage"                   element={<PrivateRoute><GuardianMyPage /></PrivateRoute>} />
         <Route path="/report-detail"                     element={<PrivateRoute><UserReportDetailPage /></PrivateRoute>} />

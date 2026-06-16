@@ -35,7 +35,7 @@ async function run() {
         provider: 'local',
         nickname: '데모 어르신',
         role: 'user',
-        phone: '01099990001',
+        phone: '01095118147',
         phoneVerified: true,
         age: 72,
         gender: 'M',
@@ -48,7 +48,7 @@ async function run() {
         provider: 'local',
         nickname: '데모 보호자',
         role: 'guardian',
-        phone: '01099990002',
+        phone: '01056342685',
         phoneVerified: true,
     });
 
