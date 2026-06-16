@@ -26,8 +26,7 @@ const userSchema = new Schema(
     age: { type: Number },
     gender: { type: String, enum: ['M', 'F'] },
     medicalHistory: { type: [String], default: [] },
-    medications: { type: [String], default: [] },
-    deviceToken: { type: String },
+    refreshToken: { type: String },
   },
   { timestamps: true }
 );

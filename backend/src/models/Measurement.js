@@ -10,6 +10,7 @@ const measurementSchema = new Schema(
     leadType: { type: String, maxlength: 20 },
     samplingRate: { type: Number },
     ecgWaveformLite: { type: [Number], default: [] },
+    status: { type: String, enum: ['processing', 'completed', 'failed'], default: 'processing' },
     rPeaks: { type: [Number], default: [] },
     measuredAt: { type: Date, required: true },
   },

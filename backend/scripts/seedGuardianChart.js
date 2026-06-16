@@ -112,6 +112,7 @@ async function run() {
 }
 
 run().catch((e) => {
-  console.error(e);
+  console.error(JSON.stringify(e.writeErrors?.[0]?.err ?? e, null, 2));
   process.exit(1);
 });
+
