@@ -9,6 +9,7 @@ import { MyPage } from "../pages/MyPage";
 import { GuardianMyPage } from "../pages/GuardianMyPage";
 import { GuardianReportDetailPage } from "../pages/GuardianReportDetailPage";
 import { UserReportDetailPage } from "../pages/UserReportDetailPage";
+import { UserNotificationsPage } from "../pages/UserNotificationsPage";
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth();
@@ -37,6 +38,7 @@ export default function AppRouter() {
         <Route path="/mypage"                            element={<PrivateRoute><MyPage /></PrivateRoute>} />
         <Route path="/guardian-mypage"                   element={<PrivateRoute><GuardianMyPage /></PrivateRoute>} />
         <Route path="/report-detail"                     element={<PrivateRoute><UserReportDetailPage /></PrivateRoute>} />
+        <Route path="/notifications"                     element={<PrivateRoute><UserNotificationsPage /></PrivateRoute>} />
         <Route path="/guardian-report-detail/:memberId"  element={<PrivateRoute><GuardianReportDetailPage /></PrivateRoute>} />
         <Route path="/*"                                 element={<PrivateRoute><RoleRouter /></PrivateRoute>} />
       </Routes>

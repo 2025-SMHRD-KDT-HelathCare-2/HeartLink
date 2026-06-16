@@ -1,6 +1,8 @@
 import { useState, useRef, useMemo, useEffect } from "react";
-import { Upload, AlertCircle, Activity, Info } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Upload, AlertCircle, Activity, Info, Heart } from "lucide-react";
 import api from "../api/authApi";
+import { useToast } from "../context/ToastContext";
 import { ECGChart } from "../components/charts/ECGChart";
 import { RiskGauge } from "../components/charts/RiskGauge";
 
@@ -10,12 +12,19 @@ interface ECGResult {
   ecgPoints: number[];
   rPeaks: number[];
   sampleRate: number;
+<<<<<<< HEAD
+  riskLevel?: "상" | "중" | "하";
+  riskScore?: number;
+=======
   riskScore: number | null;
+>>>>>>> 78b653fedfbecfb93f5c0306b29a49eb55bdada0
 }
 
 const DEFAULT_SAMPLE_RATE = 250;
 
 export function UploadVisualizationPage() {
+  const navigate = useNavigate();
+  const { showToast } = useToast();
   const [phase, setPhase] = useState<Phase>("upload");
   const [progress, setProgress] = useState(0);
   const [dragging, setDragging] = useState(false);
@@ -35,6 +44,8 @@ export function UploadVisualizationPage() {
     }));
   }, [result, sampleRate]);
 
+  const rPeaksSafe = result?.rPeaks ?? [];
+
   const rPeaks = useMemo(() => {
     if (!result?.rPeaks?.length) return [];
     const maxIdx = result.ecgPoints?.length || 0;
@@ -48,7 +59,8 @@ export function UploadVisualizationPage() {
   // 결과가 준비되면 reveal 애니메이션 시작 (왼쪽 → 오른쪽 물결)
   useEffect(() => {
     if (phase !== "result") return;
-    setRevealProgress(0);
+    if (!chartData.length) return;
+    setRevealProgress(5);
     let raf: number;
     const duration = 1400; // 1.4초에 걸쳐 전체 reveal
     const start = performance.now();
@@ -60,7 +72,7 @@ export function UploadVisualizationPage() {
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [phase]);
+  }, [phase, chartData.length]);
 
   const pollMeasurement = async (measurementId: string) => {
     const maxAttempts = 30;
@@ -107,13 +119,35 @@ export function UploadVisualizationPage() {
 
       const data = await pollMeasurement(measurementId);
 
+      // 백엔드에 riskLevel/riskScore 있으면 사용, 없으면 임시 판단
+      const riskLevel = data.risk_level || "상"; // TODO: 백엔드 risk_level 연동
+      const riskScore = data.risk_score ?? 78;
+
       setResult({
+<<<<<<< HEAD
+        ecgPoints: data.ecg_waveform_lite ?? [],
+        rPeaks: data.r_peaks ?? [],
+        sampleRate: data.sampling_rate ?? 250,
+        riskLevel,
+        riskScore,
+=======
         ecgPoints: data.ecgWaveformLite,
         rPeaks: data.rPeaks,
         sampleRate: data.samplingRate,
         riskScore: data.analysis?.riskScore ?? null,
+>>>>>>> 78b653fedfbecfb93f5c0306b29a49eb55bdada0
       });
       setPhase("result");
+
+      // 위험도 '상'이면 토스트로 알림 (보호자에게는 백엔드가 별도 발송)
+      if (riskLevel === "상") {
+        showToast({
+          level: "상",
+          title: "위험 신호가 감지되었어요",
+          message: "심장이 불규칙하게 뛰는 증상이 있어요. 내 건강 결과를 확인해 주세요.",
+        });
+      }
+      // 중/하는 사용자에게 토스트 없음 (보호자에게만 백엔드가 알림)
 
     } catch (err) {
       setPhase("error");
@@ -238,9 +272,33 @@ export function UploadVisualizationPage() {
       {phase === "result" && result && (
         <div className="animate-fadein space-y-6">
           <div className="text-[#0E8080] font-bold mb-2" style={{ fontSize: "1.1rem" }}>
-            ✅ {result.ecgPoints.length.toLocaleString()}개 샘플 · {sampleRate}Hz · 분석 완료
+            ✅ {(result.ecgPoints?.length ?? 0).toLocaleString()}개 샘플 · {sampleRate}Hz · 분석 완료
           </div>
 
+<<<<<<< HEAD
+          {chartData.length > 0 && (
+            <ECGChart
+              data={chartData}
+              rPeaks={rPeaks}
+              zoom={1}
+              onZoomIn={() => {}}
+              onZoomOut={() => {}}
+              revealPercent={revealProgress}
+            />
+          )}
+          <RiskGauge score={result.riskScore ?? 72} />
+
+          {result.riskLevel === "상" && (
+            <button
+              onClick={() => navigate("/")}
+              className="w-full py-5 bg-gradient-to-r from-[#DC2626] to-[#B91C1C] text-white rounded-xl hover:opacity-90 transition-all font-black flex items-center justify-center gap-2 shadow-lg"
+              style={{ minHeight: 64, fontSize: "1.2rem" }}
+            >
+              <Heart className="w-6 h-6 fill-current" />
+              내 건강 결과 자세히 보기
+            </button>
+          )}
+=======
           <ECGChart
             data={chartData}
             rPeaks={rPeaks}
@@ -250,6 +308,7 @@ export function UploadVisualizationPage() {
             revealPercent={revealProgress}
           />
           {result.riskScore !== null && <RiskGauge score={result.riskScore} />}
+>>>>>>> 78b653fedfbecfb93f5c0306b29a49eb55bdada0
 
           <button
             onClick={() => {

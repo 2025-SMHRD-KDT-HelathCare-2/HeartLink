@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { AlertTriangle, CheckCircle, Info, Clock, Volume2 } from "lucide-react";
+import { AlertTriangle, CheckCircle, Info, Clock, Volume2, Bell, X } from "lucide-react";
 
 const RISK_LEVELS = [
   {
@@ -87,6 +87,54 @@ function useTTS() {
   return { playing, speak, stop };
 }
 
+
+// ===== 일일 알림 (당일 '상' 알림만) =====
+interface DailyAlert {
+  id: string;
+  level: "상" | "중" | "하";
+  message: string;
+  time: string;
+}
+
+// 임시 더미 (백엔드: GET /notifications?period=today 의 '상' 항목)
+const DUMMY_DAILY: DailyAlert[] = [
+  { id: "d1", level: "상", message: "심장이 불규칙하게 뛰는 증상이 감지되었어요.", time: "09:32" },
+];
+
+function DailyAlertSection() {
+  const [alerts, setAlerts] = useState<DailyAlert[]>([]);
+
+  useEffect(() => {
+    // 백엔드 완성 시: const data = await getMyNotifications(); 당일 '상'만 필터
+    setAlerts(DUMMY_DAILY);
+  }, []);
+
+  if (alerts.length === 0) return null;
+
+  return (
+    <div className="mb-6">
+      <div className="flex items-center gap-2 mb-3">
+        <Bell className="w-6 h-6 text-[#DC2626]" />
+        <h3 className="text-[#DC2626] font-black" style={{ fontSize: "1.25rem" }}>오늘의 알림</h3>
+      </div>
+      <div className="space-y-3">
+        {alerts.map(a => (
+          <div key={a.id} className="bg-[#FEF2F2] border-2 border-[#FECACA] rounded-2xl p-5 flex items-start gap-3">
+            <AlertTriangle className="w-7 h-7 flex-shrink-0 mt-0.5" style={{ color: "#DC2626" }} />
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="px-3 py-1 rounded-full text-white font-bold" style={{ backgroundColor: "#DC2626", fontSize: "0.85rem" }}>위험</span>
+                <span className="text-gray-400 font-bold ml-auto" style={{ fontSize: "0.9rem" }}>{a.time}</span>
+              </div>
+              <p className="text-gray-700 font-bold leading-relaxed" style={{ fontSize: "1.05rem" }}>{a.message}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function ReportPage() {
   const [selectedIdx, setSelectedIdx] = useState(0);
   const { playing, speak, stop } = useTTS();
@@ -100,6 +148,8 @@ export function ReportPage() {
         <h1 className="font-black text-[#0A2647]" style={{ fontSize: "2.2rem" }}>내 건강 결과</h1>
         <p className="text-gray-500 mt-1 font-bold" style={{ fontSize: "1.15rem" }}>인공지능이 분석한 오늘 심장 상태예요.</p>
       </div>
+
+      <DailyAlertSection />
 
       {/* 리포트 목록 */}
       <div className="bg-white rounded-2xl shadow-sm border-2 border-gray-100 mb-6 overflow-hidden">

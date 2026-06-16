@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Heart, LogOut, Menu, X, ChevronRight } from "lucide-react";
+import { Heart, LogOut, Menu, X, ChevronRight, Bell } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { ReportPage } from "../../pages/ReportPage";
@@ -52,6 +52,12 @@ export function UserLayout({ onLogout }: { onLogout: () => void }) {
         </button>
 
         <div className="hidden lg:flex items-center gap-3">
+          <button onClick={() => navigate("/notifications")}
+            className="relative p-2.5 rounded-xl hover:bg-white/10 transition-colors"
+            title="알림함">
+            <Bell className="w-6 h-6 text-white" />
+            <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full" />
+          </button>
           <button onClick={() => navigate("/mypage")}
             className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-white/10 transition-colors group">
             <div className="w-10 h-10 bg-[#0E8080] rounded-full flex items-center justify-center text-white font-black" style={{ fontSize: "1.1rem" }}>
@@ -71,6 +77,15 @@ export function UserLayout({ onLogout }: { onLogout: () => void }) {
       {/* 모바일 드롭다운 */}
       {menuOpen && (
         <div className="bg-[#0A2647] border-t border-white/10 px-4 pb-4 lg:hidden z-20">
+          <button onClick={() => { setMenuOpen(false); navigate("/notifications"); }}
+            className="w-full flex items-center gap-3 py-4 border-b border-white/10 mb-3">
+            <div className="relative">
+              <Bell className="w-7 h-7 text-white" />
+              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full" />
+            </div>
+            <span className="text-white font-black" style={{ fontSize: "1.1rem" }}>알림함</span>
+            <ChevronRight className="w-4 h-4 text-white/50 ml-auto" />
+          </button>
           <button onClick={() => { setMenuOpen(false); navigate("/mypage"); }}
             className="w-full flex items-center gap-3 py-4 border-b border-white/10 mb-3">
             <div className="w-10 h-10 bg-[#0E8080] rounded-full flex items-center justify-center text-white font-black" style={{ fontSize: "1.1rem" }}>

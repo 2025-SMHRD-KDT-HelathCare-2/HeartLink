@@ -1,120 +1,154 @@
 import { useState, useEffect } from "react";
-import { Bell, AlertTriangle, Info, CheckCircle, Clock, ChevronRight, Loader2 } from "lucide-react";
-import api from "../api/authApi";
+import { Bell, AlertTriangle, AlertCircle, Info, FileText, Filter } from "lucide-react";
+// import { getGuardianNotifications, markNotificationRead, type AppNotification } from "../api/notificationApi";
 
-interface Notification {
-  _id: string;
-  riskLevel: "high" | "mid" | "low";
+type RiskLevel = "상" | "중" | "하";
+interface AppNotification {
+  id: string;
+  level: RiskLevel;
   message: string;
+  createdAt: string;
+  memberName: string;
   isRead: boolean;
-  sentAt: string;
-  userId?: { nickname?: string };
 }
 
-const TYPE_CONFIG = {
-  high: { color: "#DC2626", bg: "#FEF2F2", border: "#FECACA", icon: AlertTriangle, label: "긴급" },
-  mid:  { color: "#D97706", bg: "#FFFBEB", border: "#FDE68A", icon: Info,           label: "주의" },
-  low:  { color: "#16A34A", bg: "#F0FDF4", border: "#BBF7D0", icon: CheckCircle,    label: "양호" },
+const LEVEL_META = {
+  상: { color: "#DC2626", bg: "#FEF2F2", border: "#FECACA", label: "위험", icon: AlertTriangle },
+  중: { color: "#D97706", bg: "#FFFBEB", border: "#FDE68A", label: "주의", icon: AlertCircle },
+  하: { color: "#16A34A", bg: "#F0FDF4", border: "#BBF7D0", label: "양호", icon: Info },
 };
 
+// ===== 임시 더미 (백엔드: GET /notifications/guardian, 최근 7일) =====
+const DUMMY: AppNotification[] = [
+  { id: "1", level: "상", message: "심장이 불규칙하게 뛰는 증상이 감지되었습니다.", createdAt: "2026-06-16T09:32:00", memberName: "김할머니", isRead: false },
+  { id: "2", level: "중", message: "심장 박동이 평소보다 빨랐습니다.", createdAt: "2026-06-15T14:10:00", memberName: "박할아버지", isRead: false },
+  { id: "3", level: "하", message: "심장 상태가 양호합니다.", createdAt: "2026-06-14T08:05:00", memberName: "이순자", isRead: true },
+  { id: "4", level: "중", message: "심장 박동 리듬에 약한 이상이 있었습니다.", createdAt: "2026-06-13T11:20:00", memberName: "김할머니", isRead: true },
+  { id: "5", level: "상", message: "위험 신호가 감지되었습니다. 확인이 필요합니다.", createdAt: "2026-06-12T16:45:00", memberName: "박할아버지", isRead: true },
+];
+
+function timeAgo(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const h = Math.floor(diff / 3600000);
+  if (h < 1) return "방금 전";
+  if (h < 24) return `${h}시간 전`;
+  return `${Math.floor(h / 24)}일 전`;
+}
+
 interface NotificationsPageProps {
-  onViewReport: (userId?: string) => void;
+  onViewReport?: () => void;
 }
 
 export function NotificationsPage({ onViewReport }: NotificationsPageProps) {
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [items, setItems] = useState<AppNotification[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError]     = useState("");
+  const [memberFilter, setMemberFilter] = useState("전체");
+  const [levelFilter, setLevelFilter] = useState("전체");
 
   useEffect(() => {
-    api.get("/notifications")
-      .then(r => setNotifications(r.data))
-      .catch(e => setError(e instanceof Error ? e.message : "불러오기 실패"))
-      .finally(() => setLoading(false));
+    (async () => {
+      try {
+        // 백엔드 완성 시 주석 해제
+        // const data = await getGuardianNotifications();
+        // setItems(data);
+        await new Promise(r => setTimeout(r, 400));
+        setItems(DUMMY);
+      } catch (err) {
+        console.error("알림 조회 실패", err);
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, []);
 
-  const markRead = async (id: string) => {
-    try {
-      await api.patch(`/notifications/${id}/read`);
-      setNotifications(prev => prev.map(n => n._id === id ? { ...n, isRead: true } : n));
-    } catch { /* silent */ }
+  const markRead = (id: string) => {
+    setItems(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
+    // markNotificationRead(id);  // 백엔드 완성 시 주석 해제
   };
 
-  const unreadCount = notifications.filter(n => !n.isRead).length;
+  const members = ["전체", ...Array.from(new Set(items.map(i => i.memberName)))];
+
+  const filtered = items.filter(n => {
+    if (memberFilter !== "전체" && n.memberName !== memberFilter) return false;
+    if (levelFilter !== "전체" && n.level !== levelFilter) return false;
+    return true;
+  });
 
   return (
     <div className="max-w-2xl mx-auto p-6">
-      <div className="mb-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="font-bold text-[#0A2647]" style={{ fontSize: "1.9rem" }}>위험도 알림</h1>
-            <p className="text-gray-600 mt-2 font-bold" style={{ fontSize: "1.1rem" }}>앱 알림·문자 수신함</p>
-          </div>
-          {unreadCount > 0 && (
-            <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-full px-4 py-2">
-              <Bell className="w-5 h-5 text-red-500" />
-              <span className="text-red-600 font-bold" style={{ fontSize: "1rem" }}>미확인 {unreadCount}건</span>
-            </div>
-          )}
+      <div className="mb-6">
+        <div className="flex items-center gap-2">
+          <Bell className="w-7 h-7 text-[#0A2647]" />
+          <h1 className="font-black text-[#0A2647]" style={{ fontSize: "1.9rem" }}>주간 위험도 알림함</h1>
         </div>
+        <p className="text-gray-500 mt-2 font-bold" style={{ fontSize: "1.05rem" }}>최근 7일간 연결된 사용자들의 위험도 알림이에요.</p>
       </div>
 
-      <div className="bg-blue-50 border border-blue-200 rounded-xl p-5 mb-6 font-bold" style={{ fontSize: "1rem", color: "#1d4ed8" }}>
-        <p className="mb-2" style={{ fontSize: "1.05rem" }}>알림 발송 방식</p>
-        <ul className="space-y-1 text-blue-600">
-          <li>• 위험도 상(긴급): 밤낮 없이 즉시 — 앱 알림 + 문자</li>
-          <li>• 위험도 중(주의): 야간(22~07시)에는 다음 날 아침 발송 — 앱 알림</li>
-          <li>• 위험도 하(양호): 하루 1회 일일 리포트에 포함</li>
-        </ul>
+      {/* 필터 */}
+      <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 mb-5">
+        <div className="flex items-center gap-2 mb-3">
+          <Filter className="w-5 h-5 text-gray-400" />
+          <span className="text-gray-700 font-bold" style={{ fontSize: "1.05rem" }}>필터</span>
+        </div>
+        <p className="text-gray-500 font-bold mb-2" style={{ fontSize: "0.95rem" }}>사용자</p>
+        <div className="flex flex-wrap gap-2 mb-4">
+          {members.map(m => (
+            <button key={m} onClick={() => setMemberFilter(m)}
+              className={`px-4 py-2 rounded-xl border-2 transition-all font-bold ${memberFilter === m ? "border-[#0A2647] bg-[#0A2647]/10 text-[#0A2647]" : "border-gray-200 text-gray-500"}`}
+              style={{ fontSize: "0.95rem" }}>
+              {m}
+            </button>
+          ))}
+        </div>
+        <p className="text-gray-500 font-bold mb-2" style={{ fontSize: "0.95rem" }}>위험도</p>
+        <div className="flex flex-wrap gap-2">
+          {["전체", "상", "중", "하"].map(l => (
+            <button key={l} onClick={() => setLevelFilter(l)}
+              className={`px-4 py-2 rounded-xl border-2 transition-all font-bold ${levelFilter === l ? "border-[#0E8080] bg-[#0E8080]/10 text-[#0E8080]" : "border-gray-200 text-gray-500"}`}
+              style={{ fontSize: "0.95rem" }}>
+              {l}
+            </button>
+          ))}
+        </div>
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center gap-3 py-16 text-gray-400">
-          <Loader2 className="w-6 h-6 animate-spin" />
-          <span className="font-bold" style={{ fontSize: "1.1rem" }}>불러오는 중...</span>
+        <div className="flex justify-center py-16">
+          <div className="w-8 h-8 border-4 border-[#0E8080] border-t-transparent rounded-full animate-spin" />
         </div>
-      ) : error ? (
-        <div className="text-center py-16 text-red-400 font-bold">{error}</div>
-      ) : notifications.length === 0 ? (
-        <div className="text-center py-16 text-gray-400 font-bold" style={{ fontSize: "1.1rem" }}>알림이 없습니다.</div>
+      ) : filtered.length === 0 ? (
+        <div className="bg-white rounded-2xl p-12 shadow-sm border border-gray-100 text-center">
+          <Bell className="w-12 h-12 mx-auto text-gray-300 mb-3" />
+          <p className="text-gray-400 font-bold" style={{ fontSize: "1.1rem" }}>해당 조건의 알림이 없습니다.</p>
+        </div>
       ) : (
-        <div className="space-y-4">
-          {notifications.map(n => {
-            const cfg = TYPE_CONFIG[n.riskLevel];
-            const Icon = cfg.icon;
-            const userName = n.userId?.nickname || "사용자";
+        <div className="space-y-3">
+          {filtered.map(n => {
+            const meta = LEVEL_META[n.level];
+            const Icon = meta.icon;
             return (
-              <div
-                key={n._id}
-                className={`rounded-2xl p-6 border transition-all ${!n.isRead ? "shadow-md" : "opacity-80"}`}
-                style={{ backgroundColor: cfg.bg, borderColor: cfg.border }}
-              >
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: cfg.color }}>
-                    <Icon className="w-6 h-6 text-white" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <span className="font-bold" style={{ color: cfg.color, fontSize: "1.15rem" }}>
-                        {cfg.label} 알림 — {userName}
-                        {!n.isRead && <span className="ml-2 inline-block w-2.5 h-2.5 bg-red-500 rounded-full align-middle" />}
+              <div key={n.id}
+                onClick={() => markRead(n.id)}
+                className={`rounded-2xl p-5 border-2 cursor-pointer transition-all ${n.isRead ? "bg-white border-gray-100" : ""}`}
+                style={!n.isRead ? { backgroundColor: meta.bg, borderColor: meta.border } : {}}>
+                <div className="flex items-start gap-3">
+                  <Icon className="w-7 h-7 flex-shrink-0 mt-0.5" style={{ color: meta.color }} />
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <span className="text-gray-800 font-black" style={{ fontSize: "1.1rem" }}>{n.memberName}</span>
+                      <span className="px-3 py-1 rounded-full text-white font-bold" style={{ backgroundColor: meta.color, fontSize: "0.8rem" }}>
+                        {meta.label}
                       </span>
-                      <span className="text-gray-400 font-bold shrink-0 flex items-center gap-1" style={{ fontSize: "0.95rem" }}>
-                        <Clock className="w-4 h-4" />
-                        {new Date(n.sentAt).toLocaleString("ko-KR")}
-                      </span>
+                      {!n.isRead && <span className="w-2.5 h-2.5 bg-red-500 rounded-full" />}
+                      <span className="text-gray-400 font-bold ml-auto" style={{ fontSize: "0.9rem" }}>{timeAgo(n.createdAt)}</span>
                     </div>
-                    <p className="text-gray-700 leading-relaxed mb-3 font-bold" style={{ fontSize: "1.05rem" }}>{n.message}</p>
-                    <div className="flex items-center justify-end">
-                      <button
-                        onClick={() => { markRead(n._id); onViewReport(); }}
-                        className="flex items-center gap-1 font-bold transition-colors"
-                        style={{ color: cfg.color, minHeight: 44, fontSize: "1rem" }}
-                      >
-                        탭하여 상세 리포트 보기
-                        <ChevronRight className="w-5 h-5" />
+                    <p className="text-gray-700 font-bold leading-relaxed mb-2" style={{ fontSize: "1.05rem" }}>{n.message}</p>
+                    {n.level === "상" && onViewReport && (
+                      <button onClick={(e) => { e.stopPropagation(); onViewReport(); }}
+                        className="flex items-center gap-1.5 text-[#0A2647] font-bold hover:underline" style={{ fontSize: "0.95rem" }}>
+                        <FileText className="w-4 h-4" />리포트 보기
                       </button>
-                    </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -122,10 +156,6 @@ export function NotificationsPage({ onViewReport }: NotificationsPageProps) {
           })}
         </div>
       )}
-
-      <p className="mt-6 text-center text-gray-400 font-bold" style={{ fontSize: "1rem" }}>
-        알림 미수신 시 문자로 대신 발송 · 위험 단계 미확인 알림은 1시간 후 재발송
-      </p>
     </div>
   );
 }
