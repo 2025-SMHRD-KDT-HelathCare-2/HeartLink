@@ -89,11 +89,22 @@ api.interceptors.response.use(
   }
 );
 
+export async function sendVerificationCode(phone: string) {
+  const { data } = await api.post("/auth/phone/send", { phone });
+  return data;
+}
+
+export async function verifyPhoneCode(phone: string, code: string) {
+  const { data } = await api.post("/auth/phone/verify", { phone, code });
+  return data;
+}
+
 export interface RegisterPayload {
   email: string;
   password: string;
   nickname: string;
   role: "user" | "guardian";
+  phone: string;
   age?: number;
   gender?: "M" | "F";
   medical_history?: string[];
