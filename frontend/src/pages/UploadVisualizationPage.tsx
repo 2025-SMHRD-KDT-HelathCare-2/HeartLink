@@ -12,8 +12,12 @@ interface ECGResult {
   ecgPoints: number[];
   rPeaks: number[];
   sampleRate: number;
+<<<<<<< HEAD
   riskLevel?: "상" | "중" | "하";
   riskScore?: number;
+=======
+  riskScore: number | null;
+>>>>>>> 78b653fedfbecfb93f5c0306b29a49eb55bdada0
 }
 
 const DEFAULT_SAMPLE_RATE = 250;
@@ -120,11 +124,18 @@ export function UploadVisualizationPage() {
       const riskScore = data.risk_score ?? 78;
 
       setResult({
+<<<<<<< HEAD
         ecgPoints: data.ecg_waveform_lite ?? [],
         rPeaks: data.r_peaks ?? [],
         sampleRate: data.sampling_rate ?? 250,
         riskLevel,
         riskScore,
+=======
+        ecgPoints: data.ecgWaveformLite,
+        rPeaks: data.rPeaks,
+        sampleRate: data.samplingRate,
+        riskScore: data.analysis?.riskScore ?? null,
+>>>>>>> 78b653fedfbecfb93f5c0306b29a49eb55bdada0
       });
       setPhase("result");
 
@@ -264,6 +275,7 @@ export function UploadVisualizationPage() {
             ✅ {(result.ecgPoints?.length ?? 0).toLocaleString()}개 샘플 · {sampleRate}Hz · 분석 완료
           </div>
 
+<<<<<<< HEAD
           {chartData.length > 0 && (
             <ECGChart
               data={chartData}
@@ -286,6 +298,17 @@ export function UploadVisualizationPage() {
               내 건강 결과 자세히 보기
             </button>
           )}
+=======
+          <ECGChart
+            data={chartData}
+            rPeaks={rPeaks}
+            zoom={1}
+            onZoomIn={() => {}}
+            onZoomOut={() => {}}
+            revealPercent={revealProgress}
+          />
+          {result.riskScore !== null && <RiskGauge score={result.riskScore} />}
+>>>>>>> 78b653fedfbecfb93f5c0306b29a49eb55bdada0
 
           <button
             onClick={() => {

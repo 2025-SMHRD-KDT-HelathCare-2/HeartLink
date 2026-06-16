@@ -71,6 +71,12 @@ export function MyPage() {
   const [loadingRequests, setLoadingRequests] = useState(true);
 
   useEffect(() => {
+    api.get("/auth/me")
+      .then(res => setDiseases(res.data.medicalHistory ?? []))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
     getPendingRequests()
       .then(data => setRequests(data))
       .catch(() => {})
@@ -96,7 +102,7 @@ export function MyPage() {
   const toggleDisease = (d: string) =>
     setDiseases(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d]);
 
-  const handleSaveProfile = async (e: React.FormEvent) => {
+  const handleSaveProfile = async (e: { preventDefault(): void }) => {
     e.preventDefault();
     setSaving(true);
     try {

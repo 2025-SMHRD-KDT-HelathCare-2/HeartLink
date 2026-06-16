@@ -135,7 +135,8 @@ export const getMeasurement = async (req, res, next) => {
   try {
     const measurement = await Measurement.findOne({ _id: req.params.id, userId: req.user.id });
     if (!measurement) return res.status(404).json({ message: '없는 측정 데이터입니다.' });
-    res.json(measurement);
+    const analysis = await AnalysisResult.findOne({ measurementId: measurement._id });
+    res.json({ ...measurement.toObject(), analysis: analysis ?? null });
   } catch (err) {
     next(err);
   }
