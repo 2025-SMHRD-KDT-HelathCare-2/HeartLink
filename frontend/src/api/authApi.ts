@@ -1,4 +1,5 @@
 import axios from "axios";
+import { getAccessToken, setAccessToken } from "./tokenStore";
 
 const API_BASE_URL =
   import.meta.env?.VITE_API_BASE_URL ?? "http://localhost:3000";
@@ -6,11 +7,12 @@ const API_BASE_URL =
 const api = axios.create({
   baseURL: `${API_BASE_URL}/api`,
   headers: { "Content-Type": "application/json" },
+  withCredentials: true, // httpOnly 쿠키(refreshToken) 자동 전송 — 필수
 });
 
-// 요청 인터셉터: 저장된 토큰이 있으면 Authorization 헤더 자동 첨부
+// 요청 인터셉터: 메모리의 Access Token을 Authorization 헤더에 첨부
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
+  const token = getAccessToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -32,7 +34,7 @@ function processQueue(err: unknown, token: string | null) {
   failedQueue = [];
 }
 
-// 응답 인터셉터: TOKEN_EXPIRED → 자동 재발급 후 원본 요청 재시도
+// 응답 인터셉터: TOKEN_EXPIRED → 쿠키 RT로 자동 재발급 후 원본 요청 재시도
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -56,23 +58,20 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const storedRT = localStorage.getItem("refreshToken");
-        if (!storedRT) throw new Error("no_refresh_token");
+        // refreshToken은 httpOnly 쿠키에 있으므로 body 불필요 (withCredentials로 자동 전송)
+        const { data } = await axios.post(
+          `${API_BASE_URL}/api/auth/refresh`,
+          {},
+          { withCredentials: true }
+        );
 
-        const { data } = await axios.post(`${API_BASE_URL}/api/auth/refresh`, {
-          refreshToken: storedRT,
-        });
-
-        localStorage.setItem("token", data.token);
-        localStorage.setItem("refreshToken", data.refreshToken);
-
+        setAccessToken(data.token);
         processQueue(null, data.token);
         originalRequest.headers.Authorization = `Bearer ${data.token}`;
         return api(originalRequest);
       } catch (refreshErr) {
         processQueue(refreshErr, null);
-        localStorage.removeItem("token");
-        localStorage.removeItem("refreshToken");
+        setAccessToken(null);
         localStorage.removeItem("role");
         localStorage.removeItem("user");
         window.dispatchEvent(new Event("auth:logout"));
@@ -89,6 +88,7 @@ api.interceptors.response.use(
   }
 );
 
+// ───────────────── 휴대폰 인증 ─────────────────
 export async function sendVerificationCode(phone: string) {
   const { data } = await api.post("/auth/phone/send", { phone });
   return data;
@@ -99,6 +99,7 @@ export async function verifyPhoneCode(phone: string, code: string) {
   return data;
 }
 
+// ───────────────── 일반 회원가입 / 로그인 ─────────────────
 export interface RegisterPayload {
   email: string;
   password: string;
@@ -117,14 +118,29 @@ export async function register(payload: RegisterPayload) {
 }
 
 export async function login(credentials: { email: string; password: string }) {
+  // 응답: { token(AccessToken), user: { email, role } }  / RefreshToken은 Set-Cookie
   const { data } = await api.post("/auth/login", credentials);
   return data;
 }
 
-// 인터셉터 순환 방지를 위해 raw axios 사용
-export async function callLogout(refreshToken: string) {
+// ───────────────── 소셜 로그인 ─────────────────
+// 백엔드 OAuth 진입점으로 브라우저 이동 (state 생성·인가URL 리다이렉트는 백엔드가 처리)
+export function startSocialLogin(provider: "google" | "naver" | "kakao") {
+  window.location.href = `${API_BASE_URL}/api/auth/${provider}`;
+}
+
+// 쿠키의 RefreshToken으로 AccessToken + 사용자 정보 획득 (앱 부팅/소셜 콜백 시 사용)
+export async function exchangeToken() {
+  // 응답: { token, user: { email, role } }
+  const { data } = await api.post("/auth/token");
+  return data;
+}
+
+// ───────────────── 로그아웃 ─────────────────
+// 인터셉터 순환 방지를 위해 raw axios 사용 (쿠키 만료 + 서버 RT 무효화)
+export async function callLogout() {
   try {
-    await axios.post(`${API_BASE_URL}/api/auth/logout`, { refreshToken });
+    await axios.post(`${API_BASE_URL}/api/auth/logout`, {}, { withCredentials: true });
   } catch {
     // 서버 오류와 무관하게 로컬 상태는 항상 초기화
   }

@@ -5,6 +5,8 @@ import {
   UserCircle, CheckCircle
 } from "lucide-react";
 import { register, type RegisterPayload } from "../api/authApi";
+import { SocialLoginButtons } from "../components/auth/SocialLoginButtons";
+
 
 type Role = "user" | "guardian";
 
@@ -40,13 +42,11 @@ function RoleToast({ role }: { role: Role }) {
   const isUser = displayRole === "user";
   return (
     <div
-      className={`flex items-start gap-3 px-4 py-3 rounded-xl border font-bold mb-4 transition-all duration-500 ${
-        visible ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-1"
-      } ${
-        isUser
+      className={`flex items-start gap-3 px-4 py-3 rounded-xl border font-bold mb-4 transition-all duration-500 ${visible ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-1"
+        } ${isUser
           ? "bg-[#0E8080]/10 border-[#0E8080]/30 text-[#0E8080]"
           : "bg-[#0A2647]/10 border-[#0A2647]/30 text-[#0A2647]"
-      }`}
+        }`}
       style={{ fontSize: "0.95rem" }}
     >
       <span>
@@ -251,32 +251,32 @@ export function RegisterPage() {
               </div>
 
               {role === "user" && (
-              <div className="pt-3">
-                <h2 className="text-[#0A2647] font-bold mb-1 pb-2 border-b-2 border-gray-100" style={{ fontSize: "1.2rem" }}>건강 정보</h2>
-                <p className="text-gray-400 mb-4 font-bold" style={{ fontSize: "0.95rem" }}>선택 입력이며, 나중에 프로필에서 추가할 수 있어요.</p>
+                <div className="pt-3">
+                  <h2 className="text-[#0A2647] font-bold mb-1 pb-2 border-b-2 border-gray-100" style={{ fontSize: "1.2rem" }}>건강 정보</h2>
+                  <p className="text-gray-400 mb-4 font-bold" style={{ fontSize: "0.95rem" }}>선택 입력이며, 나중에 프로필에서 추가할 수 있어요.</p>
 
-                <div className="mb-5">
-                  <FieldLabel text="나이" />
-                  <div className="relative">
-                    <UserCircle className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-400" />
-                    <input type="number" min={0} max={150} placeholder="예: 68" value={form.age}
-                      onChange={(e) => setField("age", e.target.value)} className={inputClass} style={inputStyle} />
+                  <div className="mb-5">
+                    <FieldLabel text="나이" />
+                    <div className="relative">
+                      <UserCircle className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-400" />
+                      <input type="number" min={0} max={150} placeholder="예: 68" value={form.age}
+                        onChange={(e) => setField("age", e.target.value)} className={inputClass} style={inputStyle} />
+                    </div>
+                    {errors.age && <p className="text-red-500 mt-1 font-bold" style={errStyle}>{errors.age}</p>}
                   </div>
-                  {errors.age && <p className="text-red-500 mt-1 font-bold" style={errStyle}>{errors.age}</p>}
-                </div>
 
-                <div className="mb-5">
-                  <FieldLabel text="성별" />
-                  <div className="flex gap-3">
-                    <button type="button" onClick={() => setField("gender", "M")}
-                      className={`flex-1 py-3 rounded-xl border-2 transition-all font-bold ${form.gender === "M" ? "border-[#0E8080] bg-[#0E8080]/10 text-[#0E8080]" : "border-gray-200 text-gray-500"}`}
-                      style={{ minHeight: 56, fontSize: "1.05rem" }}>남성</button>
-                    <button type="button" onClick={() => setField("gender", "F")}
-                      className={`flex-1 py-3 rounded-xl border-2 transition-all font-bold ${form.gender === "F" ? "border-[#0E8080] bg-[#0E8080]/10 text-[#0E8080]" : "border-gray-200 text-gray-500"}`}
-                      style={{ minHeight: 56, fontSize: "1.05rem" }}>여성</button>
+                  <div className="mb-5">
+                    <FieldLabel text="성별" />
+                    <div className="flex gap-3">
+                      <button type="button" onClick={() => setField("gender", "M")}
+                        className={`flex-1 py-3 rounded-xl border-2 transition-all font-bold ${form.gender === "M" ? "border-[#0E8080] bg-[#0E8080]/10 text-[#0E8080]" : "border-gray-200 text-gray-500"}`}
+                        style={{ minHeight: 56, fontSize: "1.05rem" }}>남성</button>
+                      <button type="button" onClick={() => setField("gender", "F")}
+                        className={`flex-1 py-3 rounded-xl border-2 transition-all font-bold ${form.gender === "F" ? "border-[#0E8080] bg-[#0E8080]/10 text-[#0E8080]" : "border-gray-200 text-gray-500"}`}
+                        style={{ minHeight: 56, fontSize: "1.05rem" }}>여성</button>
+                    </div>
                   </div>
                 </div>
-              </div>
               )}
 
               <button type="submit" disabled={submitting}
@@ -285,6 +285,9 @@ export function RegisterPage() {
                 {submitting ? "가입 처리 중..." : "회원가입"}
               </button>
             </form>
+
+            {/* 소셜 로그인 */}
+            <SocialLoginButtons />
 
             <div className="mt-6 pt-6 border-t border-gray-100 text-center">
               <span className="text-gray-500 font-bold" style={{ fontSize: "1rem" }}>이미 회원이신가요? </span>
