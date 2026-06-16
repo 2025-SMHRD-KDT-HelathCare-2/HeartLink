@@ -21,8 +21,10 @@ export function ECGChart({ data, rPeaks, zoom, onZoomIn, onZoomOut, revealPercen
   // reveal 애니메이션: revealPercent에 따라 왼쪽부터 점진적으로 표시
   const displayData = useMemo(() => {
     if (revealPercent === undefined || revealPercent >= 100) return baseData;
+    if (baseData.length === 0) return baseData;
     const cutoff = Math.floor((baseData.length * revealPercent) / 100);
-    return baseData.slice(0, Math.max(cutoff, 1));
+    // 최소 2개 이상 보장 (차트 너비 계산 오류 방지)
+    return baseData.slice(0, Math.max(cutoff, 2));
   }, [baseData, revealPercent]);
 
   const maxX = baseData[baseData.length - 1]?.x ?? 0;
@@ -49,8 +51,8 @@ export function ECGChart({ data, rPeaks, zoom, onZoomIn, onZoomOut, revealPercen
         </div>
       </div>
 
-      <div style={{ height: 200 }}>
-        <ResponsiveContainer width="100%" height="100%">
+      <div style={{ height: 200, minHeight: 200, width: "100%" }}>
+        <ResponsiveContainer width="100%" height={200} minWidth={0}>
           <LineChart data={displayData} margin={{ top: 5, right: 10, left: -30, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
             <XAxis

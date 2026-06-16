@@ -7,49 +7,50 @@ import {
 import { GuardianDashboard } from "../../pages/GuardianDashboard";
 import { NotificationsPage } from "../../pages/NotificationsPage";
 import { GuardianReportPage } from "../../pages/GuardianReportPage";
-import api from "../../api/authApi";
-
-export interface Patient {
-  relation_id: string;
-  user_id: string;
-  nickname: string;
-  age?: number;
-  gender?: string;
-  latest_measured_at: string | null;
-  risk_score: number | null;
-  risk_level: "high" | "mid" | "low" | null;
-}
 
 type GuardianScreen = "dashboard" | "notifications" | "report";
 
-const GUARDIAN_NAV: { id: GuardianScreen; label: string; icon: React.ElementType }[] = [
-  { id: "dashboard",     label: "요약 현황",      icon: Users    },
-  { id: "notifications", label: "위험도 알림 수신", icon: Bell     },
-  { id: "report",        label: "보호자용 리포트",  icon: FileText },
+const GUARDIAN_NAV: { id: GuardianScreen; label: string; icon: React.ElementType; ucId: string; badge?: number }[] = [
+  { id: "dashboard",     label: "요약 현황", icon: Users,    ucId: "UC-09" },
+  { id: "notifications", label: "주간 위험도 알림함",   icon: Bell,     ucId: "UC-10", badge: 2 },
+  { id: "report",        label: "보호자용 리포트",      icon: FileText, ucId: "UC-11" },
 ];
+
+const CARE_NAV: { id: GuardianScreen; label: string; icon: React.ElementType; ucId: string }[] = [];
+
+const ALL_NAV = [...GUARDIAN_NAV, ...CARE_NAV];
 
 interface GuardianLayoutProps {
   onLogout: () => void;
 }
 
 export function GuardianLayout({ onLogout }: GuardianLayoutProps) {
-  const [screen, setScreen]           = useState<GuardianScreen>("dashboard");
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [nickname, setNickname]       = useState("보호자");
-  const [patients, setPatients]       = useState<Patient[]>([]);
-  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [screen, setScreen] = useState<GuardianScreen>("dashboard");
   const navigate = useNavigate();
+  const { showToast } = useToast();
 
+  // 보호자 접속 시 쌓인 알림 요약 토스트 (1회)
   useEffect(() => {
-    api.get("/auth/me").then(r => setNickname(r.data.nickname || r.data.email)).catch(() => {});
-    api.get("/guardians/patients").then(r => {
-      setPatients(r.data);
-      if (r.data.length > 0) setSelectedUserId(r.data[0].user_id);
-    }).catch(() => {});
+    // 백엔드 완성 시: const data = await getGuardianNotifications(); 안 읽은 알림 집계
+    const unreadCount = 3; // TODO: 실제 안읽은 알림 수
+    const urgentCount = 1; // TODO: 위험도 '상' 개수
+    if (unreadCount > 0) {
+      const timer = setTimeout(() => {
+        showToast({
+          level: urgentCount > 0 ? "상" : "중",
+          title: `새 알림 ${unreadCount}건`,
+          message: urgentCount > 0
+            ? `위험 알림 ${urgentCount}건이 있어요. 주간 알림함을 확인해 주세요.`
+            : "연결된 사용자의 새로운 알림이 있어요.",
+        });
+      }, 600);
+      return () => clearTimeout(timer);
+    }
   }, []);
-
-  const handleSelectMember = (userId: string) => {
-    setSelectedUserId(userId);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [selectedMemberId, setSelectedMemberId] = useState<number>(1);
+  const handleSelectMember = (id: number) => {
+    setSelectedMemberId(id);
     setScreen("report");
     setSidebarOpen(false);
   };
@@ -57,15 +58,20 @@ export function GuardianLayout({ onLogout }: GuardianLayoutProps) {
   const renderScreen = () => {
     switch (screen) {
       case "dashboard":
-        return <GuardianDashboard patients={patients} onSelectMember={handleSelectMember} />;
+        return <GuardianDashboard onSelectMember={handleSelectMember} />;
       case "notifications":
-        return <NotificationsPage onViewReport={(userId) => { if (userId) setSelectedUserId(userId); setScreen("report"); }} />;
+        return <NotificationsPage onViewReport={() => setScreen("report")} />;
       case "report":
-        return <GuardianReportPage patients={patients} selectedUserId={selectedUserId} onSelectUser={setSelectedUserId} />;
+        return <GuardianReportPage memberId={selectedMemberId} />;
+
     }
   };
 
-  const NavBtn = ({ id, label, icon: Icon }: { id: GuardianScreen; label: string; icon: React.ElementType }) => {
+  const currentNav = ALL_NAV.find(n => n.id === screen);
+
+  const NavBtn = ({ id, label, icon: Icon, ucId, badge }: {
+    id: GuardianScreen; label: string; icon: React.ElementType; ucId: string; badge?: number;
+  }) => {
     const active = screen === id;
     return (
       <button
@@ -75,8 +81,13 @@ export function GuardianLayout({ onLogout }: GuardianLayoutProps) {
         }`}
         style={{ minHeight: 52 }}
       >
-        <Icon className="w-5 h-5 shrink-0" />
-        <span className="flex-1 font-bold" style={{ fontSize: "1rem" }}>{label}</span>
+        <Icon className="w-5 h-5 flex-shrink-0" />
+        <div className="flex-1">
+          <div className="font-bold" style={{ fontSize: "1rem" }}>{label}</div>
+        </div>
+        {badge && badge > 0 && (
+          <span className="bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">{badge}</span>
+        )}
         {active && <ChevronRight className="w-4 h-4 text-white/70" />}
       </button>
     );
@@ -84,6 +95,8 @@ export function GuardianLayout({ onLogout }: GuardianLayoutProps) {
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
+
+      {/* 사이드바 */}
       <aside className={`fixed inset-y-0 left-0 z-40 w-72 bg-[#144272] flex flex-col transform transition-transform duration-300 ${
         sidebarOpen ? "translate-x-0" : "-translate-x-full"
       } lg:translate-x-0 lg:static`}>
@@ -100,20 +113,26 @@ export function GuardianLayout({ onLogout }: GuardianLayoutProps) {
           </div>
         </div>
 
-        <nav className="flex-1 p-4 overflow-y-auto space-y-1">
-          {GUARDIAN_NAV.map(item => <NavBtn key={item.id} {...item} />)}
+        <nav className="flex-1 p-4 overflow-y-auto space-y-4">
+          <div>
+            <p className="text-white/30 font-bold px-4 pb-2" style={{ fontSize: "0.8rem", letterSpacing: "0.06em" }}>
+              보호자 기능
+            </p>
+            <div className="space-y-1">
+              {GUARDIAN_NAV.map(item => <NavBtn key={item.id} {...item} />)}
+            </div>
+          </div>
+
         </nav>
 
         <div className="p-4 border-t border-white/10">
           <button
             onClick={() => navigate("/guardian-mypage")}
-            className="flex items-center gap-3 mb-3 px-2 w-full hover:bg-white/10 rounded-xl py-1.5 transition-colors"
+            className="flex items-center gap-3 mb-3 px-2 w-full hover:bg-white/10 rounded-xl py-1.5 transition-colors group"
           >
-            <div className="w-9 h-9 bg-[#0E8080] rounded-full flex items-center justify-center text-white text-sm font-bold">
-              {nickname[0]}
-            </div>
+            <div className="w-9 h-9 bg-[#0E8080] rounded-full flex items-center justify-center text-white text-sm font-bold">김</div>
             <div className="text-left flex-1">
-              <div className="text-white font-bold" style={{ fontSize: "1rem" }}>{nickname}</div>
+              <div className="text-white font-bold" style={{ fontSize: "1rem" }}>김보호자</div>
               <div className="text-white/50 font-bold" style={{ fontSize: "0.85rem" }}>마이페이지 →</div>
             </div>
           </button>
@@ -141,10 +160,10 @@ export function GuardianLayout({ onLogout }: GuardianLayoutProps) {
           >
             {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
-          <Heart className="w-5 h-5 text-[#0E8080] fill-current" />
-          <span className="text-gray-800 font-bold" style={{ fontSize: "1.1rem" }}>
-            {GUARDIAN_NAV.find(n => n.id === screen)?.label}
-          </span>
+          <div className="flex items-center gap-2">
+            <Heart className="w-5 h-5 text-[#0E8080] fill-current" />
+            <div className="text-gray-800 font-bold" style={{ fontSize: "1.1rem" }}>{currentNav?.label}</div>
+          </div>
         </header>
 
         <main className="flex-1 overflow-y-auto">{renderScreen()}</main>
