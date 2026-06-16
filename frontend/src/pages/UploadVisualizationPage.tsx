@@ -12,12 +12,8 @@ interface ECGResult {
   ecgPoints: number[];
   rPeaks: number[];
   sampleRate: number;
-<<<<<<< HEAD
   riskLevel?: "상" | "중" | "하";
-  riskScore?: number;
-=======
-  riskScore: number | null;
->>>>>>> 78b653fedfbecfb93f5c0306b29a49eb55bdada0
+  riskScore?: number | null;
 }
 
 const DEFAULT_SAMPLE_RATE = 250;
@@ -119,23 +115,16 @@ export function UploadVisualizationPage() {
 
       const data = await pollMeasurement(measurementId);
 
-      // 백엔드에 riskLevel/riskScore 있으면 사용, 없으면 임시 판단
-      const riskLevel = data.risk_level || "상"; // TODO: 백엔드 risk_level 연동
-      const riskScore = data.risk_score ?? 78;
+      const riskLevelMap: Record<string, "상" | "중" | "하"> = { high: "상", mid: "중", low: "하" };
+      const riskLevel = riskLevelMap[data.analysis?.riskLevel] ?? "하";
+      const riskScore = data.analysis?.riskScore ?? null;
 
       setResult({
-<<<<<<< HEAD
-        ecgPoints: data.ecg_waveform_lite ?? [],
-        rPeaks: data.r_peaks ?? [],
-        sampleRate: data.sampling_rate ?? 250,
+        ecgPoints: data.ecgWaveformLite ?? [],
+        rPeaks: data.rPeaks ?? [],
+        sampleRate: data.samplingRate ?? 250,
         riskLevel,
         riskScore,
-=======
-        ecgPoints: data.ecgWaveformLite,
-        rPeaks: data.rPeaks,
-        sampleRate: data.samplingRate,
-        riskScore: data.analysis?.riskScore ?? null,
->>>>>>> 78b653fedfbecfb93f5c0306b29a49eb55bdada0
       });
       setPhase("result");
 
@@ -275,7 +264,6 @@ export function UploadVisualizationPage() {
             ✅ {(result.ecgPoints?.length ?? 0).toLocaleString()}개 샘플 · {sampleRate}Hz · 분석 완료
           </div>
 
-<<<<<<< HEAD
           {chartData.length > 0 && (
             <ECGChart
               data={chartData}
@@ -286,7 +274,7 @@ export function UploadVisualizationPage() {
               revealPercent={revealProgress}
             />
           )}
-          <RiskGauge score={result.riskScore ?? 72} />
+          {result.riskScore != null && <RiskGauge score={result.riskScore} />}
 
           {result.riskLevel === "상" && (
             <button
@@ -298,17 +286,6 @@ export function UploadVisualizationPage() {
               내 건강 결과 자세히 보기
             </button>
           )}
-=======
-          <ECGChart
-            data={chartData}
-            rPeaks={rPeaks}
-            zoom={1}
-            onZoomIn={() => {}}
-            onZoomOut={() => {}}
-            revealPercent={revealProgress}
-          />
-          {result.riskScore !== null && <RiskGauge score={result.riskScore} />}
->>>>>>> 78b653fedfbecfb93f5c0306b29a49eb55bdada0
 
           <button
             onClick={() => {
