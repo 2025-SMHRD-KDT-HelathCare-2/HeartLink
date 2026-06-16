@@ -10,6 +10,7 @@ interface ECGResult {
   ecgPoints: number[];
   rPeaks: number[];
   sampleRate: number;
+  riskScore: number | null;
 }
 
 const DEFAULT_SAMPLE_RATE = 250;
@@ -110,6 +111,7 @@ export function UploadVisualizationPage() {
         ecgPoints: data.ecgWaveformLite,
         rPeaks: data.rPeaks,
         sampleRate: data.samplingRate,
+        riskScore: data.analysis?.riskScore ?? null,
       });
       setPhase("result");
 
@@ -247,7 +249,7 @@ export function UploadVisualizationPage() {
             onZoomOut={() => {}}
             revealPercent={revealProgress}
           />
-          <RiskGauge score={72} />
+          {result.riskScore !== null && <RiskGauge score={result.riskScore} />}
 
           <button
             onClick={() => {
