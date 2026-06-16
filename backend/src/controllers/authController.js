@@ -8,6 +8,13 @@ const loginAttempts = new Map();
 const MAX_ATTEMPTS = 5;
 const LOCK_DURATION_MS = 10 * 60 * 1000;
 
+const COOKIE_RT_OPTIONS = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'lax',
+  maxAge: 3 * 24 * 60 * 60 * 1000,
+};
+
 function getAttemptInfo(key) {
   return loginAttempts.get(key) || { count: 0, lockedUntil: 0 };
 }
@@ -181,22 +188,22 @@ export const login = async (req, res, next) => {
     );
 
     await User.findByIdAndUpdate(user._id, { refreshToken });
+    res.cookie('refreshToken', refreshToken, COOKIE_RT_OPTIONS);
 
     return res.json({
       message: `${user.nickname}님, 환영합니다!`,
       token,
-      refreshToken,
-      role: user.role,
+      user: { email: user.email, role: user.role, nickname: user.nickname },
     });
   } catch (err) {
     next(err);
   }
 };
 
-// Sliding window: 요청마다 새 AT + 새 RT 발급 (3일 창 갱신)
+// 쿠키 RT로 AT 재발급 (sliding window)
 export const refreshToken = async (req, res, next) => {
   try {
-    const { refreshToken: incomingRT } = req.body;
+    const incomingRT = req.cookies?.refreshToken;
 
     if (!incomingRT) {
       return res.status(401).json({ message: '리프레시 토큰이 없습니다. 다시 로그인해 주세요.' });
@@ -205,7 +212,7 @@ export const refreshToken = async (req, res, next) => {
     let decoded;
     try {
       decoded = jwt.verify(incomingRT, process.env.JWT_REFRESH_SECRET);
-    } catch (err) {
+    } catch {
       return res.status(401).json({ message: '로그인이 만료되었습니다. 다시 로그인해 주세요.' });
     }
 
@@ -227,8 +234,42 @@ export const refreshToken = async (req, res, next) => {
     );
 
     await User.findByIdAndUpdate(user._id, { refreshToken: newRefreshToken });
+    res.cookie('refreshToken', newRefreshToken, COOKIE_RT_OPTIONS);
 
-    return res.json({ token: newToken, refreshToken: newRefreshToken });
+    return res.json({ token: newToken });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// 쿠키 RT로 AT + 사용자 정보 반환 (앱 부팅 / 소셜 콜백 시 사용)
+export const getToken = async (req, res, next) => {
+  try {
+    const incomingRT = req.cookies?.refreshToken;
+
+    if (!incomingRT) {
+      return res.status(401).json({ message: '로그인이 필요합니다.' });
+    }
+
+    let decoded;
+    try {
+      decoded = jwt.verify(incomingRT, process.env.JWT_REFRESH_SECRET);
+    } catch {
+      return res.status(401).json({ message: '로그인이 만료되었습니다. 다시 로그인해 주세요.' });
+    }
+
+    const user = await User.findById(decoded.id);
+    if (!user || user.refreshToken !== incomingRT) {
+      return res.status(401).json({ message: '유효하지 않은 세션입니다. 다시 로그인해 주세요.' });
+    }
+
+    const token = jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRES_IN || '30m' }
+    );
+
+    return res.json({ token, user: { email: user.email, role: user.role, nickname: user.nickname } });
   } catch (err) {
     next(err);
   }
@@ -261,7 +302,7 @@ export const updateMe = async (req, res, next) => {
 
 export const logout = async (req, res, next) => {
   try {
-    const { refreshToken: incomingRT } = req.body;
+    const incomingRT = req.cookies?.refreshToken;
 
     if (incomingRT) {
       const decoded = jwt.decode(incomingRT);
@@ -270,6 +311,7 @@ export const logout = async (req, res, next) => {
       }
     }
 
+    res.clearCookie('refreshToken', { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production' });
     return res.json({ message: '로그아웃 되었습니다.' });
   } catch (err) {
     next(err);

@@ -25,7 +25,8 @@ export const getReportList = async (req, res, next) => {
 
 export const getReport = async (req, res, next) => {
   try {
-    const report = await Report.findOne({ analysisId: req.params.analysisId, userId: req.user.id });
+    const report = await Report.findOne({ analysisId: req.params.analysisId, userId: req.user.id })
+      .populate('analysisId', 'riskScore');
     if (!report) return res.status(404).json({ message: '리포트가 없습니다.' });
     res.json(report);
   } catch (err) {

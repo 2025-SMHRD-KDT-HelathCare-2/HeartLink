@@ -167,7 +167,7 @@ export function LoginPage() {
           </form>
 
           <div className="mt-4">
-            <SocialLoginButtons />
+            <SocialLoginButtons role={role} />
           </div>
 
           <div className="mt-6 pt-6 border-t border-gray-100 text-center">
