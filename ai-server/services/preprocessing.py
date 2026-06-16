@@ -29,13 +29,60 @@ def bandpass_filter(signal, lowcut=0.5, highcut=40.0, fs=250, order=4):
 
 def detect_r_peaks(signal, fs=250):
     """
-    R-peak 검출
-    threshold: 최대값의 60% 이상인 피크만 검출
-    distance: 최소 박동 간격 (300ms = 200bpm 제한)
+    R-peak 검출 (Pan-Tompkins 알고리즘)
+    --------------------------------------------------
+    ECG R-peak 감지 표준 알고리즘 (1985년 Pan & Tompkins 논문 기반)
+    실제 서비스에서 갤럭시 워치 raw signal만 들어올 때 사용
+    학습 때는 MIT-BIH .atr annotation 파일로 R-peak 가져왔지만
+    실제 서비스에서는 annotation 파일이 없으므로 직접 감지해야 함
+
+    Parameters
+    ----------
+    signal : np.ndarray, ECG 신호 (250Hz 리샘플링 후)
+    fs     : int, 샘플링 레이트 (기본 250Hz)
+
+    Returns
+    -------
+    peaks : np.ndarray, R-peak 위치 (샘플 인덱스)
+
+    알고리즘 5단계:
+    1. 밴드패스 필터 (5~15Hz): QRS 성분만 강조, 나머지 잡음 제거
+    2. 미분: 신호의 기울기를 강조 → R-peak의 급격한 상승 부분 부각
+    3. 제곱: 음수를 양수로 변환 + 큰 값 더 강조
+    4. 이동평균 (150ms): 노이즈 제거, 부드럽게 만들기
+    5. 피크 검출: 임계값 이상 + 최소 간격 300ms 조건으로 R-peak 찾기
     """
-    threshold = np.max(signal) * 0.6
+
+    # 1단계: 밴드패스 필터 (5~15Hz)
+    # QRS 복합파 주파수 성분은 5~15Hz에 집중되어 있음
+    # 이 범위 밖의 P파, T파, 기저선 잡음 제거
+    nyq = 0.5 * fs
+    b, a = butter(4, [5/nyq, 15/nyq], btype='band')
+    filtered = filtfilt(b, a, signal)
+
+    # 2단계: 미분
+    # R-peak는 급격히 올라갔다 내려오는 부분
+    # 미분하면 기울기가 강조되어 R-peak 위치 파악 쉬워짐
+    diff = np.diff(filtered)
+
+    # 3단계: 제곱
+    # 미분값이 음수면 의미 없으므로 제곱해서 양수로 만듦
+    # 동시에 큰 값(R-peak)은 더 크게, 작은 값(잡음)은 더 작게
+    squared = diff ** 2
+
+    # 4단계: 이동평균 (150ms 윈도우)
+    # 150ms = 약 37샘플 (250Hz 기준)
+    # 노이즈 제거하고 부드럽게 만들어 피크 검출 안정화
+    window_size = int(0.15 * fs)
+    integrated = np.convolve(squared, np.ones(window_size)/window_size, mode='same')
+
+    # 5단계: 피크 검출
+    # threshold: 이동평균값의 50% 이상인 피크만 검출
+    # distance: 최소 300ms 간격 (200BPM 이상은 부정맥으로 간주)
+    threshold = np.mean(integrated) * 0.5
     distance  = int(fs * 0.3)
-    peaks, _  = find_peaks(signal, height=threshold, distance=distance)
+    peaks, _  = find_peaks(integrated, height=threshold, distance=distance)
+
     return peaks
 
 
