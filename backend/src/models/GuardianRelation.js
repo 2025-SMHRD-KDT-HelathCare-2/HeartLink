@@ -11,7 +11,7 @@ const guardianRelationSchema = new Schema(
     notifyPermission: { type: Boolean, required: true, default: true },
     relationStatus: {
       type: String,
-      enum: ['pending', 'accepted'],
+      enum: ['pending', 'accepted', 'rejected'],
       required: true,
       default: 'pending',
     },

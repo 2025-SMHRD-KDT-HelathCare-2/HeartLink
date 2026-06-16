@@ -107,9 +107,9 @@ export function UploadVisualizationPage() {
       const data = await pollMeasurement(measurementId);
 
       setResult({
-        ecgPoints: data.ecg_waveform_lite,
-        rPeaks: data.r_peaks,
-        sampleRate: data.sampling_rate,
+        ecgPoints: data.ecgWaveformLite,
+        rPeaks: data.rPeaks,
+        sampleRate: data.samplingRate,
       });
       setPhase("result");
 

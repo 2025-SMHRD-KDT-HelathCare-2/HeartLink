@@ -70,23 +70,23 @@ export const uploadECG = async (req, res, next) => {
     const file = req.file;
 
     const measurement = await Measurement.create({
-      user_id: req.user.id,
-      file_name: file.originalname,
-      file_ext: file.originalname.split('.').pop().toUpperCase(),
-      file_size: file.size,
+      userId: req.user.id,
+      fileName: file.originalname,
+      fileExt: file.originalname.split('.').pop().toUpperCase(),
+      fileSize: file.size,
       status: 'processing',
-      measured_at: measured_at || new Date(),
+      measuredAt: measured_at || new Date(),
     });
 
     // ===== 임시: AI 서버 대신 백엔드에서 CSV 직접 파싱 =====
     try {
-      if (measurement.file_ext === 'CSV') {
+      if (measurement.fileExt === 'CSV') {
         const { waveform, rPeaks, sampleRate } = parseCSV(file.buffer);
 
         await Measurement.findByIdAndUpdate(measurement._id, {
-          ecg_waveform_lite: waveform,
-          r_peaks: rPeaks,
-          sampling_rate: sampleRate,
+          ecgWaveformLite: waveform,
+          rPeaks,
+          samplingRate: sampleRate,
           status: 'completed',
         });
       } else {
@@ -114,11 +114,11 @@ export const uploadECG = async (req, res, next) => {
 
 export const getMeasurements = async (req, res, next) => {
   try {
-    const measurements = await Measurement.find({ user_id: req.user.id }).sort({ measured_at: -1 });
+    const measurements = await Measurement.find({ userId: req.user.id }).sort({ measuredAt: -1 });
 
     const ids = measurements.map(m => m._id);
-    const analyses = await AnalysisResult.find({ measurement_id: { $in: ids } });
-    const analysisMap = new Map(analyses.map(a => [a.measurement_id.toString(), a]));
+    const analyses = await AnalysisResult.find({ measurementId: { $in: ids } });
+    const analysisMap = new Map(analyses.map(a => [a.measurementId.toString(), a]));
 
     const result = measurements.map(m => ({
       ...m.toObject(),
@@ -133,7 +133,7 @@ export const getMeasurements = async (req, res, next) => {
 
 export const getMeasurement = async (req, res, next) => {
   try {
-    const measurement = await Measurement.findOne({ _id: req.params.id, user_id: req.user.id });
+    const measurement = await Measurement.findOne({ _id: req.params.id, userId: req.user.id });
     if (!measurement) return res.status(404).json({ message: '없는 측정 데이터입니다.' });
     res.json(measurement);
   } catch (err) {
@@ -144,7 +144,7 @@ export const getMeasurement = async (req, res, next) => {
 // 보호자가 특정 사용자(피보호자)의 측정 목록 조회
 export const getPatientMeasurements = async (req, res, next) => {
   try {
-    const measurements = await Measurement.find({ user_id: req.params.userId }).sort({ measured_at: -1 });
+    const measurements = await Measurement.find({ userId: req.params.userId }).sort({ measuredAt: -1 });
     res.json(measurements);
   } catch (err) {
     next(err);
@@ -154,7 +154,7 @@ export const getPatientMeasurements = async (req, res, next) => {
 // 보호자가 특정 사용자(피보호자)의 측정 단건 조회
 export const getPatientMeasurement = async (req, res, next) => {
   try {
-    const measurement = await Measurement.findOne({ _id: req.params.id, user_id: req.params.userId });
+    const measurement = await Measurement.findOne({ _id: req.params.id, userId: req.params.userId });
     if (!measurement) return res.status(404).json({ message: '없는 측정 데이터입니다.' });
     res.json(measurement);
   } catch (err) {

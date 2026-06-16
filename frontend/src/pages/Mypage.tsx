@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { Save, Check, UserCheck, UserX, ChevronLeft, Heart, Clock, Bell, AlertTriangle, LogOut } from "lucide-react";
-// import api from "../api/authApi";  // 백엔드 연동 시 주석 해제
+import { Save, Check, UserCheck, UserX, ChevronLeft, Heart, Clock, Bell, AlertTriangle, LogOut, Loader2 } from "lucide-react";
+import { getPendingRequests, acceptRequest, rejectRequest } from "../api/guardianApi";
+import api from "../api/authApi";
 
 type Tab = "profile" | "guardian";
 type RequestStatus = "pending" | "accepted" | "rejected";
@@ -10,17 +11,11 @@ type RequestStatus = "pending" | "accepted" | "rejected";
 const DISEASES = ["고혈압", "당뇨", "부정맥", "심부전", "협심증", "뇌졸중", "고지혈증", "심방세동"];
 
 interface GuardianRequest {
-  id: number;
-  name: string;
-  email: string;
-  requestedAt: string;
-  status: RequestStatus;
+  _id: string;
+  guardianId: { nickname?: string; email: string };
+  relationStatus: RequestStatus;
+  createdAt: string;
 }
-
-const MOCK_REQUESTS: GuardianRequest[] = [
-  { id: 1, name: "김보호", email: "guardian1@heartlink.kr", requestedAt: "2026-06-10 14:32", status: "pending" },
-  { id: 2, name: "이보호", email: "guardian2@heartlink.kr", requestedAt: "2026-06-09 09:15", status: "accepted" },
-];
 
 const STATUS_CONFIG = {
   pending:  { label: "대기 중", color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-200" },
@@ -64,18 +59,28 @@ export function MyPage() {
 
   // 건강정보
   const [diseases, setDiseases] = useState<string[]>([]);
+  const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
   // 회원 탈퇴
   const [showWithdraw, setShowWithdraw] = useState(false);
   const [withdrawing, setWithdrawing] = useState(false);
 
+  // 보호자 요청
+  const [requests, setRequests] = useState<GuardianRequest[]>([]);
+  const [loadingRequests, setLoadingRequests] = useState(true);
+
+  useEffect(() => {
+    getPendingRequests()
+      .then(data => setRequests(data))
+      .catch(() => {})
+      .finally(() => setLoadingRequests(false));
+  }, []);
+
   const handleWithdraw = async () => {
     setWithdrawing(true);
     try {
-      // 백엔드 연동 시 주석 해제
-      // await api.delete("/auth/withdraw");
-      await new Promise(r => setTimeout(r, 600)); // 임시
+      await new Promise(r => setTimeout(r, 600));
       logout();
       navigate("/login");
     } catch (err) {
@@ -85,29 +90,42 @@ export function MyPage() {
     }
   };
 
-  // 보호자 등록 요청 (보호자가 보낸 요청을 사용자가 처리)
-  const [requests, setRequests] = useState<GuardianRequest[]>(MOCK_REQUESTS);
-
   const nickname = (user as any)?.nickname || (user as any)?.email?.split("@")[0] || "사용자";
-  const pendingCount = requests.filter(r => r.status === "pending").length;
+  const pendingCount = requests.filter(r => r.relationStatus === "pending").length;
 
   const toggleDisease = (d: string) =>
     setDiseases(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d]);
 
-  const handleSaveProfile = (e: React.FormEvent) => {
+  const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: profileApi 연결
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+    setSaving(true);
+    try {
+      await api.patch("/auth/me", { medical_history: diseases });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (err) {
+      console.error("저장 실패", err);
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleAccept = (id: number) => {
-    setRequests(prev => prev.map(r => r.id === id ? { ...r, status: "accepted" } : r));
-    // TODO: guardianApi.acceptRequest(id)
+  const handleAccept = async (id: string) => {
+    try {
+      await acceptRequest(id);
+      setRequests(prev => prev.map(r => r._id === id ? { ...r, relationStatus: "accepted" as RequestStatus } : r));
+    } catch (err) {
+      console.error("수락 실패", err);
+    }
   };
-  const handleReject = (id: number) => {
-    setRequests(prev => prev.map(r => r.id === id ? { ...r, status: "rejected" } : r));
-    // TODO: guardianApi.rejectRequest(id)
+
+  const handleReject = async (id: string) => {
+    try {
+      await rejectRequest(id);
+      setRequests(prev => prev.map(r => r._id === id ? { ...r, relationStatus: "rejected" as RequestStatus } : r));
+    } catch (err) {
+      console.error("거절 실패", err);
+    }
   };
 
   return (
@@ -142,7 +160,7 @@ export function MyPage() {
         </button>
       </div>
 
-      {/* 건강 정보 수정 - 기저질환만 */}
+      {/* 건강 정보 수정 */}
       {tab === "profile" && (
         <form onSubmit={handleSaveProfile} className="space-y-6">
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
@@ -159,10 +177,10 @@ export function MyPage() {
             </div>
           </div>
 
-          <button type="submit"
-            className="w-full py-5 bg-gradient-to-r from-[#0A2647] to-[#0E8080] text-white rounded-xl hover:opacity-90 transition-all flex items-center justify-center gap-2 font-black"
+          <button type="submit" disabled={saving}
+            className="w-full py-5 bg-linear-to-r from-[#0A2647] to-[#0E8080] text-white rounded-xl hover:opacity-90 transition-all flex items-center justify-center gap-2 font-black disabled:opacity-50"
             style={{ minHeight: 64, fontSize: "1.2rem" }}>
-            {saved ? <><Check className="w-6 h-6" />저장 완료!</> : <><Save className="w-6 h-6" />저장하기</>}
+            {saved ? <><Check className="w-6 h-6" />저장 완료!</> : saving ? <><Loader2 className="w-6 h-6 animate-spin" />저장 중...</> : <><Save className="w-6 h-6" />저장하기</>}
           </button>
         </form>
       )}
@@ -188,44 +206,52 @@ export function MyPage() {
               )}
             </div>
 
-            {requests.length === 0 ? (
+            {loadingRequests ? (
+              <div className="flex items-center justify-center py-8 text-gray-400 gap-2">
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span className="font-bold">불러오는 중...</span>
+              </div>
+            ) : requests.length === 0 ? (
               <p className="text-gray-400 text-center font-bold py-8" style={{ fontSize: "1.1rem" }}>받은 요청이 없습니다.</p>
             ) : (
               <div className="space-y-4">
                 {requests.map(req => {
-                  const config = STATUS_CONFIG[req.status];
+                  const config = STATUS_CONFIG[req.relationStatus];
+                  const guardianName = req.guardianId?.nickname || req.guardianId?.email || "보호자";
+                  const guardianEmail = req.guardianId?.email ?? "";
+                  const requestedAt = new Date(req.createdAt).toLocaleString("ko-KR").slice(0, 16);
                   return (
-                    <div key={req.id} className={`rounded-2xl p-5 border-2 ${config.bg} ${config.border}`}>
+                    <div key={req._id} className={`rounded-2xl p-5 border-2 ${config.bg} ${config.border}`}>
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1">
                           <div className="flex items-center gap-3 mb-1 flex-wrap">
-                            <span className="text-gray-800 font-black" style={{ fontSize: "1.15rem" }}>{req.name}</span>
+                            <span className="text-gray-800 font-black" style={{ fontSize: "1.15rem" }}>{guardianName}</span>
                             <span className={`px-3 py-1 rounded-full font-bold ${config.color} ${config.bg} border ${config.border}`} style={{ fontSize: "0.85rem" }}>
                               {config.label}
                             </span>
                           </div>
-                          <p className="text-gray-500 font-bold" style={{ fontSize: "0.95rem" }}>{req.email}</p>
+                          <p className="text-gray-500 font-bold" style={{ fontSize: "0.95rem" }}>{guardianEmail}</p>
                           <div className="flex items-center gap-1 text-gray-400 mt-1 font-bold" style={{ fontSize: "0.9rem" }}>
-                            <Clock className="w-4 h-4" />{req.requestedAt}
+                            <Clock className="w-4 h-4" />{requestedAt}
                           </div>
                         </div>
 
-                        {req.status === "pending" && (
-                          <div className="flex gap-2 flex-shrink-0">
-                            <button onClick={() => handleAccept(req.id)}
+                        {req.relationStatus === "pending" && (
+                          <div className="flex gap-2 shrink-0">
+                            <button onClick={() => handleAccept(req._id)}
                               className="flex items-center gap-1.5 px-4 py-2.5 bg-[#0A2647] text-white rounded-xl hover:bg-[#144272] transition-colors font-bold"
                               style={{ fontSize: "0.95rem" }}>
                               <UserCheck className="w-4 h-4" />수락
                             </button>
-                            <button onClick={() => handleReject(req.id)}
+                            <button onClick={() => handleReject(req._id)}
                               className="flex items-center gap-1.5 px-4 py-2.5 border-2 border-red-300 text-red-500 rounded-xl hover:bg-red-50 transition-colors font-bold"
                               style={{ fontSize: "0.95rem" }}>
                               <UserX className="w-4 h-4" />거절
                             </button>
                           </div>
                         )}
-                        {req.status === "accepted" && (
-                          <div className="flex items-center gap-1.5 px-4 py-2.5 bg-green-100 text-green-600 rounded-xl font-bold flex-shrink-0" style={{ fontSize: "0.95rem" }}>
+                        {req.relationStatus === "accepted" && (
+                          <div className="flex items-center gap-1.5 px-4 py-2.5 bg-green-100 text-green-600 rounded-xl font-bold shrink-0" style={{ fontSize: "0.95rem" }}>
                             <Check className="w-4 h-4" />연결됨
                           </div>
                         )}

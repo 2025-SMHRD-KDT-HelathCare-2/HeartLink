@@ -5,39 +5,42 @@ import AnalysisResult from '../models/AnalysisResult.js';
 
 export const getGuardians = async (req, res, next) => {
   try {
-    const relations = await GuardianRelation.find({ user_id: req.user.id });
+    const relations = await GuardianRelation.find({ userId: req.user.id });
     res.json(relations);
   } catch (err) {
     next(err);
   }
 };
 
+// 보호자가 사용자(환자)에게 요청을 보냄
 export const addGuardian = async (req, res, next) => {
   try {
-    const count = await GuardianRelation.countDocuments({ user_id: req.user.id });
-    if (count >= 3) return res.status(400).json({ message: '보호자는 최대 3인까지 등록 가능합니다.' });
+    const { user_email } = req.body;
+    if (!user_email) return res.status(400).json({ message: '사용자 이메일을 입력해 주세요.' });
 
-    const { guardian_email } = req.body;
-    if (!guardian_email) return res.status(400).json({ message: '보호자 이메일을 입력해 주세요.' });
+    const patientUser = await User.findOne({ email: user_email.toLowerCase().trim(), role: 'user' });
+    if (!patientUser) return res.status(404).json({ message: '해당 이메일의 사용자 계정을 찾을 수 없습니다.' });
 
-    const guardianUser = await User.findOne({ email: guardian_email.toLowerCase().trim(), role: 'guardian' });
-    if (!guardianUser) return res.status(404).json({ message: '해당 이메일의 보호자 계정을 찾을 수 없습니다.' });
-
-    if (guardianUser._id.toString() === req.user.id) {
-      return res.status(400).json({ message: '자기 자신을 보호자로 등록할 수 없습니다.' });
+    if (patientUser._id.toString() === req.user.id) {
+      return res.status(400).json({ message: '자기 자신에게 요청을 보낼 수 없습니다.' });
     }
 
-    const existing = await GuardianRelation.findOne({ user_id: req.user.id, guardian_id: guardianUser._id });
-    if (existing) return res.status(409).json({ message: '이미 등록 요청을 보낸 보호자입니다.' });
+    const count = await GuardianRelation.countDocuments({ userId: patientUser._id });
+    if (count >= 3) return res.status(400).json({ message: '해당 사용자는 이미 보호자가 3인 등록되어 있습니다.' });
+
+    const existing = await GuardianRelation.findOne({ userId: patientUser._id, guardianId: req.user.id });
+    if (existing) return res.status(409).json({ message: '이미 등록 요청을 보낸 사용자입니다.' });
+
+    const guardian = await User.findById(req.user.id).select('nickname email phone');
 
     const relation = await GuardianRelation.create({
-      user_id: req.user.id,
-      guardian_id: guardianUser._id,
-      guardian_name: guardianUser.nickname,
-      guardian_contact: guardianUser.email,
-      guardian_email: guardianUser.email,
-      notify_permission: false,
-      relation_status: 'pending',
+      userId: patientUser._id,
+      guardianId: req.user.id,
+      guardianName: guardian.nickname,
+      guardianContact: guardian.phone,
+      guardianEmail: guardian.email,
+      notifyPermission: false,
+      relationStatus: 'pending',
     });
     res.status(201).json(relation);
   } catch (err) {
@@ -45,11 +48,12 @@ export const addGuardian = async (req, res, next) => {
   }
 };
 
+// 사용자(환자)가 보호자 요청을 수락
 export const acceptRelation = async (req, res, next) => {
   try {
     const relation = await GuardianRelation.findOneAndUpdate(
-      { _id: req.params.id, guardian_id: req.user.id, relation_status: 'pending' },
-      { relation_status: 'accepted', notify_permission: true },
+      { _id: req.params.id, userId: req.user.id, relationStatus: 'pending' },
+      { relationStatus: 'accepted', notifyPermission: true },
       { new: true }
     );
     if (!relation) return res.status(404).json({ message: '수락할 보호자 요청이 없습니다.' });
@@ -63,7 +67,7 @@ export const deleteGuardian = async (req, res, next) => {
   try {
     const relation = await GuardianRelation.findOneAndDelete({
       _id: req.params.id,
-      $or: [{ user_id: req.user.id }, { guardian_id: req.user.id }],
+      $or: [{ userId: req.user.id }, { guardianId: req.user.id }],
     });
     if (!relation) return res.status(404).json({ message: '없는 보호자 관계입니다.' });
     res.json({ message: '보호자 관계가 해제되었습니다.' });
@@ -76,19 +80,19 @@ export const deleteGuardian = async (req, res, next) => {
 export const getPatients = async (req, res, next) => {
   try {
     const relations = await GuardianRelation.find({
-      guardian_id: req.user.id,
-      relation_status: 'accepted',
-    }).populate('user_id', 'nickname age gender');
+      guardianId: req.user.id,
+      relationStatus: 'accepted',
+    }).populate('userId', 'nickname age gender');
 
     const patients = await Promise.all(
       relations.map(async rel => {
-        const user = rel.user_id;
-        const latest = await Measurement.findOne({ user_id: user._id, status: 'completed' })
-          .sort({ measured_at: -1 });
+        const user = rel.userId;
+        const latest = await Measurement.findOne({ userId: user._id, status: 'completed' })
+          .sort({ measuredAt: -1 });
 
         let analysis = null;
         if (latest) {
-          analysis = await AnalysisResult.findOne({ measurement_id: latest._id });
+          analysis = await AnalysisResult.findOne({ measurementId: latest._id });
         }
 
         return {
@@ -97,9 +101,9 @@ export const getPatients = async (req, res, next) => {
           nickname: user.nickname,
           age: user.age,
           gender: user.gender,
-          latest_measured_at: latest?.measured_at ?? null,
-          risk_score: analysis?.risk_score ?? null,
-          risk_level: analysis?.risk_level ?? null,
+          latest_measured_at: latest?.measuredAt ?? null,
+          risk_score: analysis?.riskScore ?? null,
+          risk_level: analysis?.riskLevel ?? null,
         };
       })
     );
@@ -110,12 +114,39 @@ export const getPatients = async (req, res, next) => {
   }
 };
 
+// 사용자(환자)가 자신에게 온 보호자 요청 목록 조회
 export const getPendingRequests = async (req, res, next) => {
   try {
     const requests = await GuardianRelation.find({
-      guardian_id: req.user.id,
-      relation_status: 'pending',
-    }).populate('user_id', 'nickname email');
+      userId: req.user.id,
+      relationStatus: 'pending',
+    }).populate('guardianId', 'nickname email');
+    res.json(requests);
+  } catch (err) {
+    next(err);
+  }
+};
+
+// 사용자(환자)가 보호자 요청을 거절
+export const rejectRelation = async (req, res, next) => {
+  try {
+    const relation = await GuardianRelation.findOneAndUpdate(
+      { _id: req.params.id, userId: req.user.id, relationStatus: 'pending' },
+      { relationStatus: 'rejected' },
+      { new: true }
+    );
+    if (!relation) return res.status(404).json({ message: '거절할 보호자 요청이 없습니다.' });
+    res.json(relation);
+  } catch (err) {
+    next(err);
+  }
+};
+
+// 보호자가 자신이 보낸 요청 목록 조회 (전체 상태)
+export const getSentRequests = async (req, res, next) => {
+  try {
+    const requests = await GuardianRelation.find({ guardianId: req.user.id })
+      .populate('userId', 'nickname email');
     res.json(requests);
   } catch (err) {
     next(err);

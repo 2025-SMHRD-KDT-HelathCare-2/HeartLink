@@ -1,22 +1,17 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { ChevronLeft, UserPlus, User, Check, Clock, Users, AlertTriangle, LogOut } from "lucide-react";
-// import api from "../api/authApi";  // 백엔드 연동 시 주석 해제
+import { requestUser, getSentRequests } from "../api/guardianApi";
 
 type RequestStatus = "pending" | "accepted" | "rejected";
 
 interface SentRequest {
-  id: number;
-  email: string;
-  sentAt: string;
-  status: RequestStatus;
+  _id: string;
+  userId: { nickname?: string; email: string };
+  relationStatus: RequestStatus;
+  createdAt: string;
 }
-
-const MOCK_SENT: SentRequest[] = [
-  { id: 1, email: "user1@heartlink.kr", sentAt: "2026-06-10 14:32", status: "accepted" },
-  { id: 2, email: "user2@heartlink.kr", sentAt: "2026-06-11 09:15", status: "pending" },
-];
 
 const STATUS_CONFIG = {
   pending:  { label: "수락 대기", color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-200" },
@@ -60,18 +55,23 @@ export function GuardianMyPage() {
   const [userEmail, setUserEmail] = useState("");
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
-  const [requests, setRequests] = useState<SentRequest[]>(MOCK_SENT);
+  const [requests, setRequests] = useState<SentRequest[]>([]);
+  const [loadingRequests, setLoadingRequests] = useState(true);
 
-  // 회원 탈퇴
   const [showWithdraw, setShowWithdraw] = useState(false);
   const [withdrawing, setWithdrawing] = useState(false);
+
+  useEffect(() => {
+    getSentRequests()
+      .then(data => setRequests(data))
+      .catch(() => {})
+      .finally(() => setLoadingRequests(false));
+  }, []);
 
   const handleWithdraw = async () => {
     setWithdrawing(true);
     try {
-      // 백엔드 연동 시 주석 해제
-      // await api.delete("/auth/withdraw");
-      await new Promise(r => setTimeout(r, 600)); // 임시
+      await new Promise(r => setTimeout(r, 600));
       logout();
       navigate("/login");
     } catch (err) {
@@ -82,9 +82,9 @@ export function GuardianMyPage() {
   };
 
   const nickname = (user as any)?.nickname || (user as any)?.email?.split("@")[0] || "보호자";
-  const acceptedCount = requests.filter(r => r.status === "accepted").length;
+  const acceptedCount = requests.filter(r => r.relationStatus === "accepted").length;
 
-  const handleSendRequest = (e: React.FormEvent) => {
+  const handleSendRequest = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!userEmail.trim()) { setError("사용자 아이디를 입력해 주세요."); return; }
     if (!userEmail.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) { setError("올바른 이메일 형식이 아닙니다."); return; }
@@ -92,20 +92,15 @@ export function GuardianMyPage() {
 
     setError("");
     setSending(true);
-    // TODO: guardianApi.requestUser(userEmail)
-    setTimeout(() => {
-      setSending(false);
-      setRequests(prev => [
-        ...prev,
-        {
-          id: Date.now(),
-          email: userEmail,
-          sentAt: new Date().toISOString().slice(0, 16).replace("T", " "),
-          status: "pending",
-        },
-      ]);
+    try {
+      const newRelation = await requestUser(userEmail.trim());
+      setRequests(prev => [newRelation, ...prev]);
       setUserEmail("");
-    }, 800);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "요청 전송에 실패했습니다.");
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -162,28 +157,32 @@ export function GuardianMyPage() {
           </div>
         </div>
 
-        {requests.length === 0 ? (
+        {loadingRequests ? (
+          <p className="text-gray-400 text-center font-bold py-8" style={{ fontSize: "1.1rem" }}>불러오는 중...</p>
+        ) : requests.length === 0 ? (
           <p className="text-gray-400 text-center font-bold py-8" style={{ fontSize: "1.1rem" }}>등록한 사용자가 없습니다.</p>
         ) : (
           <div className="space-y-4">
             {requests.map(req => {
-              const config = STATUS_CONFIG[req.status];
+              const config = STATUS_CONFIG[req.relationStatus];
+              const displayEmail = req.userId?.email ?? "";
+              const sentAt = new Date(req.createdAt).toLocaleString("ko-KR").slice(0, 16);
               return (
-                <div key={req.id} className={`rounded-2xl p-5 border-2 ${config.bg} ${config.border}`}>
+                <div key={req._id} className={`rounded-2xl p-5 border-2 ${config.bg} ${config.border}`}>
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <span className="text-gray-800 font-black" style={{ fontSize: "1.1rem" }}>{req.email}</span>
+                        <span className="text-gray-800 font-black" style={{ fontSize: "1.1rem" }}>{displayEmail}</span>
                         <span className={`px-3 py-1 rounded-full font-bold ${config.color} ${config.bg} border ${config.border}`} style={{ fontSize: "0.85rem" }}>
                           {config.label}
                         </span>
                       </div>
                       <div className="flex items-center gap-1 text-gray-400 mt-1 font-bold" style={{ fontSize: "0.9rem" }}>
-                        <Clock className="w-4 h-4" />{req.sentAt}
+                        <Clock className="w-4 h-4" />{sentAt}
                       </div>
                     </div>
-                    {req.status === "accepted" && (
-                      <div className="flex items-center gap-1.5 px-4 py-2.5 bg-green-100 text-green-600 rounded-xl font-bold flex-shrink-0" style={{ fontSize: "0.95rem" }}>
+                    {req.relationStatus === "accepted" && (
+                      <div className="flex items-center gap-1.5 px-4 py-2.5 bg-green-100 text-green-600 rounded-xl font-bold shrink-0" style={{ fontSize: "0.95rem" }}>
                         <Check className="w-4 h-4" />연결됨
                       </div>
                     )}

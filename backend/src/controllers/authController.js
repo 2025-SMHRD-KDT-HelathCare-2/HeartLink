@@ -23,8 +23,8 @@ export const register = async (req, res, next) => {
       role,
       ...(age    !== undefined && { age }),
       ...(gender !== undefined && { gender }),
-      medical_history: medical_history ?? [],
-      medications:     medications     ?? [],
+      medicalHistory: medical_history ?? [],
+      medications:    medications     ?? [],
     });
 
     return res.status(201).json({
@@ -90,7 +90,7 @@ export const login = async (req, res, next) => {
       { expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '3d' }
     );
 
-    await User.findByIdAndUpdate(user._id, { refresh_token: refreshToken });
+    await User.findByIdAndUpdate(user._id, { refreshToken });
 
     return res.json({
       message: `${user.nickname}님, 환영합니다!`,
@@ -120,7 +120,7 @@ export const refreshToken = async (req, res, next) => {
     }
 
     const user = await User.findById(decoded.id);
-    if (!user || user.refresh_token !== incomingRT) {
+    if (!user || user.refreshToken !== incomingRT) {
       return res.status(401).json({ message: '유효하지 않은 세션입니다. 다시 로그인해 주세요.' });
     }
 
@@ -136,7 +136,7 @@ export const refreshToken = async (req, res, next) => {
       { expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '3d' }
     );
 
-    await User.findByIdAndUpdate(user._id, { refresh_token: newRefreshToken });
+    await User.findByIdAndUpdate(user._id, { refreshToken: newRefreshToken });
 
     return res.json({ token: newToken, refreshToken: newRefreshToken });
   } catch (err) {
@@ -146,7 +146,7 @@ export const refreshToken = async (req, res, next) => {
 
 export const getMe = async (req, res, next) => {
   try {
-    const user = await User.findById(req.user.id).select('-password -refresh_token');
+    const user = await User.findById(req.user.id).select('-password -refreshToken');
     if (!user) return res.status(404).json({ message: '사용자를 찾을 수 없습니다.' });
     res.json(user);
   } catch (err) {
@@ -158,11 +158,11 @@ export const updateMe = async (req, res, next) => {
   try {
     const { medical_history, medications, phone } = req.body;
     const update = {};
-    if (medical_history !== undefined) update.medical_history = medical_history;
-    if (medications     !== undefined) update.medications     = medications;
-    if (phone           !== undefined) update.phone           = phone;
+    if (medical_history !== undefined) update.medicalHistory = medical_history;
+    if (medications     !== undefined) update.medications    = medications;
+    if (phone           !== undefined) update.phone          = phone;
     const user = await User.findByIdAndUpdate(req.user.id, update, { new: true })
-      .select('-password -refresh_token');
+      .select('-password -refreshToken');
     res.json(user);
   } catch (err) {
     next(err);
@@ -176,7 +176,7 @@ export const logout = async (req, res, next) => {
     if (incomingRT) {
       const decoded = jwt.decode(incomingRT);
       if (decoded?.id) {
-        await User.findByIdAndUpdate(decoded.id, { refresh_token: null });
+        await User.findByIdAndUpdate(decoded.id, { refreshToken: null });
       }
     }
 

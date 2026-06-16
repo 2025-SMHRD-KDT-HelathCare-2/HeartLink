@@ -9,12 +9,12 @@ const RISK_LABEL = { high: '위험', mid: '주의', low: '양호' };
 async function sendHighRiskSMS(userId, riskScore) {
   const [user, relations] = await Promise.all([
     User.findById(userId).select('phone nickname'),
-    GuardianRelation.find({ user_id: userId, relation_status: 'accepted' })
-      .populate('guardian_id', 'phone nickname'),
+    GuardianRelation.find({ userId, relationStatus: 'accepted' })
+      .populate('guardianId', 'phone nickname'),
   ]);
 
   const message =
-    `[HeartLink] ${user?.nickname ?? '사용자'}님의 심전도 위험도가 ` +
+    `[HeartLink] ${user?.nickname ?? '사용자'}님의 측정 결과가 ` +
     `${riskScore}점(위험)으로 측정됐습니다. 즉시 확인해 주세요.`;
 
   const targets = [];
@@ -22,7 +22,7 @@ async function sendHighRiskSMS(userId, riskScore) {
   if (user?.phone) targets.push({ to: user.phone, label: '사용자' });
 
   for (const rel of relations) {
-    const guardian = rel.guardian_id;
+    const guardian = rel.guardianId;
     if (guardian?.phone) targets.push({ to: guardian.phone, label: '보호자' });
   }
 
@@ -57,21 +57,21 @@ export const notify = async (req, res, next) => {
     } = req.body;
 
     const analysis = await AnalysisResult.findOneAndUpdate(
-      { measurement_id },
+      { measurementId: measurement_id },
       {
-        measurement_id,
-        user_id,
-        arrhythmia_class,
-        arrhythmia_prob,
-        af_detected,
-        af_prob,
-        hrv_rmssd,
-        hrv_sdnn,
-        hrv_lfhf,
-        anomaly_detected,
-        risk_score,
-        risk_level,
-        analyzed_at: new Date(),
+        measurementId: measurement_id,
+        userId: user_id,
+        arrhythmiaClass: arrhythmia_class,
+        arrhythmiaProb: arrhythmia_prob,
+        afDetected: af_detected,
+        afProb: af_prob,
+        hrvRmssd: hrv_rmssd,
+        hrvSdnn: hrv_sdnn,
+        hrvLfhf: hrv_lfhf,
+        anomalyDetected: anomaly_detected,
+        riskScore: risk_score,
+        riskLevel: risk_level,
+        analyzedAt: new Date(),
       },
       { upsert: true, new: true }
     );
