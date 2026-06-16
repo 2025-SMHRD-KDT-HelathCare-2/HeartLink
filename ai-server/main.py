@@ -124,7 +124,7 @@ async def analyze(
             "arrhythmia_prob":   result['arrhythmia_prob'],
             "af_detected":       result['af_detected'],
             "af_prob":           result['af_prob'],
-            "heart_rate":        result['heart_rate'],
+            "heart_rate":        round(result['heart_rate']),
             "hrv_rmssd":         result['hrv_rmssd'],
             "hrv_sdnn":          result['hrv_sdnn'],
             "hrv_lfhf":          result['hrv_lfhf'],
