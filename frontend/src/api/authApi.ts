@@ -124,26 +124,26 @@ export async function login(credentials: { email: string; password: string }) {
 }
 
 // ───────────────── 소셜 로그인 ─────────────────
-// 백엔드 OAuth 진입점으로 브라우저 이동 (state 생성·인가URL 리다이렉트는 백엔드가 처리)
-export function startSocialLogin(provider: "google" | "naver" | "kakao", role: "user" | "guardian") {
-  window.location.href = `${API_BASE_URL}/api/auth/${provider}?role=${role}`;
+// 백엔드 OAuth 진입점으로 브라우저 이동
+export function startSocialLogin(provider: "google" | "naver" | "kakao") {
+  window.location.href = `${API_BASE_URL}/api/auth/${provider}`;
 }
 
-// 쿠키의 RefreshToken으로 AccessToken + 사용자 정보 획득 (앱 부팅/소셜 콜백 시 사용)
+// 쿠키의 RefreshToken으로 AccessToken + 사용자 정보 획득 (부팅/콜백 시)
 export async function exchangeToken() {
-  // 응답: { token, user: { email, role } }
   const { data } = await api.post("/auth/token");
-  return data;
+  return data; // { token, user: { email, role } }
 }
 
-// ───────────────── 로그아웃 ─────────────────
-// 인터셉터 순환 방지를 위해 raw axios 사용 (쿠키 만료 + 서버 RT 무효화)
-export async function callLogout() {
-  try {
-    await axios.post(`${API_BASE_URL}/api/auth/logout`, {}, { withCredentials: true });
-  } catch {
-    // 서버 오류와 무관하게 로컬 상태는 항상 초기화
-  }
+// 신규 소셜 가입자: 역할 + 인증된 휴대폰번호로 가입 완료 → 정식 토큰 발급
+// (서버는 콜백 시 심어둔 임시 가입 쿠키로 소셜 계정을 식별)
+export async function completeSocialSignup(payload: {
+  role: "user" | "guardian";
+  phone: string;
+}) {
+  const { data } = await api.post("/auth/social/complete", payload);
+  return data; // { token, user: { email, role } }
 }
+
 
 export default api;
