@@ -1,12 +1,14 @@
 import { startSocialLogin } from "../../api/authApi";
 
+type Role = "user" | "guardian";
+
 const providers = [
   { id: "google", label: "Google로 시작하기", bg: "#FFFFFF", color: "#1F1F1F", border: "#DADCE0" },
   { id: "naver",  label: "네이버로 시작하기",  bg: "#03C75A", color: "#FFFFFF", border: "#03C75A" },
   { id: "kakao",  label: "카카오로 시작하기",  bg: "#FEE500", color: "#191600", border: "#FEE500" },
 ] as const;
 
-export function SocialLoginButtons() {
+export function SocialLoginButtons({ role }: { role: Role }) {
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-3 my-2">
@@ -19,7 +21,7 @@ export function SocialLoginButtons() {
         <button
           key={p.id}
           type="button"
-          onClick={() => startSocialLogin(p.id)}
+          onClick={() => startSocialLogin(p.id, role)}
           className="w-full flex items-center justify-center gap-2 rounded-xl border-2 font-bold transition-all hover:opacity-90 active:scale-95"
           style={{
             minHeight: 56,

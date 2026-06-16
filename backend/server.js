@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import { spawn } from 'child_process';
 import connectDB from './src/config/db.js';
 import errorHandler from './src/middlewares/errorHandler.js';
@@ -41,7 +42,11 @@ mcpServer.on('error', (err) => {
 
 process.on('exit', () => mcpServer.kill());
 
-app.use(cors());
+app.use(cors({
+  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  credentials: true,
+}));
+app.use(cookieParser());
 app.use(express.json());
 
 app.use('/api/auth', authRouter);

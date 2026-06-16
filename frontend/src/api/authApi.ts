@@ -125,8 +125,8 @@ export async function login(credentials: { email: string; password: string }) {
 
 // ───────────────── 소셜 로그인 ─────────────────
 // 백엔드 OAuth 진입점으로 브라우저 이동 (state 생성·인가URL 리다이렉트는 백엔드가 처리)
-export function startSocialLogin(provider: "google" | "naver" | "kakao") {
-  window.location.href = `${API_BASE_URL}/api/auth/${provider}`;
+export function startSocialLogin(provider: "google" | "naver" | "kakao", role: "user" | "guardian") {
+  window.location.href = `${API_BASE_URL}/api/auth/${provider}?role=${role}`;
 }
 
 // 쿠키의 RefreshToken으로 AccessToken + 사용자 정보 획득 (앱 부팅/소셜 콜백 시 사용)
