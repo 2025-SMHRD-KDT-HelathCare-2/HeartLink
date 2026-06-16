@@ -5,19 +5,19 @@ import api from "../api/authApi";
 import type { Patient } from "../components/layout/GuardianLayout";
 
 interface Analysis {
-  risk_score: number;
-  risk_level: "high" | "mid" | "low";
-  arrhythmia_class?: string;
-  arrhythmia_prob?: number;
-  af_detected?: boolean;
-  af_prob?: number;
-  hrv_rmssd?: number;
-  anomaly_detected?: boolean;
+  riskScore: number;
+  riskLevel: "high" | "mid" | "low";
+  arrhythmiaClass?: string;
+  arrhythmiaProb?: number;
+  afDetected?: boolean;
+  afProb?: number;
+  hrvRmssd?: number;
+  anomalyDetected?: boolean;
 }
 
 interface Measurement {
   _id: string;
-  measured_at: string;
+  measuredAt: string;
   status: string;
   analysis: Analysis | null;
 }
@@ -36,16 +36,16 @@ const ARRHYTHMIA_LABEL: Record<string, string> = {
 
 function buildFindings(a: Analysis): string[] {
   const list: string[] = [];
-  if (a.arrhythmia_class && a.arrhythmia_class !== "N") {
-    list.push(`부정맥 감지: ${ARRHYTHMIA_LABEL[a.arrhythmia_class] ?? a.arrhythmia_class}${a.arrhythmia_prob ? ` (확률 ${Math.round(a.arrhythmia_prob * 100)}%)` : ""}`);
+  if (a.arrhythmiaClass && a.arrhythmiaClass !== "N") {
+    list.push(`부정맥 감지: ${ARRHYTHMIA_LABEL[a.arrhythmiaClass] ?? a.arrhythmiaClass}${a.arrhythmiaProb ? ` (확률 ${Math.round(a.arrhythmiaProb * 100)}%)` : ""}`);
   }
-  if (a.af_detected) {
-    list.push(`심방세동(AF) 감지${a.af_prob ? ` — 확률 ${Math.round(a.af_prob * 100)}%` : ""}`);
+  if (a.afDetected) {
+    list.push(`심방세동(AF) 감지${a.afProb ? ` — 확률 ${Math.round(a.afProb * 100)}%` : ""}`);
   }
-  if (a.hrv_rmssd !== undefined) {
-    list.push(`심박 변이도 RMSSD: ${a.hrv_rmssd.toFixed(1)} ms`);
+  if (a.hrvRmssd !== undefined) {
+    list.push(`심박 변이도 RMSSD: ${a.hrvRmssd.toFixed(1)} ms`);
   }
-  if (a.anomaly_detected) {
+  if (a.anomalyDetected) {
     list.push("이상 신호 감지됨");
   }
   if (list.length === 0) list.push("모든 주요 수치 정상 범위");
@@ -81,7 +81,7 @@ export function GuardianReportPage({ patients, selectedUserId, onSelectUser }: G
 
   const displayed = measurements[selectedMeasIdx] ?? null;
   const analysis  = displayed?.analysis ?? null;
-  const cfg       = analysis ? RISK_CONFIG[analysis.risk_level] : DEFAULT_CFG;
+  const cfg       = analysis ? RISK_CONFIG[analysis.riskLevel] : DEFAULT_CFG;
 
   return (
     <div className="max-w-2xl mx-auto p-6">
@@ -166,7 +166,7 @@ export function GuardianReportPage({ patients, selectedUserId, onSelectUser }: G
             </div>
             <div className="divide-y divide-gray-50">
               {measurements.slice(0, 5).map((m, i) => {
-                const mc = m.analysis ? RISK_CONFIG[m.analysis.risk_level] : DEFAULT_CFG;
+                const mc = m.analysis ? RISK_CONFIG[m.analysis.riskLevel] : DEFAULT_CFG;
                 const isSelected = selectedMeasIdx === i;
                 return (
                   <button key={m._id} onClick={() => setSelectedMeasIdx(i)}
@@ -176,13 +176,13 @@ export function GuardianReportPage({ patients, selectedUserId, onSelectUser }: G
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="px-3 py-1 rounded-full text-white font-bold"
                           style={{ backgroundColor: mc.color, fontSize: "0.9rem" }}>
-                          {mc.label} {m.analysis?.risk_score ?? "?"}점
+                          {mc.label} {m.analysis?.riskScore ?? "?"}점
                         </span>
                         {i === 0 && <span className="px-2 py-0.5 bg-blue-100 text-blue-600 rounded-full font-bold" style={{ fontSize: "0.8rem" }}>최신</span>}
                       </div>
                       <div className="flex items-center gap-1 text-gray-400 mt-1 font-bold" style={{ fontSize: "0.9rem" }}>
                         <Clock className="w-3 h-3" />
-                        {new Date(m.measured_at).toLocaleString("ko-KR")}
+                        {new Date(m.measuredAt).toLocaleString("ko-KR")}
                       </div>
                     </div>
                   </button>
@@ -202,18 +202,18 @@ export function GuardianReportPage({ patients, selectedUserId, onSelectUser }: G
                       위험도 {cfg.kr} — {cfg.label}
                     </div>
                     <div className="text-gray-600 font-bold mt-1" style={{ fontSize: "1rem" }}>
-                      {currentPatient?.nickname}{currentPatient?.age ? ` (${currentPatient.age}세)` : ""} · {new Date(displayed.measured_at).toLocaleString("ko-KR")}
+                      {currentPatient?.nickname}{currentPatient?.age ? ` (${currentPatient.age}세)` : ""} · {new Date(displayed.measuredAt).toLocaleString("ko-KR")}
                     </div>
                   </div>
                   <div className="text-right shrink-0">
                     <div style={{ color: cfg.color, fontSize: "2.8rem", fontWeight: 900, lineHeight: 1 }}>
-                      {analysis?.risk_score ?? "—"}
+                      {analysis?.riskScore ?? "—"}
                     </div>
                     <div className="text-gray-400 font-bold" style={{ fontSize: "1rem" }}>/ 100점</div>
                   </div>
                 </div>
                 <div className="w-full bg-white rounded-full h-4 overflow-hidden">
-                  <div className="h-4 rounded-full" style={{ width: `${analysis?.risk_score ?? 0}%`, backgroundColor: cfg.color }} />
+                  <div className="h-4 rounded-full" style={{ width: `${analysis?.riskScore ?? 0}%`, backgroundColor: cfg.color }} />
                 </div>
               </div>
 

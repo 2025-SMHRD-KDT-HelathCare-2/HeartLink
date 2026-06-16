@@ -4,11 +4,11 @@ import api from "../api/authApi";
 
 interface Notification {
   _id: string;
-  risk_level: "high" | "mid" | "low";
+  riskLevel: "high" | "mid" | "low";
   message: string;
-  is_read: boolean;
-  sent_at: string;
-  user_id?: { nickname?: string };
+  isRead: boolean;
+  sentAt: string;
+  userId?: { nickname?: string };
 }
 
 const TYPE_CONFIG = {
@@ -36,11 +36,11 @@ export function NotificationsPage({ onViewReport }: NotificationsPageProps) {
   const markRead = async (id: string) => {
     try {
       await api.patch(`/notifications/${id}/read`);
-      setNotifications(prev => prev.map(n => n._id === id ? { ...n, is_read: true } : n));
+      setNotifications(prev => prev.map(n => n._id === id ? { ...n, isRead: true } : n));
     } catch { /* silent */ }
   };
 
-  const unreadCount = notifications.filter(n => !n.is_read).length;
+  const unreadCount = notifications.filter(n => !n.isRead).length;
 
   return (
     <div className="max-w-2xl mx-auto p-6">
@@ -80,13 +80,13 @@ export function NotificationsPage({ onViewReport }: NotificationsPageProps) {
       ) : (
         <div className="space-y-4">
           {notifications.map(n => {
-            const cfg = TYPE_CONFIG[n.risk_level];
+            const cfg = TYPE_CONFIG[n.riskLevel];
             const Icon = cfg.icon;
-            const userName = n.user_id?.nickname || "사용자";
+            const userName = n.userId?.nickname || "사용자";
             return (
               <div
                 key={n._id}
-                className={`rounded-2xl p-6 border transition-all ${!n.is_read ? "shadow-md" : "opacity-80"}`}
+                className={`rounded-2xl p-6 border transition-all ${!n.isRead ? "shadow-md" : "opacity-80"}`}
                 style={{ backgroundColor: cfg.bg, borderColor: cfg.border }}
               >
                 <div className="flex items-start gap-4">
@@ -97,11 +97,11 @@ export function NotificationsPage({ onViewReport }: NotificationsPageProps) {
                     <div className="flex items-start justify-between gap-2 mb-2">
                       <span className="font-bold" style={{ color: cfg.color, fontSize: "1.15rem" }}>
                         {cfg.label} 알림 — {userName}
-                        {!n.is_read && <span className="ml-2 inline-block w-2.5 h-2.5 bg-red-500 rounded-full align-middle" />}
+                        {!n.isRead && <span className="ml-2 inline-block w-2.5 h-2.5 bg-red-500 rounded-full align-middle" />}
                       </span>
                       <span className="text-gray-400 font-bold shrink-0 flex items-center gap-1" style={{ fontSize: "0.95rem" }}>
                         <Clock className="w-4 h-4" />
-                        {new Date(n.sent_at).toLocaleString("ko-KR")}
+                        {new Date(n.sentAt).toLocaleString("ko-KR")}
                       </span>
                     </div>
                     <p className="text-gray-700 leading-relaxed mb-3 font-bold" style={{ fontSize: "1.05rem" }}>{n.message}</p>
