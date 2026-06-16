@@ -13,8 +13,6 @@ import GuardianRelation from '../src/models/GuardianRelation.js';
 const DAYS = 30;
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/heartlink';
 
-await User.deleteMany({ email: { $in: ['senior@demo.com', 'guardian@demo.com'] } });
-
 function levelFromScore(score) {
     if (score >= 70) return 'high';
     if (score >= 40) return 'mid';
