@@ -114,22 +114,25 @@ async def analyze(
             age             = age,
             gender          = gender,
             medical_history = medical_history_list,
+            r_peaks         = preprocessed['r_peaks'],
         )
 
         return {
-            "measurement_id":   measurement_id,
-            "user_id":          user_id,
-            "arrhythmia_class": result['arrhythmia_class'],
-            "arrhythmia_prob":  result['arrhythmia_prob'],
-            "af_detected":      result['af_detected'],
-            "af_prob":          result['af_prob'],
-            "hrv_rmssd":        result['hrv_rmssd'],
-            "hrv_sdnn":         result['hrv_sdnn'],
-            "hrv_lfhf":         result['hrv_lfhf'],
-            "anomaly_detected": result['anomaly_detected'],
-            "risk_score":       result['risk_score'],
-            "risk_level":       result['risk_level'],
-            "analyzed_at":      result['analyzed_at'],
+            "measurement_id":    measurement_id,
+            "user_id":           user_id,
+            "arrhythmia_class":  result['arrhythmia_class'],
+            "arrhythmia_prob":   result['arrhythmia_prob'],
+            "af_detected":       result['af_detected'],
+            "af_prob":           result['af_prob'],
+            "heart_rate":        result['heart_rate'],
+            "hrv_rmssd":         result['hrv_rmssd'],
+            "hrv_sdnn":          result['hrv_sdnn'],
+            "hrv_lfhf":          result['hrv_lfhf'],
+            "anomaly_detected":  result['anomaly_detected'],
+            "arrhythmia_count":  result['arrhythmia_count'],
+            "risk_score":        result['risk_score'],
+            "risk_level":        result['risk_level'],
+            "analyzed_at":       result['analyzed_at'],
         }
 
     except HTTPException:
