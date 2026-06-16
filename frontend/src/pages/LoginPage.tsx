@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { login as loginApi } from "../api/authApi";
+import { SocialLoginButtons } from "../components/auth/SocialLoginButtons";
 import { Heart, Eye, EyeOff, Lock, Mail, User, Shield } from "lucide-react";
 
 type Role = "user" | "guardian";
@@ -72,14 +73,15 @@ export function LoginPage() {
     try {
       setSubmitting(true);
       const data = await loginApi({ email: form.email, password: form.password });
+      const resolvedRole: Role = data.user?.role ?? data.role;
 
-      if (data.role !== role) {
-        const opposite = data.role === "guardian" ? "보호자" : "사용자";
+      if (resolvedRole !== role) {
+        const opposite = resolvedRole === "guardian" ? "보호자" : "사용자";
         setErrors({ global: `혹시 ${opposite}로 가입하셨나요? 위에서 ${opposite} 버튼을 선택해 주세요.` });
         return;
       }
 
-      login({ email: form.email, role: data.role }, data.role, data.token);
+      login({ email: form.email, role: resolvedRole }, resolvedRole, data.token);
       navigate("/dashboard");
     } catch (err) {
       const message = err instanceof Error ? err.message : "로그인에 실패했습니다.";
@@ -163,6 +165,10 @@ export function LoginPage() {
               </button>
             </div>
           </form>
+
+          <div className="mt-4">
+            <SocialLoginButtons />
+          </div>
 
           <div className="mt-6 pt-6 border-t border-gray-100 text-center">
             <span className="text-gray-500 font-bold" style={{ fontSize: "1rem" }}>아직 회원이 아니신가요? </span>
