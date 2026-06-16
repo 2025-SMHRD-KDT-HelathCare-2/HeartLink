@@ -1,6 +1,9 @@
 import Measurement from '../models/Measurement.js';
 import AnalysisResult from '../models/AnalysisResult.js';
+import Report from '../models/Report.js';
+import User from '../models/User.js';
 import * as aiService from '../services/aiService.js';
+import { sendHighRiskSMS } from './internalController.js';
 
 // CSV를 직접 파싱해서 경량 파형과 R-peak를 추출하는 임시 함수
 // (AI 서버 완성 전까지 사용, AI 서버 연동 시 이 부분 제거하고 fire-and-forget으로 복구)
@@ -69,6 +72,8 @@ export const uploadECG = async (req, res, next) => {
     const { measured_at } = req.body;
     const file = req.file;
 
+    const user = await User.findById(req.user.id).select('age gender medicalHistory');
+
     const measurement = await Measurement.create({
       userId: req.user.id,
       fileName: file.originalname,
@@ -78,33 +83,99 @@ export const uploadECG = async (req, res, next) => {
       measuredAt: measured_at || new Date(),
     });
 
-    // ===== 임시: AI 서버 대신 백엔드에서 CSV 직접 파싱 =====
+    // CSV 파형 추출 후 AI 서버로 분석 요청
     try {
       if (measurement.fileExt === 'CSV') {
         const { waveform, rPeaks, sampleRate } = parseCSV(file.buffer);
-
         await Measurement.findByIdAndUpdate(measurement._id, {
           ecgWaveformLite: waveform,
           rPeaks,
           samplingRate: sampleRate,
-          status: 'completed',
-        });
-      } else {
-        aiService.analyze({
-          fileBuffer: file.buffer,
-          fileName: file.originalname,
-          measurementId: measurement._id,
-          userId: req.user.id,
-        }).catch(err => {
-          console.error('FastAPI 전송 실패:', err.message);
-          Measurement.findByIdAndUpdate(measurement._id, { status: 'failed' }).catch(() => {});
         });
       }
     } catch (parseErr) {
       console.error('CSV 파싱 실패:', parseErr.message);
       await Measurement.findByIdAndUpdate(measurement._id, { status: 'failed' });
+      return res.status(201).json({ measurementId: measurement._id, status: 'failed' });
     }
-    // ===== 임시 로직 끝 =====
+
+    // AI 서버 분석 요청 (fire-and-forget)
+    aiService.analyze({
+      fileBuffer: file.buffer,
+      fileName: file.originalname,
+      measurementId: measurement._id,
+      userId: req.user.id,
+      age: user?.age,
+      gender: user?.gender,
+      medicalHistory: user?.medicalHistory,
+    }).then(async ({ data }) => {
+      // 분석 결과 저장
+      const analysis = await AnalysisResult.findOneAndUpdate(
+        { measurementId: measurement._id },
+        {
+          measurementId: measurement._id,
+          userId: req.user.id,
+          arrhythmiaClass: data.arrhythmia_class,
+          arrhythmiaProb: data.arrhythmia_prob,
+          afDetected: data.af_detected,
+          afProb: data.af_prob,
+          hrvRmssd: data.hrv_rmssd,
+          hrvSdnn: data.hrv_sdnn,
+          hrvLfhf: data.hrv_lfhf,
+          anomalyDetected: data.anomaly_detected,
+          riskScore: data.risk_score,
+          riskLevel: data.risk_level,
+          heartRate: data.heart_rate,
+          analyzedAt: new Date(),
+        },
+        { upsert: true, new: true }
+      );
+
+      await Measurement.findByIdAndUpdate(measurement._id, { status: 'completed' });
+
+      if (data.risk_level === 'high') {
+        sendHighRiskSMS(req.user.id, data.risk_score).catch(err =>
+          console.error('SMS 발송 중 오류:', err.message)
+        );
+      }
+
+      // 리포트 생성 (fire-and-forget)
+      aiService.generateReport({
+        analysisId:      analysis._id,
+        userId:          req.user.id,
+        age:             user?.age,
+        gender:          user?.gender,
+        medicalHistory:  user?.medicalHistory,
+        arrhythmiaClass: data.arrhythmia_class,
+        arrhythmiaProb:  data.arrhythmia_prob,
+        afDetected:      data.af_detected,
+        afProb:          data.af_prob,
+        hrvRmssd:        data.hrv_rmssd,
+        hrvSdnn:         data.hrv_sdnn,
+        hrvLfhf:         data.hrv_lfhf,
+        anomalyDetected: data.anomaly_detected,
+        riskScore:       data.risk_score,
+        riskLevel:       data.risk_level,
+        heartRate:       data.heart_rate,
+      }).then(async ({ data: reportData }) => {
+        await Report.create({
+          analysisId:          analysis._id,
+          userId:              req.user.id,
+          reportType:          'self',
+          reportCategory:      'full_report',
+          reportTextUser:      reportData.report_text_user,
+          reportTextGuardian:  reportData.report_text_guardian,
+          recommendedAction:   reportData.recommended_action,
+          riskLevel:           data.risk_level,
+        });
+      }).catch(err => {
+        console.error('리포트 생성 실패:', err.message);
+      });
+
+    }).catch(err => {
+      console.error('AI 서버 분석 실패:', err.message);
+      Measurement.findByIdAndUpdate(measurement._id, { status: 'failed' }).catch(() => {});
+    });
 
     res.status(201).json({ measurementId: measurement._id, status: 'processing' });
   } catch (err) {

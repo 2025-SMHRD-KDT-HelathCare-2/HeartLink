@@ -1,14 +1,13 @@
 import { useState, useEffect, useMemo } from "react";
 import { Download, ChevronLeft, ChevronRight, Filter, FileText } from "lucide-react";
-// import api from "../api/authApi";  // 백엔드 연동 시 주석 해제
+import api from "../api/authApi";
 
-// ===== 백엔드 응답 구조 =====
 interface ReportHistoryItem {
   id: string;
-  date: string;   // "2026-06-01"
-  time: string;   // "09:32"
+  date: string;
+  time: string;
   level: "상" | "중" | "하";
-  score: number;
+  score: number | null;
 }
 
 const LEVEL_META = {
@@ -17,23 +16,7 @@ const LEVEL_META = {
   하: { color: "#16A34A", label: "양호" },
 };
 
-// ===== 임시 더미: 1년치(약 130개, 3일 간격) =====
-function generateDummyReports(): ReportHistoryItem[] {
-  const levels = ["상", "중", "하"] as const;
-  return Array.from({ length: 130 }, (_, i) => {
-    const level = levels[i % 3];
-    const scoreRange = { 상: [65, 90], 중: [35, 55], 하: [5, 25] }[level];
-    const d = new Date(2026, 5, 16);
-    d.setDate(d.getDate() - i * 3);
-    return {
-      id: `RPT-${String(i + 1).padStart(4, "0")}`,
-      date: d.toISOString().slice(0, 10),
-      time: `${String(8 + (i % 12)).padStart(2, "0")}:${String((i * 7) % 60).padStart(2, "0")}`,
-      level,
-      score: scoreRange[0] + ((i * 13) % (scoreRange[1] - scoreRange[0])),
-    };
-  });
-}
+const LEVEL_MAP: Record<string, "상" | "중" | "하"> = { high: "상", mid: "중", low: "하" };
 
 const PERIOD_OPTIONS = ["전체", "1주일", "1개월", "3개월", "6개월", "1년"] as const;
 const PAGE_SIZE = 8;
@@ -45,17 +28,21 @@ export function ReportHistoryPage() {
   const [levelFilter, setLevelFilter] = useState("전체");
   const [page, setPage] = useState(1);
 
-  // ===== 백엔드 연동 =====
   useEffect(() => {
     (async () => {
       try {
-        // 백엔드 완성 시 주석 해제 (period 파라미터로 서버 필터링도 가능)
-        // const res = await api.get("/reports", { params: { period: periodFilter } });
-        // setReports(res.data);
-
-        // 임시 더미
-        await new Promise(r => setTimeout(r, 400));
-        setReports(generateDummyReports());
+        const res = await api.get("/reports");
+        const items: ReportHistoryItem[] = res.data.map((r: any) => {
+          const d = new Date(r.createdAt);
+          return {
+            id: r._id,
+            date: d.toISOString().slice(0, 10),
+            time: `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`,
+            level: LEVEL_MAP[r.riskLevel] ?? "하",
+            score: r.analysisId?.riskScore ?? null,
+          };
+        });
+        setReports(items);
       } catch (err) {
         console.error("리포트 이력 조회 실패", err);
       } finally {
@@ -65,7 +52,7 @@ export function ReportHistoryPage() {
   }, []);
 
   const filtered = useMemo(() => {
-    const now = new Date(2026, 5, 16);
+    const now = new Date();
     return reports.filter(r => {
       if (levelFilter !== "전체" && r.level !== levelFilter) return false;
       if (periodFilter === "전체") return true;
@@ -81,7 +68,6 @@ export function ReportHistoryPage() {
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  // 필터 바뀌면 1페이지로
   useEffect(() => { setPage(1); }, [periodFilter, levelFilter]);
 
   return (
@@ -98,7 +84,6 @@ export function ReportHistoryPage() {
           <h4 className="text-gray-700 font-bold" style={{ fontSize: "1.1rem" }}>기간 · 위험도 선택</h4>
         </div>
 
-        {/* 기간 */}
         <p className="text-gray-500 font-bold mb-2" style={{ fontSize: "1rem" }}>기간</p>
         <div className="flex flex-wrap gap-2 mb-5">
           {PERIOD_OPTIONS.map(p => (
@@ -110,7 +95,6 @@ export function ReportHistoryPage() {
           ))}
         </div>
 
-        {/* 위험도 */}
         <p className="text-gray-500 font-bold mb-2" style={{ fontSize: "1rem" }}>위험도</p>
         <div className="flex flex-wrap gap-2">
           {["전체", "상", "중", "하"].map(l => (
@@ -123,14 +107,12 @@ export function ReportHistoryPage() {
         </div>
       </div>
 
-      {/* 결과 개수 */}
       <div className="flex items-center justify-between mb-4">
         <p className="text-gray-600 font-bold" style={{ fontSize: "1.05rem" }}>
           총 <span className="text-[#0A2647]">{filtered.length}</span>개의 기록
         </p>
       </div>
 
-      {/* 로딩 */}
       {loading ? (
         <div className="flex items-center justify-center py-16">
           <div className="w-8 h-8 border-4 border-[#0E8080] border-t-transparent rounded-full animate-spin" />
@@ -146,7 +128,7 @@ export function ReportHistoryPage() {
             const meta = LEVEL_META[r.level];
             return (
               <div key={r.id} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center gap-4">
-                <div className="w-2 h-14 rounded-full flex-shrink-0" style={{ backgroundColor: meta.color }} />
+                <div className="w-2 h-14 rounded-full shrink-0" style={{ backgroundColor: meta.color }} />
                 <div className="flex-1">
                   <div className="flex items-center gap-3 flex-wrap">
                     <span className="text-gray-800 font-black" style={{ fontSize: "1.15rem" }}>{r.date}</span>
@@ -154,11 +136,11 @@ export function ReportHistoryPage() {
                   </div>
                   <span className="inline-block px-3 py-1 rounded-full text-white font-bold mt-1"
                     style={{ backgroundColor: meta.color, fontSize: "0.9rem" }}>
-                    {meta.label} {r.score}점
+                    {meta.label}{r.score != null ? ` ${r.score}점` : ""}
                   </span>
                 </div>
                 <button onClick={() => alert(`${r.date} 리포트 PDF 저장`)}
-                  className="p-3 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors flex-shrink-0"
+                  className="p-3 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors shrink-0"
                   style={{ minHeight: 52, minWidth: 52 }}>
                   <Download className="w-6 h-6 text-gray-600" />
                 </button>
@@ -168,7 +150,6 @@ export function ReportHistoryPage() {
         </div>
       )}
 
-      {/* 페이지네이션 */}
       {!loading && totalPages > 1 && (
         <div className="flex items-center justify-center gap-2 mt-6">
           <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}

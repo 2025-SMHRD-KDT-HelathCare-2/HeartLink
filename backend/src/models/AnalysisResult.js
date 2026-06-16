@@ -18,6 +18,7 @@ const analysisResultSchema = new Schema(
     anomalyDetected: { type: Boolean },
     riskScore: { type: Number, required: true, min: 0, max: 100 },
     riskLevel: { type: String, enum: ['high', 'mid', 'low'], required: true },
+    heartRate: { type: Number },
     analyzedAt: { type: Date, required: true },
   },
   { timestamps: { createdAt: 'createdAt', updatedAt: false } }
