@@ -1,6 +1,8 @@
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
+import PhoneVerification from '../models/PhoneVerification.js';
+import { sendSMS } from '../services/smsService.js';
 
 const loginAttempts = new Map();
 const MAX_ATTEMPTS = 5;
@@ -10,9 +12,92 @@ function getAttemptInfo(key) {
   return loginAttempts.get(key) || { count: 0, lockedUntil: 0 };
 }
 
+export const sendVerificationCode = async (req, res, next) => {
+  try {
+    const { phone } = req.body;
+    if (!phone) return res.status(400).json({ message: '전화번호를 입력해 주세요.' });
+
+    const exists = await User.findOne({ phone });
+    if (exists) return res.status(409).json({ message: '이미 가입된 전화번호입니다.' });
+
+    const recent = await PhoneVerification.findOne({
+      phone,
+      purpose: 'signup',
+      createdAt: { $gt: new Date(Date.now() - 60 * 1000) },
+    });
+    if (recent) return res.status(429).json({ message: '1분 후 다시 요청해 주세요.' });
+
+    const code = String(Math.floor(100000 + Math.random() * 900000));
+    const hashed = await bcrypt.hash(code, 10);
+
+    await PhoneVerification.create({
+      phone,
+      code: hashed,
+      purpose: 'signup',
+      verified: false,
+      attemptCount: 0,
+      expiresAt: new Date(Date.now() + 5 * 60 * 1000),
+    });
+
+    await sendSMS({ to: phone, message: `[HeartLink] 인증번호: ${code} (5분 이내 입력)` });
+
+    res.json({ message: '인증번호가 발송되었습니다.' });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const verifyPhoneCode = async (req, res, next) => {
+  try {
+    const { phone, code } = req.body;
+    if (!phone || !code) return res.status(400).json({ message: '전화번호와 인증번호를 입력해 주세요.' });
+
+    const record = await PhoneVerification.findOne({
+      phone,
+      purpose: 'signup',
+      verified: false,
+      expiresAt: { $gt: new Date() },
+    }).sort({ createdAt: -1 });
+
+    if (!record) return res.status(400).json({ message: '인증번호가 만료되었습니다. 다시 요청해 주세요.' });
+
+    if (record.attemptCount >= 5) {
+      return res.status(400).json({ message: '인증 시도 횟수를 초과했습니다. 다시 요청해 주세요.' });
+    }
+
+    const match = await bcrypt.compare(code, record.code);
+    if (!match) {
+      await PhoneVerification.findByIdAndUpdate(record._id, { $inc: { attemptCount: 1 } });
+      return res.status(400).json({ message: '인증번호가 올바르지 않습니다.' });
+    }
+
+    // 인증 성공 — 15분 유효하게 연장 (회원가입 완료할 시간)
+    await PhoneVerification.findByIdAndUpdate(record._id, {
+      verified: true,
+      expiresAt: new Date(Date.now() + 15 * 60 * 1000),
+    });
+
+    res.json({ message: '인증이 완료되었습니다.' });
+  } catch (err) {
+    next(err);
+  }
+};
+
 export const register = async (req, res, next) => {
   try {
-    const { email, password, nickname, role, age, gender, medical_history, medications } = req.body;
+    const { email, password, nickname, role, age, gender, medical_history, medications, phone } = req.body;
+
+    if (!phone) return res.status(400).json({ message: '전화번호 인증이 필요합니다.' });
+
+    const verifiedRecord = await PhoneVerification.findOne({
+      phone,
+      purpose: 'signup',
+      verified: true,
+      expiresAt: { $gt: new Date() },
+    });
+    if (!verifiedRecord) {
+      return res.status(400).json({ message: '전화번호 인증을 먼저 완료해 주세요.' });
+    }
 
     const hashed = await bcrypt.hash(password, 12);
 
@@ -21,11 +106,16 @@ export const register = async (req, res, next) => {
       password: hashed,
       nickname,
       role,
+      phone,
+      phoneVerified: true,
       ...(age    !== undefined && { age }),
       ...(gender !== undefined && { gender }),
       medicalHistory: medical_history ?? [],
       medications:    medications     ?? [],
     });
+
+    // 사용한 인증 레코드 삭제
+    await PhoneVerification.findByIdAndDelete(verifiedRecord._id);
 
     return res.status(201).json({
       message: '회원가입이 완료되었습니다! 로그인 화면에서 로그인해 주세요.',

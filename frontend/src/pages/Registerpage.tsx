@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Heart, Eye, EyeOff, Lock, Mail, User, Shield,
@@ -25,7 +25,8 @@ function RoleToast({ role }: { role: Role }) {
   const [visible, setVisible] = useState(false);
   const [displayRole, setDisplayRole] = useState<Role>(role);
 
-  useEffect(() => {
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useState(() => {
     setVisible(false);
     const t = setTimeout(() => {
       setDisplayRole(role);
@@ -34,7 +35,7 @@ function RoleToast({ role }: { role: Role }) {
       });
     }, 100);
     return () => clearTimeout(t);
-  }, [role]);
+  });
 
   const isUser = displayRole === "user";
   return (
@@ -69,7 +70,7 @@ function SuccessModal({ onClose }: { onClose: () => void }) {
           HeartLink 회원이 되셨습니다.<br />로그인 후 서비스를 이용하세요.
         </p>
         <button onClick={onClose}
-          className="w-full py-4 bg-gradient-to-r from-[#0A2647] to-[#0E8080] text-white rounded-xl font-bold hover:opacity-90 transition-all"
+          className="w-full py-4 bg-linear-to-r from-[#0A2647] to-[#0E8080] text-white rounded-xl font-bold hover:opacity-90 transition-all"
           style={{ fontSize: "1.15rem" }}>
           로그인하러 가기
         </button>
@@ -90,13 +91,18 @@ export function RegisterPage() {
     email: "", password: "", passwordConfirm: "", nickname: "",
     age: "", gender: "" as "" | "M" | "F",
     medical_history: "", medications: "",
+    phone: "",
   });
+
+  // 전화번호 인증 상태 — 프론트 UI 완성 후 연결
+  const [phoneVerified, setPhoneVerified] = useState(false);
 
   const setField = (key: string, value: string) =>
     setForm((prev) => ({ ...prev, [key]: value }));
 
   const validate = () => {
     const errs: Record<string, string> = {};
+    if (!phoneVerified) errs.phone = "전화번호 인증을 완료해 주세요.";
     if (!form.email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/))
       errs.email = "올바른 이메일 주소를 입력해 주세요.";
     if (form.password.length < 8)
@@ -123,7 +129,7 @@ export function RegisterPage() {
 
     const payload: RegisterPayload = {
       email: form.email, password: form.password,
-      nickname: form.nickname, role,
+      nickname: form.nickname, role, phone: form.phone.trim(),
     };
     if (form.age) payload.age = Number(form.age);
     if (form.gender) payload.gender = form.gender;
@@ -150,7 +156,7 @@ export function RegisterPage() {
     <>
       {showSuccess && <SuccessModal onClose={() => navigate("/login")} />}
 
-      <div className="min-h-screen bg-gradient-to-br from-[#0A2647] via-[#144272] to-[#0E8080] flex items-center justify-center p-4 py-10">
+      <div className="min-h-screen bg-linear-to-br from-[#0A2647] via-[#144272] to-[#0E8080] flex items-center justify-center p-4 py-10">
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-24 h-24 bg-white/20 rounded-full mb-4 backdrop-blur-sm">
@@ -193,6 +199,9 @@ export function RegisterPage() {
 
               <div className="pt-1">
                 <h2 className="text-[#0A2647] font-bold mb-4 pb-2 border-b-2 border-gray-100" style={{ fontSize: "1.2rem" }}>기본 정보</h2>
+
+                {/* TODO: 전화번호 인증 UI — phone, phoneVerified state 연결 */}
+                {errors.phone && <p className="text-red-500 mb-3 font-bold" style={errStyle}>{errors.phone}</p>}
 
                 <div className="mb-5">
                   <FieldLabel text="이메일 주소" required />
@@ -267,13 +276,11 @@ export function RegisterPage() {
                       style={{ minHeight: 56, fontSize: "1.05rem" }}>여성</button>
                   </div>
                 </div>
-
-
               </div>
               )}
 
               <button type="submit" disabled={submitting}
-                className="w-full py-5 bg-gradient-to-r from-[#0A2647] to-[#0E8080] text-white rounded-xl hover:opacity-90 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-bold"
+                className="w-full py-5 bg-linear-to-r from-[#0A2647] to-[#0E8080] text-white rounded-xl hover:opacity-90 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-bold"
                 style={{ minHeight: 60, fontSize: "1.2rem" }}>
                 {submitting ? "가입 처리 중..." : "회원가입"}
               </button>
