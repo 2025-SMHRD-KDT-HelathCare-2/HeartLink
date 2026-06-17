@@ -1,31 +1,14 @@
 import { useState, useEffect } from "react";
 import { Bell, AlertTriangle, AlertCircle, Info, FileText, Filter } from "lucide-react";
-// import { getGuardianNotifications, markNotificationRead, type AppNotification } from "../api/notificationApi";
+import { getGuardianNotifications, markNotificationRead, type AppNotification } from "../api/notificationApi";
 
 type RiskLevel = "상" | "중" | "하";
-interface AppNotification {
-  id: string;
-  level: RiskLevel;
-  message: string;
-  createdAt: string;
-  memberName: string;
-  isRead: boolean;
-}
 
-const LEVEL_META = {
+const LEVEL_META: Record<RiskLevel, { color: string; bg: string; border: string; label: string; icon: React.ElementType }> = {
   상: { color: "#DC2626", bg: "#FEF2F2", border: "#FECACA", label: "위험", icon: AlertTriangle },
   중: { color: "#D97706", bg: "#FFFBEB", border: "#FDE68A", label: "주의", icon: AlertCircle },
   하: { color: "#16A34A", bg: "#F0FDF4", border: "#BBF7D0", label: "양호", icon: Info },
 };
-
-// ===== 임시 더미 (백엔드: GET /notifications/guardian, 최근 7일) =====
-const DUMMY: AppNotification[] = [
-  { id: "1", level: "상", message: "심장이 불규칙하게 뛰는 증상이 감지되었습니다.", createdAt: "2026-06-16T09:32:00", memberName: "김할머니", isRead: false },
-  { id: "2", level: "중", message: "심장 박동이 평소보다 빨랐습니다.", createdAt: "2026-06-15T14:10:00", memberName: "박할아버지", isRead: false },
-  { id: "3", level: "하", message: "심장 상태가 양호합니다.", createdAt: "2026-06-14T08:05:00", memberName: "이순자", isRead: true },
-  { id: "4", level: "중", message: "심장 박동 리듬에 약한 이상이 있었습니다.", createdAt: "2026-06-13T11:20:00", memberName: "김할머니", isRead: true },
-  { id: "5", level: "상", message: "위험 신호가 감지되었습니다. 확인이 필요합니다.", createdAt: "2026-06-12T16:45:00", memberName: "박할아버지", isRead: true },
-];
 
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -46,30 +29,21 @@ export function NotificationsPage({ onViewReport }: NotificationsPageProps) {
   const [levelFilter, setLevelFilter] = useState("전체");
 
   useEffect(() => {
-    (async () => {
-      try {
-        // 백엔드 완성 시 주석 해제
-        // const data = await getGuardianNotifications();
-        // setItems(data);
-        await new Promise(r => setTimeout(r, 400));
-        setItems(DUMMY);
-      } catch (err) {
-        console.error("알림 조회 실패", err);
-      } finally {
-        setLoading(false);
-      }
-    })();
+    getGuardianNotifications()
+      .then(data => setItems(data))
+      .catch(err => console.error("알림 조회 실패", err))
+      .finally(() => setLoading(false));
   }, []);
 
-  const markRead = (id: string) => {
+  const handleMarkRead = (id: string) => {
     setItems(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
-    // markNotificationRead(id);  // 백엔드 완성 시 주석 해제
+    markNotificationRead(id).catch(err => console.error("읽음 처리 실패", err));
   };
 
-  const members = ["전체", ...Array.from(new Set(items.map(i => i.memberName)))];
+  const members = ["전체", ...Array.from(new Set(items.map(i => i.memberName ?? "").filter(Boolean)))];
 
   const filtered = items.filter(n => {
-    if (memberFilter !== "전체" && n.memberName !== memberFilter) return false;
+    if (memberFilter !== "전체" && (n.memberName ?? "") !== memberFilter) return false;
     if (levelFilter !== "전체" && n.level !== levelFilter) return false;
     return true;
   });
@@ -102,7 +76,7 @@ export function NotificationsPage({ onViewReport }: NotificationsPageProps) {
         </div>
         <p className="text-gray-500 font-bold mb-2" style={{ fontSize: "0.95rem" }}>위험도</p>
         <div className="flex flex-wrap gap-2">
-          {["전체", "상", "중", "하"].map(l => (
+          {(["전체", "상", "중", "하"] as const).map(l => (
             <button key={l} onClick={() => setLevelFilter(l)}
               className={`px-4 py-2 rounded-xl border-2 transition-all font-bold ${levelFilter === l ? "border-[#0E8080] bg-[#0E8080]/10 text-[#0E8080]" : "border-gray-200 text-gray-500"}`}
               style={{ fontSize: "0.95rem" }}>
@@ -119,20 +93,22 @@ export function NotificationsPage({ onViewReport }: NotificationsPageProps) {
       ) : filtered.length === 0 ? (
         <div className="bg-white rounded-2xl p-12 shadow-sm border border-gray-100 text-center">
           <Bell className="w-12 h-12 mx-auto text-gray-300 mb-3" />
-          <p className="text-gray-400 font-bold" style={{ fontSize: "1.1rem" }}>해당 조건의 알림이 없습니다.</p>
+          <p className="text-gray-400 font-bold" style={{ fontSize: "1.1rem" }}>
+            {items.length === 0 ? "최근 7일간 알림이 없습니다." : "해당 조건의 알림이 없습니다."}
+          </p>
         </div>
       ) : (
         <div className="space-y-3">
           {filtered.map(n => {
-            const meta = LEVEL_META[n.level];
+            const meta = LEVEL_META[n.level as RiskLevel] ?? LEVEL_META["하"];
             const Icon = meta.icon;
             return (
               <div key={n.id}
-                onClick={() => markRead(n.id)}
+                onClick={() => handleMarkRead(n.id)}
                 className={`rounded-2xl p-5 border-2 cursor-pointer transition-all ${n.isRead ? "bg-white border-gray-100" : ""}`}
                 style={!n.isRead ? { backgroundColor: meta.bg, borderColor: meta.border } : {}}>
                 <div className="flex items-start gap-3">
-                  <Icon className="w-7 h-7 flex-shrink-0 mt-0.5" style={{ color: meta.color }} />
+                  <Icon className="w-7 h-7 shrink-0 mt-0.5" style={{ color: meta.color }} />
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <span className="text-gray-800 font-black" style={{ fontSize: "1.1rem" }}>{n.memberName}</span>

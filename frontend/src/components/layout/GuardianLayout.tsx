@@ -5,6 +5,8 @@ import {
   ChevronRight, Shield
 } from "lucide-react";
 import api from "../../api/authApi";
+import { useAuth } from "../../context/AuthContext";
+import type { AppNotification } from "../../api/notificationApi";
 import { GuardianDashboard } from "../../pages/GuardianDashboard";
 import { NotificationsPage } from "../../pages/NotificationsPage";
 import { GuardianReportPage } from "../../pages/GuardianReportPage";
@@ -22,15 +24,11 @@ export interface Patient {
 
 type GuardianScreen = "dashboard" | "notifications" | "report";
 
-const GUARDIAN_NAV: { id: GuardianScreen; label: string; icon: React.ElementType; ucId: string; badge?: number }[] = [
-  { id: "dashboard",     label: "요약 현황", icon: Users,    ucId: "UC-09" },
-  { id: "notifications", label: "주간 위험도 알림함",   icon: Bell,     ucId: "UC-10", badge: 2 },
-  { id: "report",        label: "보호자용 리포트",      icon: FileText, ucId: "UC-11" },
+const GUARDIAN_NAV: { id: GuardianScreen; label: string; icon: React.ElementType; ucId: string }[] = [
+  { id: "dashboard",     label: "요약 현황",         icon: Users,    ucId: "UC-09" },
+  { id: "notifications", label: "주간 위험도 알림함", icon: Bell,     ucId: "UC-10" },
+  { id: "report",        label: "보호자용 리포트",    icon: FileText, ucId: "UC-11" },
 ];
-
-const CARE_NAV: { id: GuardianScreen; label: string; icon: React.ElementType; ucId: string }[] = [];
-
-const ALL_NAV = [...GUARDIAN_NAV, ...CARE_NAV];
 
 interface GuardianLayoutProps {
   onLogout: () => void;
@@ -39,9 +37,14 @@ interface GuardianLayoutProps {
 export function GuardianLayout({ onLogout }: GuardianLayoutProps) {
   const [screen, setScreen] = useState<GuardianScreen>("dashboard");
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+
+  const nickname = user?.nickname ?? user?.email?.split("@")[0] ?? "보호자";
+  const initial = nickname[0] ?? "보";
 
   useEffect(() => {
     api.get("/guardians/patients")
@@ -50,7 +53,13 @@ export function GuardianLayout({ onLogout }: GuardianLayoutProps) {
         if (r.data.length > 0) setSelectedUserId(r.data[0].user_id);
       })
       .catch(err => console.error("환자 목록 불러오기 실패", err));
+
+    api.get("/notifications/guardian")
+      .then(r => setNotifications(r.data))
+      .catch(err => console.error("알림 불러오기 실패", err));
   }, []);
+
+  const unreadCount = notifications.filter(n => !n.isRead).length;
 
   const handleSelectMember = (userId: string) => {
     setSelectedUserId(userId);
@@ -61,18 +70,30 @@ export function GuardianLayout({ onLogout }: GuardianLayoutProps) {
   const renderScreen = () => {
     switch (screen) {
       case "dashboard":
-        return <GuardianDashboard onSelectMember={handleSelectMember} />;
+        return (
+          <GuardianDashboard
+            patients={patients}
+            notifications={notifications}
+            onSelectMember={handleSelectMember}
+          />
+        );
       case "notifications":
         return <NotificationsPage onViewReport={() => setScreen("report")} />;
       case "report":
-        return <GuardianReportPage patients={patients} selectedUserId={selectedUserId} onSelectUser={setSelectedUserId} />;
+        return (
+          <GuardianReportPage
+            patients={patients}
+            selectedUserId={selectedUserId}
+            onSelectUser={setSelectedUserId}
+          />
+        );
     }
   };
 
-  const currentNav = ALL_NAV.find(n => n.id === screen);
+  const currentNav = GUARDIAN_NAV.find(n => n.id === screen);
 
-  const NavBtn = ({ id, label, icon: Icon, ucId, badge }: {
-    id: GuardianScreen; label: string; icon: React.ElementType; ucId: string; badge?: number;
+  const NavBtn = ({ id, label, icon: Icon, badge }: {
+    id: GuardianScreen; label: string; icon: React.ElementType; badge?: number; ucId?: string;
   }) => {
     const active = screen === id;
     return (
@@ -87,8 +108,10 @@ export function GuardianLayout({ onLogout }: GuardianLayoutProps) {
         <div className="flex-1">
           <div className="font-bold" style={{ fontSize: "1rem" }}>{label}</div>
         </div>
-        {badge && badge > 0 && (
-          <span className="bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">{badge}</span>
+        {badge != null && badge > 0 && (
+          <span className="bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
+            {badge > 9 ? "9+" : badge}
+          </span>
         )}
         {active && <ChevronRight className="w-4 h-4 text-white/70" />}
       </button>
@@ -121,10 +144,15 @@ export function GuardianLayout({ onLogout }: GuardianLayoutProps) {
               보호자 기능
             </p>
             <div className="space-y-1">
-              {GUARDIAN_NAV.map(item => <NavBtn key={item.id} {...item} />)}
+              {GUARDIAN_NAV.map(item => (
+                <NavBtn
+                  key={item.id}
+                  {...item}
+                  badge={item.id === "notifications" ? unreadCount : undefined}
+                />
+              ))}
             </div>
           </div>
-
         </nav>
 
         <div className="p-4 border-t border-white/10">
@@ -132,9 +160,11 @@ export function GuardianLayout({ onLogout }: GuardianLayoutProps) {
             onClick={() => navigate("/guardian-mypage")}
             className="flex items-center gap-3 mb-3 px-2 w-full hover:bg-white/10 rounded-xl py-1.5 transition-colors group"
           >
-            <div className="w-9 h-9 bg-[#0E8080] rounded-full flex items-center justify-center text-white text-sm font-bold">김</div>
+            <div className="w-9 h-9 bg-[#0E8080] rounded-full flex items-center justify-center text-white text-sm font-bold">
+              {initial}
+            </div>
             <div className="text-left flex-1">
-              <div className="text-white font-bold" style={{ fontSize: "1rem" }}>김보호자</div>
+              <div className="text-white font-bold" style={{ fontSize: "1rem" }}>{nickname}</div>
               <div className="text-white/50 font-bold" style={{ fontSize: "0.85rem" }}>마이페이지 →</div>
             </div>
           </button>
