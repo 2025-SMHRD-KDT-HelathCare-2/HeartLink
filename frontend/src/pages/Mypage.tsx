@@ -86,7 +86,7 @@ export function MyPage() {
   const handleWithdraw = async () => {
     setWithdrawing(true);
     try {
-      await new Promise(r => setTimeout(r, 600));
+      await api.delete('/auth/me');
       logout();
       navigate("/login");
     } catch (err) {

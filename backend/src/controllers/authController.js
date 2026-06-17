@@ -2,6 +2,11 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 import PhoneVerification from '../models/PhoneVerification.js';
+import Measurement from '../models/Measurement.js';
+import AnalysisResult from '../models/AnalysisResult.js';
+import Report from '../models/Report.js';
+import Notification from '../models/Notification.js';
+import GuardianRelation from '../models/GuardianRelation.js';
 import { sendSMS } from '../services/smsService.js';
 
 const loginAttempts = new Map();
@@ -295,6 +300,34 @@ export const updateMe = async (req, res, next) => {
     const user = await User.findByIdAndUpdate(req.user.id, update, { new: true })
       .select('-password -refreshToken');
     res.json(user);
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const deleteMe = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+
+    const measurements = await Measurement.find({ userId }).select('_id');
+    const measurementIds = measurements.map(m => m._id);
+
+    const analyses = await AnalysisResult.find({ measurementId: { $in: measurementIds } }).select('_id');
+    const analysisIds = analyses.map(a => a._id);
+
+    await Promise.all([
+      Report.deleteMany({ analysisId: { $in: analysisIds } }),
+      AnalysisResult.deleteMany({ measurementId: { $in: measurementIds } }),
+      Measurement.deleteMany({ userId }),
+      Notification.deleteMany({ $or: [{ userId }, { guardianId: userId }] }),
+      GuardianRelation.deleteMany({ $or: [{ userId }, { guardianId: userId }] }),
+      PhoneVerification.deleteMany({ phone: (await User.findById(userId).select('phone'))?.phone }),
+    ]);
+
+    await User.findByIdAndDelete(userId);
+
+    res.clearCookie('refreshToken', { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production' });
+    res.json({ message: '탈퇴가 완료되었습니다.' });
   } catch (err) {
     next(err);
   }
