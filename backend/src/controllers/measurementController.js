@@ -21,32 +21,56 @@ function parseCSV(buffer) {
   const lines = text.trim().split(/\r?\n/);
   if (lines.length < 2) throw new Error('CSV 데이터가 너무 적습니다.');
 
-  // 헤더에서 따옴표 제거 후 비교 (예: 'sample #','MLII','V5')
-  const headers = lines[0].split(',').map(h => h.trim().replace(/^['"]|['"]$/g, '').toLowerCase());
-  const candidates = ['ecg', 'y', 'value', 'signal', 'mv', 'mlii', 'v5', 'v1', 'v2', 'v6'];
-  let yIdx = headers.findIndex(h => candidates.includes(h));
-  // 못 찾으면 'sample #'(인덱스) 다음 컬럼을 신호로 간주
-  if (yIdx === -1) {
-    const sampleIdx = headers.findIndex(h => h.includes('sample'));
-    yIdx = sampleIdx !== -1 ? sampleIdx + 1 : 1;
+  // 애플워치 CSV: 상단에 한글 메타데이터, 이후 숫자 한 줄씩
+  // 데이터 시작 줄 인덱스와 샘플링 레이트 자동 감지
+  let dataStartIdx = -1;
+  let detectedSampleRate = 250;
+
+  for (let i = 0; i < Math.min(lines.length, 30); i++) {
+    const line = lines[i].trim();
+    // 샘플링 레이트 추출: "심박수,512헤르츠" 형태
+    const hrMatch = line.match(/(\d+)\s*헤르츠/);
+    if (hrMatch) detectedSampleRate = parseInt(hrMatch[1], 10);
+    // 순수 숫자 줄이면 데이터 시작
+    if (dataStartIdx === -1 && /^-?\d+(\.\d+)?$/.test(line)) {
+      dataStartIdx = i;
+    }
   }
-  if (yIdx === -1 || yIdx >= headers.length) throw new Error('ECG 데이터 컬럼을 찾을 수 없습니다.');
 
   const raw = [];
-  for (let i = 1; i < lines.length; i++) {
-    const cols = lines[i].split(',');
-    const y = parseFloat(cols[yIdx]);
-    if (!isNaN(y)) raw.push(y);
+
+  if (dataStartIdx !== -1) {
+    // 애플워치 포맷: 숫자 한 줄씩
+    for (let i = dataStartIdx; i < lines.length; i++) {
+      const y = parseFloat(lines[i].trim());
+      if (!isNaN(y)) raw.push(y);
+    }
+  } else {
+    // MIT-BIH 포맷: 컬럼 헤더 CSV
+    const headers = lines[0].split(',').map(h => h.trim().replace(/^['"]|['"]$/g, '').toLowerCase());
+    const candidates = ['ecg', 'y', 'value', 'signal', 'mv', 'mlii', 'v5', 'v1', 'v2', 'v6'];
+    let yIdx = headers.findIndex(h => candidates.includes(h));
+    if (yIdx === -1) {
+      const sampleIdx = headers.findIndex(h => h.includes('sample'));
+      yIdx = sampleIdx !== -1 ? sampleIdx + 1 : 1;
+    }
+    if (yIdx === -1 || yIdx >= headers.length) throw new Error('ECG 데이터 컬럼을 찾을 수 없습니다.');
+    for (let i = 1; i < lines.length; i++) {
+      const cols = lines[i].split(',');
+      const y = parseFloat(cols[yIdx]);
+      if (!isNaN(y)) raw.push(y);
+    }
   }
+
   if (raw.length < 10) throw new Error('유효한 데이터가 너무 적습니다.');
 
-  // 정규화: 평균을 빼고 -1~1 범위로 스케일링 (raw ADC 값 대응)
+  // 정규화: 평균을 빼고 -1~1 범위로 스케일링
   const mean = raw.reduce((a, b) => a + b, 0) / raw.length;
   const centered = raw.map(v => v - mean);
   const maxAbs = centered.reduce((m, v) => Math.max(m, Math.abs(v)), 0) || 1;
   const waveform = centered.map(v => Math.round((v / maxAbs) * 1000) / 1000);
 
-  const sampleRate = 250;
+  const sampleRate = detectedSampleRate;
 
   const max = waveform.reduce((m, v) => Math.max(m, v), -Infinity);
   const threshold = max * 0.6;
@@ -73,7 +97,7 @@ function parseCSV(buffer) {
     finalSampleRate = Math.round(sampleRate / step);
   }
 
-  return { waveform: finalWaveform, rPeaks: finalRPeaks, sampleRate: finalSampleRate };
+  return { waveform: finalWaveform, rPeaks: finalRPeaks, sampleRate: finalSampleRate, originalSampleRate: detectedSampleRate };
 }
 
 export const uploadECG = async (req, res, next) => {
@@ -97,9 +121,11 @@ export const uploadECG = async (req, res, next) => {
     });
 
     // CSV 파형 추출 후 AI 서버로 분석 요청
+    let samplingRate = 512;
     try {
       if (measurement.fileExt === 'CSV') {
-        const { waveform, rPeaks, sampleRate } = parseCSV(file.buffer);
+        const { waveform, rPeaks, sampleRate, originalSampleRate } = parseCSV(file.buffer);
+        samplingRate = originalSampleRate;
         await Measurement.findByIdAndUpdate(measurement._id, {
           ecgWaveformLite: waveform,
           rPeaks,
@@ -121,7 +147,17 @@ export const uploadECG = async (req, res, next) => {
       age: user?.age,
       gender: user?.gender,
       medicalHistory: user?.medicalHistory,
+      samplingRate,
     }).then(async ({ data }) => {
+      // AI가 주는 risk_level은 점수와 불일치할 수 있으므로 점수 기반으로 재계산
+      const score = data.risk_score ?? 0;
+      const riskLevel = score >= 70 ? 'high' : score >= 40 ? 'mid' : 'low';
+      console.log('[AI 분석 결과]', {
+        risk_score: score, risk_level_ai: data.risk_level, risk_level_used: riskLevel,
+        arrhythmia_class: data.arrhythmia_class, arrhythmia_prob: data.arrhythmia_prob,
+        heart_rate: data.heart_rate, hrv_rmssd: data.hrv_rmssd, hrv_sdnn: data.hrv_sdnn,
+        af_detected: data.af_detected, anomaly_detected: data.anomaly_detected,
+      });
       // 분석 결과 저장
       const analysis = await AnalysisResult.findOneAndUpdate(
         { measurementId: measurement._id },
@@ -153,15 +189,15 @@ export const uploadECG = async (req, res, next) => {
       }).populate('guardianId', 'deviceToken');
 
       // 보호자 알림: 중/상일 때만 DB 기록 + FCM push
-      if ((data.risk_level === 'high' || data.risk_level === 'mid') && guardianRelations.length > 0) {
+      if ((riskLevel === 'high' || riskLevel === 'mid') && guardianRelations.length > 0) {
         await Notification.insertMany(
           guardianRelations.map(rel => ({
             analysisId:  analysis._id,
             userId:      req.user.id,
             guardianId:  rel.guardianId._id ?? rel.guardianId,
-            riskLevel:   data.risk_level,
+            riskLevel,
             channel:     'push',
-            message:     RISK_MESSAGES[data.risk_level] ?? RISK_MESSAGES.low,
+            message:     RISK_MESSAGES[riskLevel] ?? RISK_MESSAGES.low,
             sendStatus:  'success',
             isRead:      false,
             sentAt:      new Date(),
@@ -171,19 +207,19 @@ export const uploadECG = async (req, res, next) => {
         for (const rel of guardianRelations) {
           const token = rel.guardianId?.deviceToken;
           if (token) {
-            sendPushNotification(token, '보호 중인 분에게 이상이 감지됐어요', RISK_MESSAGES[data.risk_level] ?? RISK_MESSAGES.low)
+            sendPushNotification(token, '보호 중인 분에게 이상이 감지됐어요', RISK_MESSAGES[riskLevel] ?? RISK_MESSAGES.low)
               .catch(err => console.error('보호자 FCM 실패:', err.message));
           }
         }
       }
 
       // 사용자 FCM push + SMS: 상일 때만
-      if (data.risk_level === 'high') {
+      if (riskLevel === 'high') {
         if (user?.deviceToken) {
           sendPushNotification(user.deviceToken, '위험 신호가 감지되었어요', '심장이 불규칙하게 뛰는 증상이 있어요. 내 건강 결과를 확인해 주세요.')
             .catch(err => console.error('사용자 FCM 실패:', err.message));
         }
-        sendHighRiskSMS(req.user.id, data.risk_score).catch(err =>
+        sendHighRiskSMS(req.user.id, score).catch(err =>
           console.error('SMS 발송 중 오류:', err.message)
         );
       }
@@ -203,8 +239,8 @@ export const uploadECG = async (req, res, next) => {
         hrvSdnn:         data.hrv_sdnn,
         hrvLfhf:         data.hrv_lfhf,
         anomalyDetected: data.anomaly_detected,
-        riskScore:       data.risk_score,
-        riskLevel:       data.risk_level,
+        riskScore:       score,
+        riskLevel,
         heartRate:       data.heart_rate,
       }).then(async ({ data: reportData }) => {
         await Report.create({
