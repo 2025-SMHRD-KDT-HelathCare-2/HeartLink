@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import {
-  register, login, refreshToken, getToken, logout, getMe, updateMe,
+  register, login, refreshToken, getToken, logout, getMe, updateMe, deleteMe,
   sendVerificationCode, verifyPhoneCode,
 } from '../controllers/authController.js';
 import { redirectToProvider, handleCallback, socialComplete } from '../controllers/socialController.js';
@@ -18,6 +18,7 @@ router.post('/refresh',                           refreshToken);
 router.post('/logout',                            logout);
 router.get('/me',                  auth,          getMe);
 router.patch('/me',                auth,          updateMe);
+router.delete('/me',               auth,          deleteMe);
 
 // 소셜 로그인
 router.post('/social/complete',                   socialComplete);
