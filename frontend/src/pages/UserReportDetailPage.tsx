@@ -59,7 +59,7 @@ export function UserReportDetailPage() {
           date: (r.createdAt || "").slice(0, 10),
           riskScore: r.riskScore ?? 0,
           riskLevel: LEVEL_MAP[r.riskLevel] ?? "하",
-          reportText: r.reportTextUser ?? "",
+          reportText: r.report_text_user ?? r.reportTextUser ?? "",
           ecgPoints: r.ecgWaveformLite ?? [],
           rPeaks: r.rPeaks ?? [],
         });

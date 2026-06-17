@@ -7,7 +7,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   BarChart, Bar
 } from "recharts";
-// import api from "../api/authApi";  // 백엔드 연동 시 주석 해제
+import api from "../api/authApi";
 
 // ===== 백엔드 응답 구조 =====
 interface ReportData {
@@ -23,7 +23,8 @@ interface ReportData {
   hrvTrend: Array<{ day: string; value: number }>;
 }
 
-// ===== 임시 더미 데이터 (백엔드 완성 시 제거) =====
+// ===== 더 이상 사용되지 않는 더미 데이터 (참고용으로만 보관) =====
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const DUMMY_REPORT: ReportData = {
   memberName: "김할머니",
   date: "2026-06-01",
@@ -61,41 +62,17 @@ const RISK_CONFIG = {
 const WEEKDAYS = ["일요일", "월요일", "화요일", "수요일", "목요일", "금요일", "토요일"];
 
 const TTS_SPEEDS = [
-  { label: "느리게", value: 0.7 },
-  { label: "보통", value: 0.85 },
-  { label: "빠르게", value: 1.1 },
+  { label: "느리게", idx: 0 },
+  { label: "보통", idx: 1 },
+  { label: "빠르게", idx: 2 },
 ];
-
-function useTTS() {
-  const [playing, setPlaying] = useState(false);
-  const uRef = useRef<SpeechSynthesisUtterance | null>(null);
-
-  const speak = (text: string, rate: number) => {
-    if (!window.speechSynthesis) return;
-    window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = "ko-KR";
-    u.rate = rate;
-    u.onstart = () => setPlaying(true);
-    u.onend = () => setPlaying(false);
-    u.onerror = () => setPlaying(false);
-    uRef.current = u;
-    window.speechSynthesis.speak(u);
-  };
-
-  const stop = () => {
-    window.speechSynthesis.cancel();
-    setPlaying(false);
-  };
-
-  useEffect(() => () => window.speechSynthesis.cancel(), []);
-  return { playing, speak, stop };
-}
 
 export function GuardianReportDetailPage() {
   const { memberId } = useParams();
   const navigate = useNavigate();
-  const { playing, speak, stop } = useTTS();
+  const [playing, setPlaying] = useState(false);
+  const [ttsLoading, setTtsLoading] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const [report, setReport] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -103,26 +80,29 @@ export function GuardianReportDetailPage() {
 
   // ===== 백엔드 연동 =====
   useEffect(() => {
-    // 백엔드 완성 시 아래 주석 해제하고 더미 부분 제거
-    /*
     (async () => {
       try {
         const res = await api.get(`/reports/guardian/${memberId}`);
-        setReport(res.data);
+        const r = res.data;
+        const LEVEL_MAP: Record<string, "상" | "중" | "하"> = { high: "상", mid: "중", low: "하" };
+        setReport({
+          memberName: r.member_name ?? r.memberName ?? "",
+          date: (r.created_at ?? r.createdAt ?? "").slice(0, 10),
+          riskScore: r.risk_score ?? r.riskScore ?? 0,
+          riskLevel: LEVEL_MAP[r.risk_level ?? r.riskLevel] ?? "하",
+          heartRate: r.heart_rate ?? r.heartRate ?? 0,
+          arrhythmiaCount: r.arrhythmia_count ?? r.arrhythmiaCount ?? 0,
+          reportText: r.report_text_guardian ?? r.reportTextGuardian ?? "",
+          ecgPoints: r.ecg_waveform_lite ?? r.ecgWaveformLite ?? [],
+          rPeaks: r.r_peaks ?? r.rPeaks ?? [],
+          hrvTrend: r.hrv_trend ?? r.hrvTrend ?? [],
+        });
       } catch (err) {
         console.error("리포트 조회 실패", err);
       } finally {
         setLoading(false);
       }
     })();
-    */
-
-    // 임시: 더미 데이터로 로딩 시뮬레이션
-    const timer = setTimeout(() => {
-      setReport(DUMMY_REPORT);
-      setLoading(false);
-    }, 600);
-    return () => clearTimeout(timer);
   }, [memberId]);
 
   const config = report ? RISK_CONFIG[report.riskLevel] : RISK_CONFIG.하;
@@ -138,18 +118,45 @@ export function GuardianReportDetailPage() {
     return report.ecgPoints.map((y, i) => ({ x: Math.round((i / 250) * 100) / 100, y }));
   }, [report]);
 
+  const stopTTS = () => {
+    audioRef.current?.pause();
+    setPlaying(false);
+  };
+
+  const playTTS = async (speed: number) => {
+    if (!memberId) return;
+    try {
+      stopTTS();
+      setTtsLoading(true);
+      const res = await api.get(`/reports/${memberId}/tts`, {
+        params: { speed },
+        responseType: "blob",
+      });
+      const url = URL.createObjectURL(res.data);
+      const audio = new Audio(url);
+      audioRef.current = audio;
+      audio.onplay = () => setPlaying(true);
+      audio.onended = () => setPlaying(false);
+      audio.onerror = () => setPlaying(false);
+      await audio.play();
+    } catch (err) {
+      console.error("TTS 재생 실패", err);
+    } finally {
+      setTtsLoading(false);
+    }
+  };
+
   const handleTTS = () => {
-    if (playing) stop();
-    else if (report) speak(report.reportText, TTS_SPEEDS[speedIdx].value);
+    if (playing) stopTTS();
+    else playTTS(speedIdx);
   };
 
   const handleSpeedChange = (idx: number) => {
     setSpeedIdx(idx);
-    if (playing && report) {
-      stop();
-      setTimeout(() => speak(report.reportText, TTS_SPEEDS[idx].value), 100);
-    }
+    if (playing) playTTS(idx);
   };
+
+  useEffect(() => () => { audioRef.current?.pause(); }, []);
 
   if (loading) {
     return (
@@ -194,12 +201,13 @@ export function GuardianReportDetailPage() {
         <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
           <button
             onClick={handleTTS}
-            className={`w-full flex items-center justify-center gap-3 py-4 rounded-xl border-2 transition-all font-black mb-4 ${
+            disabled={ttsLoading}
+            className={`w-full flex items-center justify-center gap-3 py-4 rounded-xl border-2 transition-all font-black mb-4 disabled:opacity-50 ${
               playing ? "bg-red-50 border-red-400 text-red-600" : "bg-white border-[#0A2647] text-[#0A2647] hover:bg-[#0A2647] hover:text-white"
             }`}
             style={{ minHeight: 64, fontSize: "1.2rem" }}
           >
-            {playing ? <><StopCircle className="w-7 h-7" />멈추기</> : <><Volume2 className="w-7 h-7" />🔊 리포트 듣기</>}
+            {ttsLoading ? "준비 중..." : playing ? <><StopCircle className="w-7 h-7" />멈추기</> : <><Volume2 className="w-7 h-7" />🔊 리포트 듣기</>}
           </button>
 
           <div>
