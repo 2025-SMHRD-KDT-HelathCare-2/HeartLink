@@ -62,6 +62,20 @@ def calculate_risk(af_detected, af_prob, arr_class, arr_prob,
     위험도 산출 함수
     3단계로 계산: ECG 점수 → 임상 보정 → 최종 등급
 
+    [v2 수정 배경]
+    애플워치 "심실빈맥(고위험)" 라벨 테스트 파일을 분석했을 때,
+    heart_rate=142(명백한 빈맥)인데도 risk_level='low'로 잘못 나오는
+    문제를 발견함. 원인 2가지를 찾아 수정함:
+    1) 심박수 자체가 ECG 점수 계산에 전혀 반영되지 않았음
+       (AFib이 감지된 경우에만 심박수를 참고했고, 그 외에는 무시됨)
+    2) HRV(SDNN/RMSSD)가 너무 "낮을" 때만 위험으로 봤음.
+       실제로는 리듬이 불규칙하면 RR간격 변동이 커져서 HRV가
+       비정상적으로 "높게" 측정될 수 있는데, 이 경우를 놓치고 있었음
+    → HR_score 항목을 신규 추가하고, HRV_score를 양방향(낮음/높음
+      모두 위험)으로 수정. 추가로, 심박수가 임상적으로 명백히
+      위험한 수준(140 이상 또는 40 이하)이면 가중합산 점수와 무관하게
+      바로 'high'로 분류하는 예외 규칙을 추가함.
+
     Parameters
     ----------
     af_detected     : bool,  AFib 감지 여부
@@ -82,15 +96,15 @@ def calculate_risk(af_detected, af_prob, arr_class, arr_prob,
 
     # ==================================================
     # 1단계: ECG 분석 점수 (0~100)
-    # 4가지 점수를 가중치로 합산
+    # 5가지 점수를 가중치로 합산 (HR_score 신규 추가)
     # ==================================================
 
-    # AF_score (가중치 0.30)
+    # AF_score (가중치 0.25, 기존 0.30에서 조정)
     # AFib 감지됐을 때만 확률 × 100, 아니면 0
     # 심박수랑 같이 봐야 해서 단독으로 high 안 됨 (3단계에서 처리)
     AF_score = af_prob * 100 if af_detected else 0
 
-    # ARR_score (가중치 0.40, 가장 높음)
+    # ARR_score (가중치 0.35, 기존 0.40에서 조정 - 여전히 가장 높음)
     # 부정맥 클래스별 기본 위험점수 × 예측 확률
     # VEB(심실성): 90점 → 가장 위험, 빈발 시 심실빈맥 위험
     # F(융합박동): 40점 → 중간 위험
@@ -100,26 +114,51 @@ def calculate_risk(af_detected, af_prob, arr_class, arr_prob,
     arr_base  = {'N': 0, 'SVEB': 20, 'VEB': 90, 'F': 40, 'Q': 30}
     ARR_score = arr_base.get(arr_class, 0) * arr_prob
 
-    # HRV_score (가중치 0.20)
+    # HR_score (가중치 0.20, 신규 추가)
+    # 심박수 자체가 정상 범위를 벗어난 정도를 점수화
+    # 의학적 기준: 정상 안정시 심박수는 60~100 BPM
+    # 100 초과 = 빈맥(tachycardia), 60 미만 = 서맥(bradycardia)
+    # 벗어난 정도가 클수록 단계적으로 높은 점수 부여
+    # (AI의 부정맥 클래스 분류는 대표 박동 1개의 '모양'만 보기 때문에,
+    #  리듬 전체의 빠르기/느리기 자체는 별도로 봐야 놓치지 않음)
+    if heart_rate > 150:
+        HR_score = 100      # 심한 빈맥 (심실빈맥 의심 수준)
+    elif heart_rate > 130:
+        HR_score = 70       # 중등도 빈맥
+    elif heart_rate > 100:
+        HR_score = 40       # 경미한 빈맥
+    elif heart_rate < 40:
+        HR_score = 100      # 심한 서맥
+    elif heart_rate < 60:
+        HR_score = 40       # 경미한 서맥
+    else:
+        HR_score = 0        # 정상 범위 (60~100)
+
+    # HRV_score (가중치 0.15, 기존 0.20에서 조정)
     # 정상 범위 이탈 정도를 점수화
     # SDNN 30ms 미만: 자율신경 기능 저하
     # RMSSD 18ms 미만: 부교감신경 활동 저하
     # LF/HF 0.5~2.0 범위 밖: 교감/부교감 불균형
-    SDNN_dev  = max(0, (30 - hrv_sdnn) / 30) * 100
-    RMSSD_dev = max(0, (18 - hrv_rmssd) / 18) * 100
+    # [v2 추가] 위 지표가 너무 "높은" 경우도 위험 신호로 추가
+    # (리듬이 불규칙하면 RR간격 변동성이 비정상적으로 커져서
+    #  HRV 수치 자체가 매우 높게 측정될 수 있음 - 변동성이 커서
+    #  건강한 것과 불규칙해서 위험한 것을 구분하기 위함)
+    SDNN_dev  = max(0, (30 - hrv_sdnn) / 30, (hrv_sdnn - 60) / 60) * 100
+    RMSSD_dev = max(0, (18 - hrv_rmssd) / 18, (hrv_rmssd - 45) / 45) * 100
     LFHF_dev  = 50 if (hrv_lfhf < 0.5 or hrv_lfhf > 2.0) else 0
-    HRV_score = (SDNN_dev + RMSSD_dev + LFHF_dev) / 3
+    HRV_score = min(100, (SDNN_dev + RMSSD_dev + LFHF_dev) / 3)
 
-    # ANOM_score (가중치 0.10)
+    # ANOM_score (가중치 0.05, 기존 0.10에서 조정)
     # Isolation Forest가 HRV 패턴 이상 감지 시 100점
-    # 위 3개 지표로 못 잡는 패턴 이상을 보완
+    # 위 지표들로 못 잡는 패턴 이상을 보완
     ANOM_score = 100 if anomaly_detected else 0
 
-    # 가중 합산
-    ecg_score = (0.30 * AF_score +
-                 0.40 * ARR_score +
-                 0.20 * HRV_score +
-                 0.10 * ANOM_score)
+    # 가중 합산 (HR_score 추가로 가중치 재배분: 25/35/20/15/5)
+    ecg_score = (0.25 * AF_score +
+                 0.35 * ARR_score +
+                 0.20 * HR_score +
+                 0.15 * HRV_score +
+                 0.05 * ANOM_score)
 
     # ==================================================
     # 2단계: 임상 위험 보정 (CHA2DS2-VASc 기반)
@@ -154,6 +193,10 @@ def calculate_risk(af_detected, af_prob, arr_class, arr_prob,
 
     # 위험도 등급 결정
     # AF는 심박수랑 같이 봐야 함 (간호사 임상 피드백)
+    # [v2 추가] 점수 계산보다 먼저 특수 케이스(예외 규칙)를 확인함
+    # → 가중 합산 점수는 "여러 항목이 골고루 위험해야" 높게 나오는
+    #   구조라서, "딱 한 가지 지표만 매우 위험한" 경우(예: 부정맥
+    #   분류는 정상인데 심박수만 142인 경우)를 놓칠 수 있기 때문
     if af_detected and heart_rate >= 100:
         # AF + 빠른 심박수 → 당장 응급실
         risk_level = 'high'
@@ -162,6 +205,11 @@ def calculate_risk(af_detected, af_prob, arr_class, arr_prob,
         risk_level = 'mid'
     elif arr_class == 'VEB' and arr_prob >= 0.70:
         # 심실성 부정맥 빈발 → 위험
+        risk_level = 'high'
+    elif heart_rate >= 140 or heart_rate <= 40:
+        # [v2 신규] 부정맥 클래스 분류 결과와 무관하게,
+        # 심박수 자체가 심한 빈맥/서맥 수준이면 무조건 high
+        # (140 BPM은 심실빈맥을 의심할 수 있는 위험 수준)
         risk_level = 'high'
     elif risk_score >= 67:
         risk_level = 'high'
