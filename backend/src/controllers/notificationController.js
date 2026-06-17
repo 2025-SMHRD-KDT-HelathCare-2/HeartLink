@@ -51,7 +51,10 @@ export const getGuardianNotifications = async (req, res, next) => {
 export const markAsRead = async (req, res, next) => {
   try {
     const notification = await Notification.findOneAndUpdate(
-      { _id: req.params.id, userId: req.user.id },
+      {
+        _id: req.params.id,
+        $or: [{ userId: req.user.id }, { guardianId: req.user.id }],
+      },
       { isRead: true },
       { new: true }
     );

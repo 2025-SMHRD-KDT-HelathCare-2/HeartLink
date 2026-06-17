@@ -303,7 +303,17 @@ export const getMeasurement = async (req, res, next) => {
 export const getPatientMeasurements = async (req, res, next) => {
   try {
     const measurements = await Measurement.find({ userId: req.params.userId }).sort({ measuredAt: -1 });
-    res.json(measurements);
+
+    const ids = measurements.map(m => m._id);
+    const analyses = await AnalysisResult.find({ measurementId: { $in: ids } });
+    const analysisMap = new Map(analyses.map(a => [a.measurementId.toString(), a]));
+
+    const result = measurements.map(m => ({
+      ...m.toObject(),
+      analysis: analysisMap.get(m._id.toString()) ?? null,
+    }));
+
+    res.json(result);
   } catch (err) {
     next(err);
   }

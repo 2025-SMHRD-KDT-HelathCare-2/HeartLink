@@ -7,6 +7,7 @@ type Role = "user" | "guardian";
 interface UserData {
   email: string;
   role: Role;
+  nickname?: string;
 }
 
 interface AuthContextType {

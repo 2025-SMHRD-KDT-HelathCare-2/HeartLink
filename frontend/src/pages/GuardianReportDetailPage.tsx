@@ -128,7 +128,7 @@ export function GuardianReportDetailPage() {
     try {
       stopTTS();
       setTtsLoading(true);
-      const res = await api.get(`/reports/${memberId}/tts`, {
+      const res = await api.get(`/reports/guardian/${memberId}/tts`, {
         params: { speed },
         responseType: "blob",
       });
