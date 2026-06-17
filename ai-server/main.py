@@ -89,55 +89,72 @@ async def analyze(
         csv_text = contents.decode('utf-8')
         lines    = csv_text.strip().split('\n')
 
-        # 첫 줄이 헤더인지 숫자 데이터인지 판별
-        first_cols = [c.strip().strip("'\"") for c in lines[0].split(',')]
-        is_header  = any(not _is_number(v) for v in first_cols)
+        signal_raw = None
 
-        if is_header:
-            headers    = [h.lower() for h in first_cols]
-            data_lines = lines[1:]
+        # Apple Watch 포맷 감지: 메타데이터 이후 순수 숫자 한 줄씩 시작
+        data_start_idx = None
+        for i, line in enumerate(lines[:30]):
+            stripped = line.strip()
+            if stripped and _is_number(stripped):
+                data_start_idx = i
+                break
+
+        if data_start_idx is not None and data_start_idx > 0:
+            # Apple Watch 포맷: 숫자 한 줄씩
+            ecg_values = []
+            for i in range(data_start_idx, len(lines)):
+                stripped = lines[i].strip()
+                if stripped and _is_number(stripped):
+                    ecg_values.append(float(stripped))
+            signal_raw = np.array(ecg_values, dtype=np.float32)
         else:
-            headers    = []
-            data_lines = lines
+            # MIT-BIH 포맷: 컬럼 CSV
+            first_cols = [c.strip().strip("'\"") for c in lines[0].split(',')]
+            is_header  = any(not _is_number(v) for v in first_cols)
 
-        # ECG 신호 컬럼 찾기 (헤더가 있으면 이름으로, 없으면 나중에 분산으로 결정)
-        candidates = ['ecg', 'y', 'value', 'signal', 'mv', 'mlii', 'v5', 'v1', 'v2']
-        y_idx = next((i for i, h in enumerate(headers) if h in candidates), None)
-
-        # 모든 컬럼 파싱
-        all_rows = []
-        for line in data_lines:
-            cols = line.split(',')
-            row  = []
-            for c in cols:
-                try:
-                    row.append(float(c.strip()))
-                except ValueError:
-                    row.append(float('nan'))
-            if row:
-                all_rows.append(row)
-
-        if not all_rows:
-            raise HTTPException(status_code=400, detail="ECG 데이터가 없습니다.")
-
-        # 행 길이를 최빈값으로 통일한 뒤 numpy 배열로 변환
-        max_cols   = max(len(r) for r in all_rows)
-        data_arr   = np.full((len(all_rows), max_cols), np.nan, dtype=np.float32)
-        for i, row in enumerate(all_rows):
-            data_arr[i, :len(row)] = row
-
-        if y_idx is None:
-            # 헤더 매칭 실패 → 분산이 가장 큰 컬럼 선택 (단조 증가하는 타임스탬프 컬럼 방지)
-            if max_cols == 1:
-                y_idx = 0
+            if is_header:
+                headers    = [h.lower() for h in first_cols]
+                data_lines = lines[1:]
             else:
-                col_stds = np.nanstd(data_arr, axis=0)
-                y_idx    = int(np.argmax(col_stds))
+                headers    = []
+                data_lines = lines
 
-        signal_raw = data_arr[:, y_idx]
-        signal_raw = signal_raw[~np.isnan(signal_raw)]
+            candidates = ['ecg', 'y', 'value', 'signal', 'mv', 'mlii', 'v5', 'v1', 'v2']
+            y_idx = next((i for i, h in enumerate(headers) if h in candidates), None)
 
-        if len(signal_raw) < 100:
+            all_rows = []
+            for line in data_lines:
+                cols = line.split(',')
+                row  = []
+                for c in cols:
+                    try:
+                        row.append(float(c.strip()))
+                    except ValueError:
+                        row.append(float('nan'))
+                if row:
+                    all_rows.append(row)
+
+            if not all_rows:
+                raise HTTPException(status_code=400, detail="ECG 데이터가 없습니다.")
+
+            max_cols = max(len(r) for r in all_rows)
+            data_arr = np.full((len(all_rows), max_cols), np.nan, dtype=np.float32)
+            for i, row in enumerate(all_rows):
+                data_arr[i, :len(row)] = row
+
+            if y_idx is None:
+                if max_cols == 1:
+                    y_idx = 0
+                else:
+                    col_stds = np.nanstd(data_arr, axis=0)
+                    # nan을 -1로 치환해서 argmax가 nan 컬럼을 선택하지 않도록 방지
+                    col_stds = np.where(np.isnan(col_stds), -1.0, col_stds)
+                    y_idx    = int(np.argmax(col_stds))
+
+            signal_raw = data_arr[:, y_idx]
+            signal_raw = signal_raw[~np.isnan(signal_raw)]
+
+        if signal_raw is None or len(signal_raw) < 100:
             raise HTTPException(status_code=400, detail="ECG 데이터가 너무 적습니다.")
 
         signal_raw = signal_raw.astype(np.float32)

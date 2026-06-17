@@ -1,7 +1,7 @@
 import axios from 'axios';
 import FormData from 'form-data';
 
-export const analyze = ({ fileBuffer, fileName, measurementId, userId, age, gender, medicalHistory }) => {
+export const analyze = ({ fileBuffer, fileName, measurementId, userId, age, gender, medicalHistory, samplingRate }) => {
   const form = new FormData();
   form.append('file', fileBuffer, fileName);
   form.append('measurement_id', measurementId.toString());
@@ -9,6 +9,7 @@ export const analyze = ({ fileBuffer, fileName, measurementId, userId, age, gend
   form.append('age', String(age ?? 70));
   form.append('gender', gender ?? 'F');
   form.append('medical_history', (medicalHistory ?? []).join(','));
+  form.append('sampling_rate', String(samplingRate ?? 512));
 
   return axios.post(`${process.env.AI_SERVER_URL}/analyze`, form, {
     headers: form.getHeaders(),
