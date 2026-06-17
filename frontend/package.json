@@ -10,8 +10,6 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@grafana/data": "^13.0.2",
-    "@grafana/ui": "^13.0.2",
     "@tailwindcss/vite": "^4.3.0",
     "axios": "^1.17.0",
     "chart.js": "^4.5.1",
