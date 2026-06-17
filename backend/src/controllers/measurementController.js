@@ -6,6 +6,7 @@ import User from '../models/User.js';
 import GuardianRelation from '../models/GuardianRelation.js';
 import * as aiService from '../services/aiService.js';
 import { sendHighRiskSMS } from './internalController.js';
+import { sendPushNotification } from '../utils/notification.js';
 
 const RISK_MESSAGES = {
   high: '심장이 불규칙하게 뛰는 증상이 감지됐어요. 병원 방문을 권해 드려요.',
@@ -84,7 +85,7 @@ export const uploadECG = async (req, res, next) => {
       return res.status(400).json({ message: '파일이 전송되지 않았습니다. 다시 시도해 주세요.' });
     }
 
-    const user = await User.findById(req.user.id).select('age gender medicalHistory');
+    const user = await User.findById(req.user.id).select('age gender medicalHistory deviceToken');
 
     const measurement = await Measurement.create({
       userId: req.user.id,
@@ -145,18 +146,19 @@ export const uploadECG = async (req, res, next) => {
 
       await Measurement.findByIdAndUpdate(measurement._id, { status: 'completed' });
 
-      // 수락된 보호자 목록 조회 후 보호자별 알림 생성
+      // 수락된 보호자 목록 조회 (deviceToken 포함)
       const guardianRelations = await GuardianRelation.find({
         userId: req.user.id,
         relationStatus: 'accepted',
-      });
+      }).populate('guardianId', 'deviceToken');
 
-      if (guardianRelations.length > 0) {
+      // 보호자 알림: 중/상일 때만 DB 기록 + FCM push
+      if ((data.risk_level === 'high' || data.risk_level === 'mid') && guardianRelations.length > 0) {
         await Notification.insertMany(
           guardianRelations.map(rel => ({
             analysisId:  analysis._id,
             userId:      req.user.id,
-            guardianId:  rel.guardianId,
+            guardianId:  rel.guardianId._id ?? rel.guardianId,
             riskLevel:   data.risk_level,
             channel:     'push',
             message:     RISK_MESSAGES[data.risk_level] ?? RISK_MESSAGES.low,
@@ -165,9 +167,22 @@ export const uploadECG = async (req, res, next) => {
             sentAt:      new Date(),
           }))
         );
+
+        for (const rel of guardianRelations) {
+          const token = rel.guardianId?.deviceToken;
+          if (token) {
+            sendPushNotification(token, '보호 중인 분에게 이상이 감지됐어요', RISK_MESSAGES[data.risk_level] ?? RISK_MESSAGES.low)
+              .catch(err => console.error('보호자 FCM 실패:', err.message));
+          }
+        }
       }
 
+      // 사용자 FCM push + SMS: 상일 때만
       if (data.risk_level === 'high') {
+        if (user?.deviceToken) {
+          sendPushNotification(user.deviceToken, '위험 신호가 감지되었어요', '심장이 불규칙하게 뛰는 증상이 있어요. 내 건강 결과를 확인해 주세요.')
+            .catch(err => console.error('사용자 FCM 실패:', err.message));
+        }
         sendHighRiskSMS(req.user.id, data.risk_score).catch(err =>
           console.error('SMS 발송 중 오류:', err.message)
         );

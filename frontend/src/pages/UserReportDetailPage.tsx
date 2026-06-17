@@ -25,7 +25,6 @@ const RISK_CONFIG = {
 };
 
 const WEEKDAYS = ["일요일", "월요일", "화요일", "수요일", "목요일", "금요일", "토요일"];
-const LEVEL_MAP: Record<string, "상" | "중" | "하"> = { high: "상", mid: "중", low: "하" };
 
 const TTS_SPEEDS = [
   { label: "느리게", idx: 0 },
@@ -55,10 +54,11 @@ export function UserReportDetailPage() {
         }
         const res = await api.get(`/reports/${analysisId}`);
         const r = res.data;
+        const score = r.riskScore ?? 0;
         setReport({
           date: (r.createdAt || "").slice(0, 10),
-          riskScore: r.riskScore ?? 0,
-          riskLevel: LEVEL_MAP[r.riskLevel] ?? "하",
+          riskScore: score,
+          riskLevel: score >= 70 ? "상" : score >= 40 ? "중" : "하",
           reportText: r.report_text_user ?? r.reportTextUser ?? "",
           ecgPoints: r.ecgWaveformLite ?? [],
           rPeaks: r.rPeaks ?? [],

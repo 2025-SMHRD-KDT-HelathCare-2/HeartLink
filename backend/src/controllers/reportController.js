@@ -1,5 +1,6 @@
 import Report from '../models/Report.js';
 import AnalysisResult from '../models/AnalysisResult.js';
+import Measurement from '../models/Measurement.js';
 import GuardianRelation from '../models/GuardianRelation.js';
 import * as aiService from '../services/aiService.js';
 
@@ -25,10 +26,19 @@ export const getReportList = async (req, res, next) => {
 
 export const getReport = async (req, res, next) => {
   try {
-    const report = await Report.findOne({ analysisId: req.params.analysisId, userId: req.user.id })
-      .populate('analysisId', 'riskScore');
+    const report = await Report.findOne({ analysisId: req.params.analysisId, userId: req.user.id });
     if (!report) return res.status(404).json({ message: '리포트가 없습니다.' });
-    res.json(report);
+    const analysis = await AnalysisResult.findById(report.analysisId).select('riskScore heartRate measurementId');
+    const measurement = analysis?.measurementId
+      ? await Measurement.findById(analysis.measurementId).select('ecgWaveformLite rPeaks')
+      : null;
+    res.json({
+      ...report.toObject(),
+      riskScore: analysis?.riskScore ?? 0,
+      heartRate: analysis?.heartRate ?? 0,
+      ecgWaveformLite: measurement?.ecgWaveformLite ?? [],
+      rPeaks: measurement?.rPeaks ?? [],
+    });
   } catch (err) {
     next(err);
   }

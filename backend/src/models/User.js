@@ -46,6 +46,8 @@ const userSchema = new Schema(
     gender: { type: String, enum: ['M', 'F'] },
     // medicalHistory: 병력(과거 질환) 목록. 문자열 여러 개를 담는 배열. 기본값은 빈 배열
     medicalHistory: { type: [String], default: [] },
+    // deviceToken: FCM 푸시 알림을 보내기 위한 기기 토큰
+    deviceToken: { type: String },
     // refreshToken: 로그인 유지를 위한 재발급용 토큰 (서버가 저장)
     refreshToken: { type: String },
   },
