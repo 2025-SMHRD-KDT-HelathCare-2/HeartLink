@@ -9,7 +9,6 @@ export const getMyNotifications = async (req, res, next) => {
     const since = new Date(Date.now() - SEVEN_DAYS);
     const notifications = await Notification.find({
       userId: req.user.id,
-      guardianId: { $exists: false },
       sentAt: { $gte: since },
     }).sort({ sentAt: -1 });
 

@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { AlertTriangle, CheckCircle, Info, Clock, Volume2, Bell } from "lucide-react";
 import api from "../api/authApi";
 
-type RiskLevel = "high" | "mid" | "low";
 
 interface ReportItem {
   id: string;             // _id
@@ -21,7 +20,6 @@ const RISK_META = {
   하: { color: "#16A34A", bg: "#F0FDF4", border: "#BBF7D0", label: "양호", icon: CheckCircle },
 };
 
-const LEVEL_MAP: Record<RiskLevel, "상" | "중" | "하"> = { high: "상", mid: "중", low: "하" };
 
 function formatDate(iso: string) {
   const d = new Date(iso);
@@ -46,10 +44,10 @@ function DailyAlertSection() {
         const res = await api.get("/notifications");
         const today = new Date().toISOString().slice(0, 10);
         const todays = (res.data || []).filter((n: any) =>
-          n.level === "high" && (n.createdAt || "").slice(0, 10) === today
+          n.level === "상" && (n.createdAt || "").slice(0, 10) === today
         );
         setAlerts(todays.map((n: any) => ({
-          id: n._id,
+          id: n.id,
           message: n.message,
           time: (n.createdAt || "").slice(11, 16),
         })));
@@ -97,9 +95,9 @@ export function ReportPage() {
         const res = await api.get("/reports");
         const mapped: ReportItem[] = (res.data || []).map((r: any) => ({
           id: r._id,
-          analysisId: r.analysisId,
-          riskLevel: LEVEL_MAP[r.riskLevel as RiskLevel] ?? "하",
-          riskScore: r.riskScore ?? 0,
+          analysisId: r.analysisId?._id ?? r.analysisId,
+          riskScore: r.analysisId?.riskScore ?? r.riskScore ?? 0,
+          riskLevel: (() => { const s = r.analysisId?.riskScore ?? r.riskScore ?? 0; return s >= 70 ? "상" : s >= 40 ? "중" : "하"; })(),
           summary: r.report_text_user ?? r.reportTextUser ?? "",
           action: r.recommendedAction ?? "",
           date: formatDate(r.createdAt),
