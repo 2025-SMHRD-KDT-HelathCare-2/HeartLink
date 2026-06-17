@@ -15,7 +15,7 @@ const RISK_CONFIG = {
 };
 
 interface GuardianDashboardProps {
-  onSelectMember: (id: number) => void;
+  onSelectMember: (id: string) => void;
 }
 
 export function GuardianDashboard({ onSelectMember }: GuardianDashboardProps) {
@@ -60,7 +60,7 @@ export function GuardianDashboard({ onSelectMember }: GuardianDashboardProps) {
           return (
             <button
               key={member.id}
-              onClick={() => onSelectMember(member.id)}
+              onClick={() => onSelectMember(String(member.id))}
               className="w-full text-left bg-white rounded-2xl shadow-sm overflow-hidden hover:shadow-md transition-shadow"
               style={{ border: `2px solid ${config.border}` }}
             >

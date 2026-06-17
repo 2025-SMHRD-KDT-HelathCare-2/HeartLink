@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
+import PhoneVerification from '../models/PhoneVerification.js';
 
 const COOKIE_RT_OPTIONS = {
   httpOnly: true,
@@ -174,24 +175,80 @@ export const handleCallback = async (req, res) => {
       return res.redirect(`${frontendUrl}/oauth/callback`);
     }
 
-    // 신규 유저 — 탭에서 선택한 role로 바로 생성
-    const newUser = await User.create({
+    // 신규 유저 — 휴대폰 인증 후 가입 완료 (social/complete에서 처리)
+    const pendingData = JSON.stringify({
       provider,
       providerId: profile.id,
       email: profile.email,
       nickname: profile.nickname || profile.email.split('@')[0],
       profileImage: profile.profileImage || null,
-      role: savedRole,
-      phoneVerified: false,
     });
+    res.cookie('social_pending', pendingData, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 10 * 60 * 1000,
+    });
+    return res.redirect(`${frontendUrl}/oauth/callback?needRole=1`);
+  } catch (err) {
+    console.error(`[Social] ${provider} callback error:`, err.message);
+    return res.redirect(`${frontendUrl}/oauth/callback?error=server`);
+  }
+};
+
+export const socialComplete = async (req, res, next) => {
+  try {
+    const pendingRaw = req.cookies?.social_pending;
+    if (!pendingRaw) {
+      return res.status(400).json({ message: '소셜 인증 세션이 만료되었습니다. 다시 로그인해 주세요.' });
+    }
+
+    let pending;
+    try { pending = JSON.parse(pendingRaw); } catch {
+      return res.status(400).json({ message: '소셜 인증 정보가 유효하지 않습니다.' });
+    }
+
+    const { role, phone } = req.body;
+    if (!role || !['user', 'guardian'].includes(role)) {
+      return res.status(400).json({ message: '역할을 선택해 주세요.' });
+    }
+    if (!phone) return res.status(400).json({ message: '전화번호 인증이 필요합니다.' });
+
+    // 휴대폰 인증 확인
+    const verification = await PhoneVerification.findOne({
+      phone,
+      verified: true,
+      expiresAt: { $gt: new Date() },
+    });
+    if (!verification) return res.status(400).json({ message: '휴대폰 인증을 완료해 주세요.' });
+
+    // 이미 가입된 번호 확인
+    const existingPhone = await User.findOne({ phone });
+    if (existingPhone) return res.status(409).json({ message: '이미 가입된 전화번호입니다.' });
+
+    // User 생성
+    const newUser = await User.create({
+      provider:     pending.provider,
+      providerId:   pending.providerId,
+      email:        pending.email,
+      nickname:     pending.nickname,
+      profileImage: pending.profileImage || null,
+      role,
+      phone,
+      phoneVerified: true,
+    });
+
+    // 사용한 인증 레코드 + 임시 쿠키 정리
+    await PhoneVerification.deleteOne({ phone });
+    res.clearCookie('social_pending');
 
     const { token, refreshToken } = issueTokens(newUser);
     await User.findByIdAndUpdate(newUser._id, { refreshToken });
     res.cookie('refreshToken', refreshToken, COOKIE_RT_OPTIONS);
-    return res.redirect(`${frontendUrl}/oauth/callback`);
+
+    res.json({ token, user: { email: newUser.email, role: newUser.role } });
   } catch (err) {
-    console.error(`[Social] ${provider} callback error:`, err.message);
-    return res.redirect(`${frontendUrl}/oauth/callback?error=server`);
+    next(err);
   }
 };
 

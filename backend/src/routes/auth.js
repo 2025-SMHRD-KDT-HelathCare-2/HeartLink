@@ -3,7 +3,7 @@ import {
   register, login, refreshToken, getToken, logout, getMe, updateMe,
   sendVerificationCode, verifyPhoneCode,
 } from '../controllers/authController.js';
-import { redirectToProvider, handleCallback } from '../controllers/socialController.js';
+import { redirectToProvider, handleCallback, socialComplete } from '../controllers/socialController.js';
 import { registerRules, loginRules } from '../middlewares/authValidator.js';
 import auth from '../middlewares/auth.js';
 
@@ -20,6 +20,7 @@ router.get('/me',                  auth,          getMe);
 router.patch('/me',                auth,          updateMe);
 
 // 소셜 로그인
+router.post('/social/complete',                   socialComplete);
 router.get('/:provider',                          redirectToProvider);
 router.get('/:provider/callback',                 handleCallback);
 

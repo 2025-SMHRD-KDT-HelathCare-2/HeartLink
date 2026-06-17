@@ -1,12 +1,24 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Heart, Users, Bell, FileText, LogOut, Menu, X,
   ChevronRight, Shield
 } from "lucide-react";
+import api from "../../api/authApi";
 import { GuardianDashboard } from "../../pages/GuardianDashboard";
 import { NotificationsPage } from "../../pages/NotificationsPage";
 import { GuardianReportPage } from "../../pages/GuardianReportPage";
+
+export interface Patient {
+  relation_id: string;
+  user_id: string;
+  nickname: string;
+  age?: number;
+  gender?: string;
+  latest_measured_at: string | null;
+  risk_score: number | null;
+  risk_level: "high" | "mid" | "low" | null;
+}
 
 type GuardianScreen = "dashboard" | "notifications" | "report";
 
@@ -28,9 +40,20 @@ export function GuardianLayout({ onLogout }: GuardianLayoutProps) {
   const [screen, setScreen] = useState<GuardianScreen>("dashboard");
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [selectedMemberId, setSelectedMemberId] = useState<number>(1);
-  const handleSelectMember = (id: number) => {
-    setSelectedMemberId(id);
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    api.get("/guardians/patients")
+      .then(r => {
+        setPatients(r.data);
+        if (r.data.length > 0) setSelectedUserId(r.data[0].user_id);
+      })
+      .catch(err => console.error("환자 목록 불러오기 실패", err));
+  }, []);
+
+  const handleSelectMember = (userId: string) => {
+    setSelectedUserId(userId);
     setScreen("report");
     setSidebarOpen(false);
   };
@@ -42,8 +65,7 @@ export function GuardianLayout({ onLogout }: GuardianLayoutProps) {
       case "notifications":
         return <NotificationsPage onViewReport={() => setScreen("report")} />;
       case "report":
-        return <GuardianReportPage memberId={selectedMemberId} />;
-
+        return <GuardianReportPage patients={patients} selectedUserId={selectedUserId} onSelectUser={setSelectedUserId} />;
     }
   };
 
