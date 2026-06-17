@@ -30,10 +30,10 @@ const analysisResultSchema = new Schema(
     // hrvLfhf: 저주파/고주파 비율(자율신경 균형 지표)
     hrvLfhf: { type: Number },
 
-    // heart_rate: 심박수 (예전 필드명 형태)
-    heart_rate: { type: Number },
+    // heartRate: 심박수 (카멜케이스 형태)
+    heartRate: { type: Number },
     // arrhythmia_count: 부정맥 발생 횟수
-    arrhythmia_count: { type: Number },
+    arrhythmiaCount: { type: Number },
 
     // anomalyDetected: 이상 징후가 감지됐는지 여부(true/false)
     anomalyDetected: { type: Boolean },
@@ -42,8 +42,7 @@ const analysisResultSchema = new Schema(
     riskScore: { type: Number, required: true, min: 0, max: 100 },
     // riskLevel: 위험 등급. high(높음)/mid(보통)/low(낮음) 중 하나. 필수
     riskLevel: { type: String, enum: ['high', 'mid', 'low'], required: true },
-    // heartRate: 심박수 (카멜케이스 형태)
-    heartRate: { type: Number },
+  
     // analyzedAt: 분석이 수행된 시각. 필수
     analyzedAt: { type: Date, required: true },
   },
