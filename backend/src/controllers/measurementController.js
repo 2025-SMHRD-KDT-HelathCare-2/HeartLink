@@ -149,15 +149,9 @@ export const uploadECG = async (req, res, next) => {
       medicalHistory: user?.medicalHistory,
       samplingRate,
     }).then(async ({ data }) => {
-      // AI가 주는 risk_level은 점수와 불일치할 수 있으므로 점수 기반으로 재계산
       const score = data.risk_score ?? 0;
-      const riskLevel = score >= 70 ? 'high' : score >= 40 ? 'mid' : 'low';
-      console.log('[AI 분석 결과]', {
-        risk_score: score, risk_level_ai: data.risk_level, risk_level_used: riskLevel,
-        arrhythmia_class: data.arrhythmia_class, arrhythmia_prob: data.arrhythmia_prob,
-        heart_rate: data.heart_rate, hrv_rmssd: data.hrv_rmssd, hrv_sdnn: data.hrv_sdnn,
-        af_detected: data.af_detected, anomaly_detected: data.anomaly_detected,
-      });
+      const riskLevel = data.risk_level ?? (score >= 67 ? 'high' : score >= 34 ? 'mid' : 'low');
+      
       // 분석 결과 저장
       const analysis = await AnalysisResult.findOneAndUpdate(
         { measurementId: measurement._id },
@@ -172,6 +166,7 @@ export const uploadECG = async (req, res, next) => {
           hrvSdnn: data.hrv_sdnn,
           hrvLfhf: data.hrv_lfhf,
           anomalyDetected: data.anomaly_detected,
+          arrhythmiaCount: data.arrhythmia_count,
           riskScore: data.risk_score,
           riskLevel: data.risk_level,
           heartRate: data.heart_rate,
