@@ -10,4 +10,4 @@ const fileFilter = (req, file, cb) => {
   else cb(new Error('지원하지 않는 파일 형식입니다.'), false);
 };
 
-export default multer({ storage, fileFilter, limits: { fileSize: 50 * 1024 * 1024 } });
+export default multer({ storage, fileFilter, limits: { fileSize: 100 * 1024 * 1024 } });
