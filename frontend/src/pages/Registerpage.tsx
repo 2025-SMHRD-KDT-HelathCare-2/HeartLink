@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Heart, Eye, EyeOff, Lock, Mail, User, Shield,
@@ -28,17 +28,19 @@ function RoleToast({ role }: { role: Role }) {
   const [visible, setVisible] = useState(false);
   const [displayRole, setDisplayRole] = useState<Role>(role);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useState(() => {
+  useEffect(() => {
+    const t = setTimeout(() => setVisible(true), 50);
+    return () => clearTimeout(t);
+  }, []);
+
+  useEffect(() => {
     setVisible(false);
     const t = setTimeout(() => {
       setDisplayRole(role);
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => setVisible(true));
-      });
-    }, 100);
+      requestAnimationFrame(() => setVisible(true));
+    }, 150);
     return () => clearTimeout(t);
-  });
+  }, [role]);
 
   const isUser = displayRole === "user";
   return (
