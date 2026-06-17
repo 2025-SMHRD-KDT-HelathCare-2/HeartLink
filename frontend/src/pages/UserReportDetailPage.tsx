@@ -1,39 +1,22 @@
 import { useState, useRef, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   ChevronLeft, Volume2, StopCircle, AlertTriangle, Info
 } from "lucide-react";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from "recharts";
-// import api from "../api/authApi";  // 백엔드 연동 시 주석 해제
+import api from "../api/authApi";
 
 // ===== 백엔드 응답 구조 =====
 interface ReportData {
-  date: string;            // "2026-06-01"
-  riskScore: number;       // 0~100
+  date: string;
+  riskScore: number;
   riskLevel: "상" | "중" | "하";
-  reportText: string;      // LLM 생성 자연어
-  ecgPoints: number[];     // 차트용 파형
+  reportText: string;
+  ecgPoints: number[];
   rPeaks: number[];
 }
-
-// ===== 임시 더미 데이터 (백엔드 완성 시 제거) =====
-const DUMMY_REPORT: ReportData = {
-  date: "2026-06-01",
-  riskScore: 78,
-  riskLevel: "상",
-  reportText: "오늘 심장이 평소보다 조금 불규칙하게 뛰었어요. 하루 동안 불규칙한 박동이 몇 번 감지되었습니다. 오늘은 무리하지 마시고 푹 쉬시는 게 좋겠어요. 가까운 병원에 한 번 들러 보시는 것도 권해 드려요.",
-  ecgPoints: Array.from({ length: 400 }, (_, i) => {
-    const t = (i / 400) * 8;
-    const cycle = t % 1;
-    const r = 1.2 * Math.exp(-Math.pow((cycle - 0.4) * 60, 2));
-    const p = 0.15 * Math.exp(-Math.pow((cycle - 0.15) * 20, 2));
-    const tw = 0.25 * Math.exp(-Math.pow((cycle - 0.65) * 12, 2));
-    return Math.round((p + r + tw + (Math.random() - 0.5) * 0.03) * 100) / 100;
-  }),
-  rPeaks: [],
-};
 
 const RISK_CONFIG = {
   상: { color: "#DC2626", label: "위험", bg: "#FEF2F2", border: "#FECACA" },
@@ -42,65 +25,51 @@ const RISK_CONFIG = {
 };
 
 const WEEKDAYS = ["일요일", "월요일", "화요일", "수요일", "목요일", "금요일", "토요일"];
+const LEVEL_MAP: Record<string, "상" | "중" | "하"> = { high: "상", mid: "중", low: "하" };
 
 const TTS_SPEEDS = [
-  { label: "느리게", value: 0.7 },
-  { label: "보통", value: 0.85 },
-  { label: "빠르게", value: 1.1 },
+  { label: "느리게", idx: 0 },
+  { label: "보통", idx: 1 },
+  { label: "빠르게", idx: 2 },
 ];
-
-function useTTS() {
-  const [playing, setPlaying] = useState(false);
-  const uRef = useRef<SpeechSynthesisUtterance | null>(null);
-
-  const speak = (text: string, rate: number) => {
-    if (!window.speechSynthesis) return;
-    window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = "ko-KR";
-    u.rate = rate;
-    u.onstart = () => setPlaying(true);
-    u.onend = () => setPlaying(false);
-    u.onerror = () => setPlaying(false);
-    uRef.current = u;
-    window.speechSynthesis.speak(u);
-  };
-
-  const stop = () => {
-    window.speechSynthesis.cancel();
-    setPlaying(false);
-  };
-
-  useEffect(() => () => window.speechSynthesis.cancel(), []);
-  return { playing, speak, stop };
-}
 
 export function UserReportDetailPage() {
   const navigate = useNavigate();
-  const { playing, speak, stop } = useTTS();
+  const location = useLocation();
+  const analysisId = (location.state as any)?.analysisId;
 
   const [report, setReport] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(true);
   const [speedIdx, setSpeedIdx] = useState(1); // 0:느리게 1:보통 2:빠르게
+  const [playing, setPlaying] = useState(false);
+  const [ttsLoading, setTtsLoading] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // ===== 백엔드 연동 =====
+  // ===== 리포트 데이터 조회 =====
   useEffect(() => {
     (async () => {
       try {
-        // 백엔드 완성 시 주석 해제 (최근 리포트 조회)
-        // const res = await api.get("/reports/latest");
-        // setReport(res.data);
-
-        // 임시 더미
-        await new Promise(r => setTimeout(r, 500));
-        setReport(DUMMY_REPORT);
+        if (!analysisId) {
+          setLoading(false);
+          return;
+        }
+        const res = await api.get(`/reports/${analysisId}`);
+        const r = res.data;
+        setReport({
+          date: (r.createdAt || "").slice(0, 10),
+          riskScore: r.riskScore ?? 0,
+          riskLevel: LEVEL_MAP[r.riskLevel] ?? "하",
+          reportText: r.reportTextUser ?? "",
+          ecgPoints: r.ecgWaveformLite ?? [],
+          rPeaks: r.rPeaks ?? [],
+        });
       } catch (err) {
         console.error("리포트 조회 실패", err);
       } finally {
         setLoading(false);
       }
     })();
-  }, []);
+  }, [analysisId]);
 
   const config = report ? RISK_CONFIG[report.riskLevel] : RISK_CONFIG.하;
 
@@ -115,18 +84,46 @@ export function UserReportDetailPage() {
     return report.ecgPoints.map((y, i) => ({ x: Math.round((i / 250) * 100) / 100, y }));
   }, [report]);
 
+  // ===== 백엔드 TTS 연동 =====
+  const stopTTS = () => {
+    audioRef.current?.pause();
+    setPlaying(false);
+  };
+
+  const playTTS = async (speed: number) => {
+    if (!analysisId) return;
+    try {
+      stopTTS();
+      setTtsLoading(true);
+      const res = await api.get(`/reports/${analysisId}/tts`, {
+        params: { speed },
+        responseType: "blob",
+      });
+      const url = URL.createObjectURL(res.data);
+      const audio = new Audio(url);
+      audioRef.current = audio;
+      audio.onplay = () => setPlaying(true);
+      audio.onended = () => setPlaying(false);
+      audio.onerror = () => setPlaying(false);
+      await audio.play();
+    } catch (err) {
+      console.error("TTS 재생 실패", err);
+    } finally {
+      setTtsLoading(false);
+    }
+  };
+
   const handleTTS = () => {
-    if (playing) stop();
-    else if (report) speak(report.reportText, TTS_SPEEDS[speedIdx].value);
+    if (playing) stopTTS();
+    else playTTS(speedIdx);
   };
 
   const handleSpeedChange = (idx: number) => {
     setSpeedIdx(idx);
-    if (playing && report) {
-      stop();
-      setTimeout(() => speak(report.reportText, TTS_SPEEDS[idx].value), 100);
-    }
+    if (playing) playTTS(idx);
   };
+
+  useEffect(() => () => { audioRef.current?.pause(); }, []);
 
   if (loading) {
     return (
@@ -149,7 +146,6 @@ export function UserReportDetailPage() {
 
   return (
     <div className="min-h-screen bg-[#F4F7FA]">
-      {/* 헤더 */}
       <header className="bg-[#0A2647] text-white px-5 py-4 flex items-center gap-3 sticky top-0 z-20 shadow-lg">
         <button onClick={() => navigate(-1)} className="p-2 rounded-xl hover:bg-white/10 transition-colors">
           <ChevronLeft className="w-6 h-6" />
@@ -166,12 +162,13 @@ export function UserReportDetailPage() {
         <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
           <button
             onClick={handleTTS}
-            className={`w-full flex items-center justify-center gap-3 py-5 rounded-xl border-2 transition-all font-black mb-4 ${
+            disabled={ttsLoading}
+            className={`w-full flex items-center justify-center gap-3 py-5 rounded-xl border-2 transition-all font-black mb-4 disabled:opacity-50 ${
               playing ? "bg-red-50 border-red-400 text-red-600" : "bg-white border-[#0A2647] text-[#0A2647] hover:bg-[#0A2647] hover:text-white"
             }`}
             style={{ minHeight: 72, fontSize: "1.3rem" }}
           >
-            {playing ? <><StopCircle className="w-8 h-8" />멈추기</> : <><Volume2 className="w-8 h-8" />🔊 최근 AI리포트 듣기</>}
+            {ttsLoading ? "준비 중..." : playing ? <><StopCircle className="w-8 h-8" />멈추기</> : <><Volume2 className="w-8 h-8" />🔊 최근 AI리포트 듣기</>}
           </button>
 
           <div>
@@ -205,20 +202,22 @@ export function UserReportDetailPage() {
         </div>
 
         {/* 3. 차트 (ECG 파형) */}
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-          <h3 className="text-[#0A2647] font-bold mb-4" style={{ fontSize: "1.2rem" }}>심장 뛰는 모양</h3>
-          <div style={{ height: 160 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={ecgChartData} margin={{ top: 5, right: 10, left: -30, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="x" tick={{ fontSize: 11, fontWeight: 700 }} />
-                <YAxis tick={{ fontSize: 11, fontWeight: 700 }} />
-                <Tooltip />
-                <Line type="monotone" dataKey="y" stroke="#0E8080" strokeWidth={2} dot={false} isAnimationActive={false} />
-              </LineChart>
-            </ResponsiveContainer>
+        {ecgChartData.length > 0 && (
+          <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+            <h3 className="text-[#0A2647] font-bold mb-4" style={{ fontSize: "1.2rem" }}>심장 뛰는 모양</h3>
+            <div style={{ height: 160, minHeight: 160, width: "100%" }}>
+              <ResponsiveContainer width="100%" height={160} minWidth={0}>
+                <LineChart data={ecgChartData} margin={{ top: 5, right: 10, left: -30, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis dataKey="x" tick={{ fontSize: 11, fontWeight: 700 }} />
+                  <YAxis tick={{ fontSize: 11, fontWeight: 700 }} />
+                  <Tooltip />
+                  <Line type="monotone" dataKey="y" stroke="#0E8080" strokeWidth={2} dot={false} isAnimationActive={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* 4. 위험도 평가 (가로 바) */}
         <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">

@@ -123,6 +123,18 @@ export async function login(credentials: { email: string; password: string }) {
   return data;
 }
 
+// 로그아웃: 서버가 RefreshToken 쿠키를 만료시키고 DB의 RT를 무효화
+export async function callLogout() {
+  try {
+    const { data } = await api.post("/auth/logout");
+    return data;
+  } catch (err) {
+    // 서버 응답 실패해도 클라이언트 측 로그아웃은 계속 진행되어야 함
+    console.error("로그아웃 요청 실패", err);
+    return null;
+  }
+}
+
 // ───────────────── 소셜 로그인 ─────────────────
 // 백엔드 OAuth 진입점으로 브라우저 이동
 export function startSocialLogin(provider: "google" | "naver" | "kakao") {
