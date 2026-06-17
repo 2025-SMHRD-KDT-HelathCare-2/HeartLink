@@ -1,13 +1,15 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
-  ChevronLeft, Volume2, StopCircle, AlertTriangle, Heart, Activity, TrendingUp, Info
+  ChevronLeft, Volume2, StopCircle, AlertTriangle, Heart, Activity, TrendingUp, Info, Download
 } from "lucide-react";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   BarChart, Bar
 } from "recharts";
 import api from "../api/authApi";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas-pro";
 
 // ===== 백엔드 응답 구조 =====
 interface ReportData {
@@ -77,6 +79,8 @@ export function GuardianReportDetailPage() {
   const [report, setReport] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(true);
   const [speedIdx, setSpeedIdx] = useState(1); // 0:느리게 1:보통 2:빠르게
+  const [generatingPdf, setGeneratingPdf] = useState(false);
+  const captureRef = useRef<HTMLDivElement>(null);
 
   // ===== 백엔드 연동 =====
   useEffect(() => {
@@ -85,7 +89,7 @@ export function GuardianReportDetailPage() {
         const res = await api.get(`/reports/guardian/${memberId}`);
         const r = res.data;
         const LEVEL_MAP: Record<string, "상" | "중" | "하"> = { high: "상", mid: "중", low: "하" };
-        setReport({
+        const mapped = {
           memberName: r.member_name ?? r.memberName ?? "",
           date: (r.created_at ?? r.createdAt ?? "").slice(0, 10),
           riskScore: r.risk_score ?? r.riskScore ?? 0,
@@ -96,7 +100,8 @@ export function GuardianReportDetailPage() {
           ecgPoints: r.ecg_waveform_lite ?? r.ecgWaveformLite ?? [],
           rPeaks: r.r_peaks ?? r.rPeaks ?? [],
           hrvTrend: r.hrv_trend ?? r.hrvTrend ?? [],
-        });
+        };
+        setReport(mapped);
       } catch (err) {
         console.error("리포트 조회 실패", err);
       } finally {
@@ -128,7 +133,7 @@ export function GuardianReportDetailPage() {
     try {
       stopTTS();
       setTtsLoading(true);
-      const res = await api.get(`/reports/guardian/${memberId}/tts`, {
+      const res = await api.get(`/reports/${memberId}/tts`, {
         params: { speed },
         responseType: "blob",
       });
@@ -154,6 +159,36 @@ export function GuardianReportDetailPage() {
   const handleSpeedChange = (idx: number) => {
     setSpeedIdx(idx);
     if (playing) playTTS(idx);
+  };
+
+  const handleSavePdf = async () => {
+    if (!captureRef.current || !report) return;
+    try {
+      setGeneratingPdf(true);
+      const canvas = await html2canvas(captureRef.current, {
+        scale: 2,
+        backgroundColor: "#F4F7FA",
+        onclone: (clonedDoc) => {
+          // html2canvas는 oklch() 색상 함수를 지원하지 않으므로,
+          // 캡처용 클론 문서에서만 모든 색상을 강제로 rgb로 재계산해 적용
+          const all = clonedDoc.querySelectorAll("*");
+          all.forEach((el) => {
+            const computed = window.getComputedStyle(el as Element);
+            (el as HTMLElement).style.color = computed.color;
+            (el as HTMLElement).style.backgroundColor = computed.backgroundColor;
+            (el as HTMLElement).style.borderColor = computed.borderColor;
+          });
+        },
+      });
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF({ unit: "px", format: [canvas.width, canvas.height] });
+      pdf.addImage(imgData, "PNG", 0, 0, canvas.width, canvas.height);
+      pdf.save(`${report.memberName}_리포트_${report.date}.pdf`);
+    } catch (err) {
+      console.error("PDF 생성 실패", err);
+    } finally {
+      setGeneratingPdf(false);
+    }
   };
 
   useEffect(() => () => { audioRef.current?.pause(); }, []);
@@ -190,7 +225,7 @@ export function GuardianReportDetailPage() {
         </div>
       </header>
 
-      <div className="max-w-2xl mx-auto p-5 space-y-5">
+      <div ref={captureRef} className="max-w-2xl mx-auto p-5 space-y-5">
 
         {/* 1. 요일 */}
         <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 text-center">
@@ -351,6 +386,13 @@ export function GuardianReportDetailPage() {
           <Info className="w-4 h-4 inline mr-2 text-gray-400" />
           이 리포트는 참고용이며 의사의 진단을 대신하지 않습니다.
         </div>
+
+        {/* PDF 저장 */}
+        <button onClick={handleSavePdf} disabled={generatingPdf}
+          className="w-full flex items-center justify-center gap-2 py-5 bg-[#0A2647] text-white rounded-xl hover:bg-[#144272] transition-colors font-black disabled:opacity-50"
+          style={{ minHeight: 64, fontSize: "1.2rem" }}>
+          <Download className="w-6 h-6" />{generatingPdf ? "저장 중..." : "PDF 저장"}
+        </button>
       </div>
 
       <style>{`
