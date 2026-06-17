@@ -4,6 +4,7 @@ import Measurement from '../models/Measurement.js';
 import GuardianRelation from '../models/GuardianRelation.js';
 import User from '../models/User.js';
 import * as aiService from '../services/aiService.js';
+import { synthesize as synthesizeTTS } from '../services/ttsService.js';
 
 async function verifyGuardianAccess(guardianId, userId) {
   const relation = await GuardianRelation.findOne({
@@ -64,10 +65,10 @@ export const getTTS = async (req, res, next) => {
     if (!report.reportTextUser) return res.status(400).json({ message: 'TTS 변환할 텍스트가 없습니다.' });
 
     const speed = Number(req.query.speed ?? 1);
-    const { data: audioBuffer } = await aiService.tts({ text: report.reportTextUser, speed });
+    const audioBuffer = await synthesizeTTS({ text: report.reportTextUser, speed });
 
     res.set('Content-Type', 'audio/mpeg');
-    res.send(Buffer.from(audioBuffer));
+    res.send(audioBuffer);
   } catch (err) {
     next(err);
   }
@@ -85,10 +86,10 @@ export const getGuardianTTS = async (req, res, next) => {
     if (!text) return res.status(400).json({ message: 'TTS 변환할 텍스트가 없습니다.' });
 
     const speed = Number(req.query.speed ?? 1);
-    const { data: audioBuffer } = await aiService.tts({ text, speed });
+    const audioBuffer = await synthesizeTTS({ text, speed });
 
     res.set('Content-Type', 'audio/mpeg');
-    res.send(Buffer.from(audioBuffer));
+    res.send(audioBuffer);
   } catch (err) {
     next(err);
   }
