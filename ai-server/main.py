@@ -21,6 +21,14 @@ import numpy as np
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.responses import Response
 
+
+def _is_number(s: str) -> bool:
+    try:
+        float(s.strip())
+        return True
+    except ValueError:
+        return False
+
 from services.preprocessing import preprocess_ecg
 from services.predictor import predict
 from services.report_generator import generate_report
@@ -56,6 +64,7 @@ async def analyze(
     age: int = Form(default=70),
     gender: str = Form(default='F'),
     medical_history: str = Form(default=''),  # 쉼표로 구분된 문자열로 받기
+    sampling_rate: int = Form(default=250),   # 원본 샘플링 레이트 (MIT-BIH: 360, 갤럭시워치: 250)
 ):
     """
     ECG 분석 메인 엔드포인트
@@ -77,31 +86,64 @@ async def analyze(
         contents = await file.read()
 
         # CSV 파싱 → numpy 배열
-        # measurementController.js의 parseCSV와 동일한 방식
         csv_text = contents.decode('utf-8')
         lines    = csv_text.strip().split('\n')
-        headers  = [h.strip().strip("'\"").lower() for h in lines[0].split(',')]
 
-        # ECG 신호 컬럼 찾기
+        # 첫 줄이 헤더인지 숫자 데이터인지 판별
+        first_cols = [c.strip().strip("'\"") for c in lines[0].split(',')]
+        is_header  = any(not _is_number(v) for v in first_cols)
+
+        if is_header:
+            headers    = [h.lower() for h in first_cols]
+            data_lines = lines[1:]
+        else:
+            headers    = []
+            data_lines = lines
+
+        # ECG 신호 컬럼 찾기 (헤더가 있으면 이름으로, 없으면 나중에 분산으로 결정)
         candidates = ['ecg', 'y', 'value', 'signal', 'mv', 'mlii', 'v5', 'v1', 'v2']
-        y_idx = next((i for i, h in enumerate(headers) if h in candidates), 1)
+        y_idx = next((i for i, h in enumerate(headers) if h in candidates), None)
 
-        signal_raw = []
-        for line in lines[1:]:
+        # 모든 컬럼 파싱
+        all_rows = []
+        for line in data_lines:
             cols = line.split(',')
-            if y_idx < len(cols):
+            row  = []
+            for c in cols:
                 try:
-                    signal_raw.append(float(cols[y_idx]))
+                    row.append(float(c.strip()))
                 except ValueError:
-                    continue
+                    row.append(float('nan'))
+            if row:
+                all_rows.append(row)
+
+        if not all_rows:
+            raise HTTPException(status_code=400, detail="ECG 데이터가 없습니다.")
+
+        # 행 길이를 최빈값으로 통일한 뒤 numpy 배열로 변환
+        max_cols   = max(len(r) for r in all_rows)
+        data_arr   = np.full((len(all_rows), max_cols), np.nan, dtype=np.float32)
+        for i, row in enumerate(all_rows):
+            data_arr[i, :len(row)] = row
+
+        if y_idx is None:
+            # 헤더 매칭 실패 → 분산이 가장 큰 컬럼 선택 (단조 증가하는 타임스탬프 컬럼 방지)
+            if max_cols == 1:
+                y_idx = 0
+            else:
+                col_stds = np.nanstd(data_arr, axis=0)
+                y_idx    = int(np.argmax(col_stds))
+
+        signal_raw = data_arr[:, y_idx]
+        signal_raw = signal_raw[~np.isnan(signal_raw)]
 
         if len(signal_raw) < 100:
             raise HTTPException(status_code=400, detail="ECG 데이터가 너무 적습니다.")
 
-        signal_raw = np.array(signal_raw, dtype=np.float32)
+        signal_raw = signal_raw.astype(np.float32)
 
-        # 전처리
-        preprocessed = preprocess_ecg(signal_raw, fs_original=250)
+        # 전처리 (실제 sampling_rate 전달)
+        preprocessed = preprocess_ecg(signal_raw, fs_original=sampling_rate)
 
         # 모델 추론 + 위험도 산출
         medical_history_list = medical_history.split(',') if medical_history else []
