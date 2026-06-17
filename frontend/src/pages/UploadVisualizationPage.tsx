@@ -1,12 +1,13 @@
 import { useState, useRef, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Upload, AlertCircle, Activity, Info, Heart } from "lucide-react";
+import { Upload, AlertCircle, Activity, Info } from "lucide-react";
 import api from "../api/authApi";
 import { useToast } from "../context/ToastContext";
 import { ECGChart } from "../components/charts/ECGChart";
+import { MonitorChart } from "../components/charts/MonitorChart";
 import { RiskGauge } from "../components/charts/RiskGauge";
 
-type Phase = "upload" | "uploading" | "processing" | "error" | "result";
+type Phase = "upload" | "uploading" | "processing" | "error" | "scanning" | "result";
 
 interface ECGResult {
   ecgPoints: number[];
@@ -50,19 +51,33 @@ export function UploadVisualizationPage() {
     return result.rPeaks;
   }, [result, sampleRate]);
 
-  // 결과가 준비되면 reveal 애니메이션 시작 (왼쪽 → 오른쪽 물결)
+  // 결과가 준비되면 실시간 모니터처럼 왼쪽 → 오른쪽으로 스캔
+  // 데이터 양에 비례해 속도를 맞추되, 최대 10초가 지나면 강제로 최종 결과로 전환
   useEffect(() => {
-    if (phase !== "result") return;
-    if (!chartData.length) return;
-    setRevealProgress(5);
+    if (phase !== "scanning") return;
+    if (!chartData.length) {
+      setPhase("result");
+      return;
+    }
+    setRevealProgress(0);
+
+    const MAX_DURATION = 10000; // 10초 캡
+    // 데이터가 많을수록 천천히, 적을수록 빠르게 (최소 2초, 최대 10초)
+    const naturalDuration = Math.min(Math.max(chartData.length * 4, 2000), MAX_DURATION);
+
     let raf: number;
-    const duration = 1400; // 1.4초에 걸쳐 전체 reveal
     const start = performance.now();
     const tick = (now: number) => {
       const elapsed = now - start;
-      const p = Math.min((elapsed / duration) * 100, 100);
+      const p = Math.min((elapsed / naturalDuration) * 100, 100);
       setRevealProgress(p);
-      if (p < 100) raf = requestAnimationFrame(tick);
+      if (p < 100 && elapsed < MAX_DURATION) {
+        raf = requestAnimationFrame(tick);
+      } else {
+        // 스캔 끝(또는 10초 경과) → 최종 결과 카드로 전환
+        setRevealProgress(100);
+        setTimeout(() => setPhase("result"), 300);
+      }
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
@@ -124,7 +139,7 @@ export function UploadVisualizationPage() {
         riskLevel,
         riskScore,
       });
-      setPhase("result");
+      setPhase("scanning");
 
       // 위험도 '상'이면 토스트로 알림 (보호자에게는 백엔드가 별도 발송)
       if (riskLevel === "상") {
@@ -150,7 +165,7 @@ export function UploadVisualizationPage() {
     if (file) handleFile(file);
   };
 
-  const showUploadCard = phase !== "result";
+  const showUploadCard = phase !== "scanning" && phase !== "result";
 
   return (
     <div className="max-w-3xl mx-auto p-6">
@@ -255,7 +270,14 @@ export function UploadVisualizationPage() {
         </div>
       </div>
 
-      {/* 결과 - 페이드 인 + 물결 reveal */}
+      {/* 스캐닝 - 병원 모니터처럼 실시간으로 왼쪽→오른쪽 그려짐 */}
+      {phase === "scanning" && chartData.length > 0 && (
+        <div className="animate-fadein">
+          <MonitorChart data={chartData} revealPercent={revealProgress} />
+        </div>
+      )}
+
+      {/* 결과 - 페이드 인 + 전체 그래프 */}
       {phase === "result" && result && (
         <div className="animate-fadein space-y-6">
           <div className="text-[#0E8080] font-bold mb-2" style={{ fontSize: "1.1rem" }}>
@@ -269,21 +291,9 @@ export function UploadVisualizationPage() {
               zoom={1}
               onZoomIn={() => {}}
               onZoomOut={() => {}}
-              revealPercent={revealProgress}
             />
           )}
           {result.riskScore != null && <RiskGauge score={result.riskScore} />}
-
-          {result.riskLevel === "상" && (
-            <button
-              onClick={() => navigate("/")}
-              className="w-full py-5 bg-gradient-to-r from-[#DC2626] to-[#B91C1C] text-white rounded-xl hover:opacity-90 transition-all font-black flex items-center justify-center gap-2 shadow-lg"
-              style={{ minHeight: 64, fontSize: "1.2rem" }}
-            >
-              <Heart className="w-6 h-6 fill-current" />
-              내 건강 결과 자세히 보기
-            </button>
-          )}
 
           <button
             onClick={() => {
