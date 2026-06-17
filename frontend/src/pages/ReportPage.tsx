@@ -100,7 +100,7 @@ export function ReportPage() {
           analysisId: r.analysisId,
           riskLevel: LEVEL_MAP[r.riskLevel as RiskLevel] ?? "하",
           riskScore: r.riskScore ?? 0,
-          summary: r.reportTextUser ?? "",
+          summary: r.report_text_user ?? r.reportTextUser ?? "",
           action: r.recommendedAction ?? "",
           date: formatDate(r.createdAt),
         }));
