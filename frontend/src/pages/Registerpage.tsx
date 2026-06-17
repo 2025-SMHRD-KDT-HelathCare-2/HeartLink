@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { register, type RegisterPayload } from "../api/authApi";
 import { SocialLoginButtons } from "../components/auth/SocialLoginButtons";
+import { PhoneVerification } from "../components/auth/PhoneVerification";
 
 
 type Role = "user" | "guardian";
@@ -94,7 +95,7 @@ export function RegisterPage() {
     phone: "",
   });
 
-  // 전화번호 인증 상태 — 프론트 UI 완성 후 연결
+  // 전화번호 인증 완료 여부
   const [phoneVerified, setPhoneVerified] = useState(false);
 
   const setField = (key: string, value: string) =>
@@ -129,7 +130,7 @@ export function RegisterPage() {
 
     const payload: RegisterPayload = {
       email: form.email, password: form.password,
-      nickname: form.nickname, role, phone: form.phone.trim(),
+      nickname: form.nickname, role, phone: form.phone.replace(/[^0-9]/g, ""),
     };
     if (form.age) payload.age = Number(form.age);
     if (form.gender) payload.gender = form.gender;
@@ -200,7 +201,12 @@ export function RegisterPage() {
               <div className="pt-1">
                 <h2 className="text-[#0A2647] font-bold mb-4 pb-2 border-b-2 border-gray-100" style={{ fontSize: "1.2rem" }}>기본 정보</h2>
 
-                {/* TODO: 전화번호 인증 UI — phone, phoneVerified state 연결 */}
+                {/* 전화번호 인증 (일반 가입) */}
+                <PhoneVerification
+                  phone={form.phone}
+                  onPhoneChange={(v) => setField("phone", v)}
+                  onVerifiedChange={setPhoneVerified}
+                />
                 {errors.phone && <p className="text-red-500 mb-3 font-bold" style={errStyle}>{errors.phone}</p>}
 
                 <div className="mb-5">
@@ -287,7 +293,8 @@ export function RegisterPage() {
             </form>
 
             {/* 소셜 로그인 */}
-            <SocialLoginButtons />
+            <SocialLoginButtons role={role} />
+
 
             <div className="mt-6 pt-6 border-t border-gray-100 text-center">
               <span className="text-gray-500 font-bold" style={{ fontSize: "1rem" }}>이미 회원이신가요? </span>

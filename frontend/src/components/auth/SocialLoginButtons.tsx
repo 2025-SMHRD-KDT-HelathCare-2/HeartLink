@@ -1,12 +1,13 @@
 import { startSocialLogin } from "../../api/authApi";
 
 type Role = "user" | "guardian";
+type Provider = "google" | "naver" | "kakao";
 
-const providers = [
+const providers: { id: Provider; label: string; bg: string; color: string; border: string }[] = [
   { id: "google", label: "Google로 시작하기", bg: "#FFFFFF", color: "#1F1F1F", border: "#DADCE0" },
   { id: "naver",  label: "네이버로 시작하기",  bg: "#03C75A", color: "#FFFFFF", border: "#03C75A" },
   { id: "kakao",  label: "카카오로 시작하기",  bg: "#FEE500", color: "#191600", border: "#FEE500" },
-] as const;
+];
 
 export function SocialLoginButtons({ role }: { role: Role }) {
   return (

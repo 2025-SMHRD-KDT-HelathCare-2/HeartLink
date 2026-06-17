@@ -137,9 +137,15 @@ export async function callLogout() {
 
 // ───────────────── 소셜 로그인 ─────────────────
 // 백엔드 OAuth 진입점으로 브라우저 이동
-export function startSocialLogin(provider: "google" | "naver" | "kakao") {
-  window.location.href = `${API_BASE_URL}/api/auth/${provider}`;
+// role을 함께 전달 (소셜 신규 가입 시 사용자가 선택한 역할을 백엔드로 넘김)
+export function startSocialLogin(
+  provider: "google" | "naver" | "kakao",
+  role: "user" | "guardian"
+) {
+  const url = `${API_BASE_URL}/api/auth/${provider}?role=${encodeURIComponent(role)}`;
+  window.location.href = url;
 }
+
 
 // 쿠키의 RefreshToken으로 AccessToken + 사용자 정보 획득 (부팅/콜백 시)
 export async function exchangeToken() {
