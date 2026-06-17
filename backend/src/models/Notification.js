@@ -5,9 +5,9 @@ const notificationSchema = new Schema(
   {
     analysisId: { type: Schema.Types.ObjectId, ref: 'AnalysisResult', required: true },
     userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-    guardianId: { type: Schema.Types.ObjectId, ref: 'User' },
+    guardianId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     riskLevel: { type: String, enum: ['high', 'mid', 'low'], required: true },
-    channel: { type: String, enum: ['push', 'sms', 'app'], required: true },
+    channel: { type: String, enum: ['push', 'sms'], required: true },
     message: { type: String, required: true, maxlength: 1000 },
     sendStatus: { type: String, enum: ['success', 'fail'], required: true },
     isRead: { type: Boolean, default: false },

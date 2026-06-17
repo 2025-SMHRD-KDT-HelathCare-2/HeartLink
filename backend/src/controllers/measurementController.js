@@ -3,6 +3,7 @@ import AnalysisResult from '../models/AnalysisResult.js';
 import Report from '../models/Report.js';
 import Notification from '../models/Notification.js';
 import User from '../models/User.js';
+import GuardianRelation from '../models/GuardianRelation.js';
 import * as aiService from '../services/aiService.js';
 import { sendHighRiskSMS } from './internalController.js';
 
@@ -79,6 +80,10 @@ export const uploadECG = async (req, res, next) => {
     const { measured_at } = req.body;
     const file = req.file;
 
+    if (!file) {
+      return res.status(400).json({ message: '파일이 전송되지 않았습니다. 다시 시도해 주세요.' });
+    }
+
     const user = await User.findById(req.user.id).select('age gender medicalHistory');
 
     const measurement = await Measurement.create({
@@ -140,16 +145,27 @@ export const uploadECG = async (req, res, next) => {
 
       await Measurement.findByIdAndUpdate(measurement._id, { status: 'completed' });
 
-      await Notification.create({
-        analysisId:  analysis._id,
-        userId:      req.user.id,
-        riskLevel:   data.risk_level,
-        channel:     'app',
-        message:     RISK_MESSAGES[data.risk_level] ?? RISK_MESSAGES.low,
-        sendStatus:  'success',
-        isRead:      false,
-        sentAt:      new Date(),
+      // 수락된 보호자 목록 조회 후 보호자별 알림 생성
+      const guardianRelations = await GuardianRelation.find({
+        userId: req.user.id,
+        relationStatus: 'accepted',
       });
+
+      if (guardianRelations.length > 0) {
+        await Notification.insertMany(
+          guardianRelations.map(rel => ({
+            analysisId:  analysis._id,
+            userId:      req.user.id,
+            guardianId:  rel.guardianId,
+            riskLevel:   data.risk_level,
+            channel:     'push',
+            message:     RISK_MESSAGES[data.risk_level] ?? RISK_MESSAGES.low,
+            sendStatus:  'success',
+            isRead:      false,
+            sentAt:      new Date(),
+          }))
+        );
+      }
 
       if (data.risk_level === 'high') {
         sendHighRiskSMS(req.user.id, data.risk_score).catch(err =>
@@ -192,6 +208,7 @@ export const uploadECG = async (req, res, next) => {
 
     }).catch(err => {
       console.error('AI 서버 분석 실패:', err.message);
+      console.error('에러 상세:', err.name, JSON.stringify(err.errors ?? err.errorResponse ?? {}));
       Measurement.findByIdAndUpdate(measurement._id, { status: 'failed' }).catch(() => {});
     });
 

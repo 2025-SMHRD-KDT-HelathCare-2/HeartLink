@@ -104,7 +104,7 @@ export function UploadVisualizationPage() {
       formData.append("ecg_file", file);
 
       const res = await api.post("/measurements", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
+        headers: { "Content-Type": undefined }, // boundary 포함한 Content-Type은 브라우저가 자동 설정
       });
 
       const { measurementId } = res.data;
