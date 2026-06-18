@@ -41,8 +41,6 @@ const reportSchema = new Schema(
 
     // ttsAudioUrl: TTS로 생성한 음성(mp3) 파일 경로. 최대 1000글자
     ttsAudioUrl: { type: String, maxlength: 1000 },
-    // pdfUrl: PDF 파일 경로. 최대 1000글자
-    pdfUrl: { type: String, maxlength: 1000 },
 
     // maxRiskLevel: 집계 기간 내 최고 위험도. high/mid/low. 필수
     maxRiskLevel: { type: String, enum: ['high', 'mid', 'low'], required: true },
