@@ -1,12 +1,14 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { AlertTriangle, CheckCircle, Info, Clock, Volume2, Bell } from "lucide-react";
+import { AlertTriangle, CheckCircle, Info, Clock, Volume2, Bell, Sparkles } from "lucide-react";
 import api from "../api/authApi";
 
+type RiskLevel = "high" | "mid" | "low";
 
 interface ReportItem {
   id: string;             // _id
   analysisId: string;     // TTS 호출용
+  measurementId?: string; // 리포트 생성 요청 시 사용
   riskLevel: "상" | "중" | "하";
   riskScore: number;
   summary: string;        // reportTextUser
@@ -20,6 +22,7 @@ const RISK_META = {
   하: { color: "#16A34A", bg: "#F0FDF4", border: "#BBF7D0", label: "양호", icon: CheckCircle },
 };
 
+const LEVEL_MAP: Record<RiskLevel, "상" | "중" | "하"> = { high: "상", mid: "중", low: "하" };
 
 function formatDate(iso: string) {
   const d = new Date(iso);
@@ -44,10 +47,10 @@ function DailyAlertSection() {
         const res = await api.get("/notifications");
         const today = new Date().toISOString().slice(0, 10);
         const todays = (res.data || []).filter((n: any) =>
-          n.level === "상" && (n.createdAt || "").slice(0, 10) === today
+          n.level === "high" && (n.createdAt || "").slice(0, 10) === today
         );
         setAlerts(todays.map((n: any) => ({
-          id: n.id,
+          id: n._id,
           message: n.message,
           time: (n.createdAt || "").slice(11, 16),
         })));
@@ -87,6 +90,8 @@ export function ReportPage() {
   const navigate = useNavigate();
   const [reports, setReports] = useState<ReportItem[]>([]);
   const [selectedIdx, setSelectedIdx] = useState(0);
+  const [generatedAnalysisId, setGeneratedAnalysisId] = useState<string | null>(null);
+  const [generating, setGenerating] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -95,9 +100,10 @@ export function ReportPage() {
         const res = await api.get("/reports");
         const mapped: ReportItem[] = (res.data || []).map((r: any) => ({
           id: r._id,
-          analysisId: r.analysisId?._id ?? r.analysisId,
-          riskScore: r.analysisId?.riskScore ?? r.riskScore ?? 0,
-          riskLevel: (() => { const s = r.analysisId?.riskScore ?? r.riskScore ?? 0; return s >= 70 ? "상" : s >= 40 ? "중" : "하"; })(),
+          analysisId: r.analysisId,
+          measurementId: r.measurementId,
+          riskLevel: LEVEL_MAP[r.riskLevel as RiskLevel] ?? "하",
+          riskScore: r.riskScore ?? 0,
           summary: r.report_text_user ?? r.reportTextUser ?? "",
           action: r.recommendedAction ?? "",
           date: formatDate(r.createdAt),
@@ -135,6 +141,23 @@ export function ReportPage() {
   const report = reports[Math.min(selectedIdx, reports.length - 1)];
   const meta = RISK_META[report.riskLevel];
   const RiskIcon = meta.icon;
+
+  const handleGenerateReport = async () => {
+    try {
+      setGenerating(true);
+      // TODO: 백엔드와 엔드포인트/파라미터 이름 확정 필요
+      const res = await api.post("/reports/generate", {
+        analysisId: report.analysisId,
+        measurementId: report.measurementId,
+      });
+      const newAnalysisId = res.data?.analysisId ?? report.analysisId;
+      setGeneratedAnalysisId(newAnalysisId);
+    } catch (err) {
+      console.error("리포트 생성 실패", err);
+    } finally {
+      setGenerating(false);
+    }
+  };
 
   return (
     <div className="max-w-2xl mx-auto p-5">
@@ -199,14 +222,34 @@ export function ReportPage() {
         <p className="text-gray-800 leading-relaxed font-black" style={{ fontSize: "1.4rem" }}>{report.summary}</p>
       </div>
 
-      {/* 최근 AI리포트 듣기 버튼 - 상세 페이지로 이동 (analysisId 전달) */}
+      {/* 리포트 생성: 선택된 측정 결과를 "현재 리포트"로 고정 */}
       <button
-        onClick={() => navigate("/report-detail", { state: { analysisId: report.analysisId } })}
-        className="w-full flex items-center justify-center gap-3 py-6 rounded-2xl border-4 border-[#0A2647] text-[#0A2647] bg-white hover:bg-[#0A2647] hover:text-white transition-all font-black mb-6"
+        onClick={handleGenerateReport}
+        disabled={generating}
+        className="w-full flex items-center justify-center gap-3 py-5 bg-gradient-to-r from-[#0A2647] to-[#0E8080] text-white rounded-2xl hover:opacity-90 transition-all font-black mb-4 shadow-lg disabled:opacity-50"
+        style={{ minHeight: 68, fontSize: "1.2rem" }}
+      >
+        <Sparkles className="w-6 h-6" />
+        {generating ? "리포트 생성 중..." : generatedAnalysisId === report.analysisId ? "이 측정으로 리포트 생성됨" : "이 측정으로 리포트 생성"}
+      </button>
+
+      {/* 최근 AI리포트 듣기 버튼 - 리포트 생성 버튼으로 고정된 리포트만 듣기 */}
+      <button
+        onClick={() => {
+          if (!generatedAnalysisId) return;
+          navigate("/report-detail", { state: { analysisId: generatedAnalysisId } });
+        }}
+        disabled={!generatedAnalysisId}
+        className="w-full flex items-center justify-center gap-3 py-6 rounded-2xl border-4 border-[#0A2647] text-[#0A2647] bg-white hover:bg-[#0A2647] hover:text-white transition-all font-black mb-6 disabled:opacity-40 disabled:hover:bg-white disabled:hover:text-[#0A2647]"
         style={{ minHeight: 80, fontSize: "1.4rem" }}
       >
         <Volume2 style={{ width: 34, height: 34 }} />🔊 최근 AI리포트 듣기
       </button>
+      {!generatedAnalysisId && (
+        <p className="text-gray-400 font-bold text-center -mt-4 mb-6" style={{ fontSize: "1rem" }}>
+          위 "리포트 생성" 버튼을 먼저 눌러 주세요.
+        </p>
+      )}
 
       {/* 지금 하셔야 할 일 (단일 문자열) */}
       {report.action && (
