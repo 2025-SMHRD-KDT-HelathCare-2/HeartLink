@@ -114,13 +114,19 @@ async def generate_report(
     age: int = 70,
     gender: str = 'F',
     medical_history: list = None,
-    user_id: str = ''
+    user_id: str = '',
+    target: str = 'both'
 ) -> dict:
     """
     Gemini API로 고령자용 + 보호자용 리포트 동시 생성
 
     하나의 프롬프트로 6가지 시나리오(대상 × 위험도) 처리
     JSON 형식으로 출력해서 reports 컬렉션에 바로 저장 가능
+    백엔드가 "캐시에 리포트가 없을 때만" AI 서버를 부르고,
+    이때 target으로 시니어용인지 보호자용인지 알려주기로 했음.
+    - target='user'     : 시니어가 보는 리포트만 생성
+    - target='guardian' : 보호자가 보는 리포트만 생성
+    - target='both'     : 기존 동작과 동일 (하위 호환용 기본값)
 
     Parameters
     ----------
@@ -135,6 +141,7 @@ async def generate_report(
         - risk_score       : 위험도 점수 (0~100)
         - risk_level       : 위험도 등급 (high/mid/low)
         - heart_rate       : 심박수 (BPM)
+        
     age            : int,  나이
     gender         : str,  성별 ('M'/'F')
     medical_history: list, 과거력 (None이면 빈 리스트로 처리)
@@ -143,14 +150,18 @@ async def generate_report(
     Returns
     -------
     dict:
-        - report_text_user    : 고령자용 메시지
-        - report_text_guardian: 보호자용 메시지
+        - report_text_user    : 고령자용 메시지 (target='guardian'이면 이 키 없음)
+        - report_text_guardian: 보호자용 메시지 (target='user'이면 이 키 없음)
         - recommended_action  : 핵심 권장 조치 한 줄
     """
 
     # mutable default argument 방지
     if medical_history is None:
         medical_history = []
+
+    # 잘못된 값이 들어오면 안전하게 기존 동작(both)으로 처리
+    if target not in ('user', 'guardian', 'both'):
+        target = 'both'
 
     # 분석 결과 파싱
     risk_level  = analysis_result.get('risk_level', 'low')
@@ -183,6 +194,24 @@ async def generate_report(
     past_risk_text = ', '.join(past_risk[-7:]) if past_risk else '데이터 없음'
     past_hrv_text  = ', '.join([str(h) for h in past_hrv[-7:]]) if past_hrv else '데이터 없음'
     arr_hist_text  = ', '.join(arr_history[-3:]) if arr_history else '이력 없음'
+
+    # target에 따라 Gemini에게 요청할 출력 필드를 다르게 구성
+    if target == 'user':
+        output_format = '''{
+  "report_text_user": "어르신용 메시지 (3~5문장, TTS로 읽어줄 것이므로 자연스럽게)",
+  "recommended_action": "핵심 권장 조치 한 줄"
+}'''
+    elif target == 'guardian':
+        output_format = '''{
+  "report_text_guardian": "보호자용 메시지 (5~7문장, 의학적 정보 포함)",
+  "recommended_action": "핵심 권장 조치 한 줄"
+}'''
+    else:  # both
+        output_format = '''{
+  "report_text_user": "어르신용 메시지 (3~5문장, TTS로 읽어줄 것이므로 자연스럽게)",
+  "report_text_guardian": "보호자용 메시지 (5~7문장, 의학적 정보 포함)",
+  "recommended_action": "핵심 권장 조치 한 줄"
+}'''
 
     prompt = f"""
 당신은 어르신과 가족을 돕는 심장 건강 안내 도우미입니다.
@@ -241,11 +270,7 @@ async def generate_report(
 
 [출력 형식]
 반드시 아래 JSON 형식으로만 답하세요. 다른 말은 하지 마세요.
-{{
-  "report_text_user": "어르신용 메시지 (3~5문장, TTS로 읽어줄 것이므로 자연스럽게)",
-  "report_text_guardian": "보호자용 메시지 (5~7문장, 의학적 정보 포함)",
-  "recommended_action": "핵심 권장 조치 한 줄"
-}}
+{output_format}
 """
 
     try:
@@ -267,8 +292,11 @@ async def generate_report(
 
     except Exception as e:
         print(f"Gemini API 오류: {e}")
-        return {
-            "report_text_user": f"오늘 심장 건강 위험도는 {risk_label}입니다. 정확한 분석을 위해 잠시 후 다시 시도해주세요. 이 안내는 참고용이며 의사의 진료를 대신하지 않습니다.",
-            "report_text_guardian": f"위험도: {risk_label} ({risk_score}점). 부정맥: {arr_class}. API 오류로 상세 리포트 생성에 실패했습니다. 이 안내는 참고용이며 의사의 진료를 대신하지 않습니다.",
+        fallback = {
             "recommended_action": f"위험도 {risk_label} - 상태를 지속적으로 모니터링하세요."
         }
+        if target in ('user', 'both'):
+            fallback["report_text_user"] = f"오늘 심장 건강 위험도는 {risk_label}입니다. 정확한 분석을 위해 잠시 후 다시 시도해주세요. 이 안내는 참고용이며 의사의 진료를 대신하지 않습니다."
+        if target in ('guardian', 'both'):
+            fallback["report_text_guardian"] = f"위험도: {risk_label} ({risk_score}점). 부정맥: {arr_class}. API 오류로 상세 리포트 생성에 실패했습니다. 이 안내는 참고용이며 의사의 진료를 대신하지 않습니다."
+        return fallback
