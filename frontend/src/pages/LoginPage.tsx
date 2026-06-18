@@ -160,7 +160,8 @@ export function LoginPage() {
             </button>
 
             <div className="text-center">
-              <button type="button" className="text-gray-400 hover:text-[#0E8080] underline font-bold" style={{ fontSize: "1rem" }}>
+              <button type="button" onClick={() => navigate("/forgot-password")}
+                className="text-gray-400 hover:text-[#0E8080] underline font-bold" style={{ fontSize: "1rem" }}>
                 비밀번호를 잊으셨나요?
               </button>
             </div>

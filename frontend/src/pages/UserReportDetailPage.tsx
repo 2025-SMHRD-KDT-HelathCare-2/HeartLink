@@ -168,7 +168,7 @@ export function UserReportDetailPage() {
             }`}
             style={{ minHeight: 72, fontSize: "1.3rem" }}
           >
-            {ttsLoading ? "준비 중..." : playing ? <><StopCircle className="w-8 h-8" />멈추기</> : <><Volume2 className="w-8 h-8" />🔊 최근 AI리포트 듣기</>}
+            {ttsLoading ? "준비 중..." : playing ? <><StopCircle className="w-8 h-8" />멈추기</> : <><Volume2 className="w-8 h-8" /> 최근 AI리포트 듣기</>}
           </button>
 
           <div>
