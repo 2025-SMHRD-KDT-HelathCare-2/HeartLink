@@ -66,10 +66,11 @@ export const getReport = async (req, res, next) => {
 
     res.json({
       ...report.toObject(),
-      riskScore: latestAnalysis?.riskScore ?? 0,
-      heartRate: latestAnalysis?.heartRate ?? 0,
-      ecgWaveformLite: measurement?.ecgWaveformLite ?? [],
-      rPeaks: measurement?.rPeaks ?? [],
+      riskScore:        latestAnalysis?.riskScore ?? 0,
+      heartRate:        latestAnalysis?.heartRate ?? 0,
+      ecgWaveformLite:  measurement?.ecgWaveformLite ?? [],
+      rPeaks:           measurement?.rPeaks ?? [],
+      report_text_user: report.reportText ?? null,  // 프론트 compat alias
     });
   } catch (err) {
     next(err);

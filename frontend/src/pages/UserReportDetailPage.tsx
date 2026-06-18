@@ -44,31 +44,40 @@ export function UserReportDetailPage() {
   const [ttsLoading, setTtsLoading] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // ===== 리포트 데이터 조회 =====
+  // ===== 리포트 데이터 조회 (생성 중이면 완료될 때까지 폴링) =====
   useEffect(() => {
-    (async () => {
+    if (!analysisId) { setLoading(false); return; }
+
+    let intervalId: ReturnType<typeof setInterval> | null = null;
+
+    const fetchReport = async () => {
       try {
-        if (!analysisId) {
-          setLoading(false);
-          return;
-        }
         const res = await api.get(`/reports/${analysisId}`);
         const r = res.data;
+
+        if (r.status === 'generating') return; // 폴링 계속
+
         const score = r.riskScore ?? 0;
         setReport({
           date: (r.createdAt || "").slice(0, 10),
           riskScore: score,
           riskLevel: score >= 70 ? "상" : score >= 40 ? "중" : "하",
-          reportText: r.report_text_user ?? r.reportTextUser ?? "",
+          reportText: r.report_text_user ?? r.reportTextUser ?? r.reportText ?? "",
           ecgPoints: r.ecgWaveformLite ?? [],
           rPeaks: r.rPeaks ?? [],
         });
+        if (intervalId) clearInterval(intervalId);
       } catch (err) {
         console.error("리포트 조회 실패", err);
+        if (intervalId) clearInterval(intervalId);
       } finally {
         setLoading(false);
       }
-    })();
+    };
+
+    fetchReport();
+    intervalId = setInterval(fetchReport, 3000);
+    return () => { if (intervalId) clearInterval(intervalId); };
   }, [analysisId]);
 
   const config = report ? RISK_CONFIG[report.riskLevel] : RISK_CONFIG.하;
