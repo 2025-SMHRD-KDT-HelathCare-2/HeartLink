@@ -218,6 +218,7 @@ async def report(
     risk_score:       int   = Form(default=0),
     risk_level:       str   = Form(default='low'),
     heart_rate:       float = Form(default=75.0),
+    target:           str   = Form(default='both'),
 ):
     """
     리포트 생성 엔드포인트
@@ -229,6 +230,7 @@ async def report(
     - age            : 나이
     - gender         : 성별
     - medical_history: 과거력 (쉼표 구분)
+    - target         : 'user'(시니어용만) | 'guardian'(보호자용만) | 'both'(기본값, 둘 다)
     - 나머지          : AnalysisResult 데이터
 
     Returns
@@ -261,6 +263,7 @@ async def report(
             gender          = gender,
             medical_history = medical_history_list,
             user_id         = user_id,
+            target          = target,
         )
 
         return result
