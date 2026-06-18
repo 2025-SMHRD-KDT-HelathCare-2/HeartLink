@@ -2,19 +2,18 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, ReferenceLine
 } from "recharts";
-import { ZoomIn, ZoomOut } from "lucide-react";
 import { useMemo } from "react";
 
 interface ECGChartProps {
   data: Array<{ x: number; y: number }>;
   rPeaks: number[];
-  zoom: number;
-  onZoomIn: () => void;
-  onZoomOut: () => void;
+  zoom?: number;
+  onZoomIn?: () => void;
+  onZoomOut?: () => void;
   revealPercent?: number; // 0~100, 지정 시 왼쪽부터 그만큼만 표시
 }
 
-export function ECGChart({ data, rPeaks, zoom, onZoomIn, onZoomOut, revealPercent }: ECGChartProps) {
+export function ECGChart({ data, rPeaks, zoom = 1, revealPercent }: ECGChartProps) {
   const visibleCount = Math.floor(data.length / zoom);
   const baseData = data.slice(0, visibleCount);
 
@@ -35,20 +34,8 @@ export function ECGChart({ data, rPeaks, zoom, onZoomIn, onZoomOut, revealPercen
 
   return (
     <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-      <div className="flex items-center justify-between mb-5">
+      <div className="mb-5">
         <h3 className="text-[#0A2647] font-bold" style={{ fontSize: "1.3rem" }}>심장 뛰는 모양 그래프</h3>
-        <div className="flex gap-2">
-          <button onClick={onZoomIn}
-            className="p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
-            style={{ minHeight: 52, minWidth: 52 }}>
-            <ZoomIn className="w-6 h-6 text-gray-600" />
-          </button>
-          <button onClick={onZoomOut}
-            className="p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
-            style={{ minHeight: 52, minWidth: 52 }}>
-            <ZoomOut className="w-6 h-6 text-gray-600" />
-          </button>
-        </div>
       </div>
 
       <div style={{ height: 200, minHeight: 200, width: "100%" }}>
