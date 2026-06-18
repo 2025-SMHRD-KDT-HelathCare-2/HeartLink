@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { AlertTriangle, CheckCircle, Info, Clock, Volume2, Bell, Sparkles } from "lucide-react";
+import { AlertTriangle, CheckCircle, Info, Clock, Bell, Sparkles } from "lucide-react";
 import api from "../api/authApi";
 
 type RiskLevel = "high" | "mid" | "low";
@@ -90,16 +90,15 @@ export function ReportPage() {
   const [measurements, setMeasurements] = useState<MeasurementItem[]>([]);
   const [selectedIdx, setSelectedIdx] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [generatedAnalysisId, setGeneratedAnalysisId] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
 
   useEffect(() => {
     (async () => {
       try {
         const res = await api.get("/measurements");
-        console.log("[디버그] /measurements 응답:", res.data);
+        const today = new Date().toISOString().slice(0, 10);
         const mapped: MeasurementItem[] = (res.data || [])
-          .filter((m: any) => m.status === "completed")
+          .filter((m: any) => m.status === "completed" && (m.measuredAt || "").slice(0, 10) === today)
           .map((m: any) => ({
             id: m._id,
             analysisId: m.analysis?._id ?? null,
@@ -125,34 +124,17 @@ export function ReportPage() {
     );
   }
 
-  if (measurements.length === 0) {
-    return (
-      <div className="max-w-2xl mx-auto p-5">
-        <div className="mb-7">
-          <h1 className="font-black text-[#0A2647]" style={{ fontSize: "2.2rem" }}>내 건강 결과</h1>
-        </div>
-        <div className="bg-white rounded-2xl p-12 shadow-sm border-2 border-gray-100 text-center">
-          <p className="text-gray-400 font-bold" style={{ fontSize: "1.1rem" }}>아직 측정 결과가 없어요. 심전도 파일을 올려 보세요.</p>
-        </div>
-      </div>
-    );
-  }
-
-  const item = measurements[Math.min(selectedIdx, measurements.length - 1)];
-  const meta = RISK_META[item.riskLevel];
+  const hasData = measurements.length > 0;
+  const item = hasData ? measurements[Math.min(selectedIdx, measurements.length - 1)] : null;
+  const meta = item ? RISK_META[item.riskLevel] : RISK_META["하"];
   const RiskIcon = meta.icon;
 
   const handleGenerateReport = async () => {
-    if (!item.analysisId) return;
     try {
       setGenerating(true);
-      // TODO: 백엔드와 엔드포인트/파라미터 이름 확정 필요
-      const res = await api.post("/reports/generate", {
-        analysisId: item.analysisId,
-        measurementId: item.id,
-      });
-      const newAnalysisId = res.data?.analysisId ?? item.analysisId;
-      setGeneratedAnalysisId(newAnalysisId);
+      const res = await api.post("/reports/generate");
+      const reportId = res.data?._id;
+      navigate("/report-detail", { state: { analysisId: reportId } });
     } catch (err) {
       console.error("리포트 생성 실패", err);
     } finally {
@@ -170,86 +152,73 @@ export function ReportPage() {
       <DailyAlertSection />
 
       {/* 측정 결과 목록 */}
-      <div className="bg-white rounded-2xl shadow-sm border-2 border-gray-100 mb-6 overflow-hidden">
-        <div className="p-5 border-b-2 border-gray-100">
-          <h3 className="text-gray-800 font-black" style={{ fontSize: "1.25rem" }}>최근 측정 목록</h3>
-        </div>
-        {measurements.map((m, i) => {
-          const mm = RISK_META[m.riskLevel];
-          return (
-            <button
-              key={m.id}
-              onClick={() => setSelectedIdx(i)}
-              className={`w-full flex items-center gap-4 p-5 text-left transition-colors border-b-2 border-gray-50 last:border-0 ${selectedIdx === i ? "bg-blue-50" : "hover:bg-gray-50"}`}
-              style={{ minHeight: 80 }}
-            >
-              <div className="w-4 h-16 rounded-full flex-shrink-0" style={{ backgroundColor: mm.color }} />
-              <div className="flex-1">
-                <div className="flex items-center gap-3 flex-wrap mb-1">
-                  <span className="px-4 py-2 rounded-full text-white font-black" style={{ backgroundColor: mm.color, fontSize: "1.15rem" }}>
-                    위험도 {m.riskLevel} — {mm.label}
-                  </span>
-                  <span className="text-gray-600 font-black" style={{ fontSize: "1.1rem" }}>{m.riskScore}점</span>
+      {hasData && (
+        <div className="bg-white rounded-2xl shadow-sm border-2 border-gray-100 mb-6 overflow-hidden">
+          <div className="p-5 border-b-2 border-gray-100">
+            <h3 className="text-gray-800 font-black" style={{ fontSize: "1.25rem" }}>최근 측정 목록</h3>
+          </div>
+          {measurements.map((m, i) => {
+            const mm = RISK_META[m.riskLevel];
+            return (
+              <button
+                key={m.id}
+                onClick={() => setSelectedIdx(i)}
+                className={`w-full flex items-center gap-4 p-5 text-left transition-colors border-b-2 border-gray-50 last:border-0 ${selectedIdx === i ? "bg-blue-50" : "hover:bg-gray-50"}`}
+                style={{ minHeight: 80 }}
+              >
+                <div className="w-4 h-16 rounded-full shrink-0" style={{ backgroundColor: mm.color }} />
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 flex-wrap mb-1">
+                    <span className="px-4 py-2 rounded-full text-white font-black" style={{ backgroundColor: mm.color, fontSize: "1.15rem" }}>
+                      위험도 {m.riskLevel} — {mm.label}
+                    </span>
+                    <span className="text-gray-600 font-black" style={{ fontSize: "1.1rem" }}>{m.riskScore}점</span>
+                  </div>
+                  <p className="text-gray-500 mt-1 flex items-center gap-1 font-bold" style={{ fontSize: "1rem" }}>
+                    <Clock className="w-4 h-4" />{m.date}
+                  </p>
                 </div>
-                <p className="text-gray-500 mt-1 flex items-center gap-1 font-bold" style={{ fontSize: "1rem" }}>
-                  <Clock className="w-4 h-4" />{m.date}
-                </p>
-              </div>
-            </button>
-          );
-        })}
-      </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* 위험도 배너 */}
-      <div className="rounded-2xl p-7 mb-5 border-4" style={{ backgroundColor: meta.bg, borderColor: meta.color }}>
-        <div className="flex items-center gap-5 mb-5">
-          <div className="rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: meta.color, width: 88, height: 88 }}>
-            <RiskIcon className="text-white" style={{ width: 48, height: 48 }} />
-          </div>
-          <div className="flex-1">
-            <div style={{ color: meta.color, fontSize: "2.2rem", fontWeight: 900, lineHeight: 1.1 }}>
-              위험도 {item.riskLevel}
+      {item && (
+        <div className="rounded-2xl p-7 mb-5 border-4" style={{ backgroundColor: meta.bg, borderColor: meta.color }}>
+          <div className="flex items-center gap-5 mb-5">
+            <div className="rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: meta.color, width: 88, height: 88 }}>
+              <RiskIcon className="text-white" style={{ width: 48, height: 48 }} />
             </div>
-            <div style={{ color: meta.color, fontSize: "1.6rem", fontWeight: 800 }}>{meta.label}</div>
+            <div className="flex-1">
+              <div style={{ color: meta.color, fontSize: "2.2rem", fontWeight: 900, lineHeight: 1.1 }}>
+                위험도 {item.riskLevel}
+              </div>
+              <div style={{ color: meta.color, fontSize: "1.6rem", fontWeight: 800 }}>{meta.label}</div>
+            </div>
+            <div className="text-right shrink-0">
+              <div style={{ color: meta.color, fontSize: "3.5rem", fontWeight: 900, lineHeight: 1 }}>{item.riskScore}</div>
+              <div className="text-gray-500 font-bold" style={{ fontSize: "1.1rem" }}>/ 100점</div>
+            </div>
           </div>
-          <div className="text-right flex-shrink-0">
-            <div style={{ color: meta.color, fontSize: "3.5rem", fontWeight: 900, lineHeight: 1 }}>{item.riskScore}</div>
-            <div className="text-gray-500 font-bold" style={{ fontSize: "1.1rem" }}>/ 100점</div>
+          <div className="w-full bg-white/80 rounded-full mb-5 overflow-hidden" style={{ height: 20 }}>
+            <div className="rounded-full h-full transition-all" style={{ width: `${item.riskScore}%`, backgroundColor: meta.color }} />
           </div>
         </div>
-        <div className="w-full bg-white/80 rounded-full mb-5 overflow-hidden" style={{ height: 20 }}>
-          <div className="rounded-full h-full transition-all" style={{ width: `${item.riskScore}%`, backgroundColor: meta.color }} />
-        </div>
-      </div>
+      )}
 
-      {/* 리포트 생성: 선택된 측정 결과를 "현재 리포트"로 고정 */}
+      {/* 리포트 생성 버튼 */}
       <button
         onClick={handleGenerateReport}
-        disabled={generating || !item.analysisId}
-        className="w-full flex items-center justify-center gap-3 py-5 bg-gradient-to-r from-[#0A2647] to-[#0E8080] text-white rounded-2xl hover:opacity-90 transition-all font-black mb-4 shadow-lg disabled:opacity-50"
+        disabled={!hasData || generating}
+        className="w-full flex items-center justify-center gap-3 py-5 bg-linear-to-r from-[#0A2647] to-[#0E8080] text-white rounded-2xl hover:opacity-90 transition-all font-black mb-4 shadow-lg disabled:opacity-50"
         style={{ minHeight: 68, fontSize: "1.2rem" }}
       >
         <Sparkles className="w-6 h-6" />
-        {generating ? "리포트 생성 중..." : generatedAnalysisId === item.analysisId ? "이 측정으로 리포트 생성됨" : "이 측정으로 리포트 생성"}
+        {generating ? "리포트 생성 중..." : hasData ? "이 측정으로 리포트 생성" : "측정 후 생성해주세요"}
       </button>
 
-      {/* 최근 AI리포트 듣기 버튼 - 리포트 생성 버튼으로 고정된 리포트만 듣기 */}
-      <button
-        onClick={() => {
-          if (!generatedAnalysisId) return;
-          navigate("/report-detail", { state: { analysisId: generatedAnalysisId } });
-        }}
-        disabled={!generatedAnalysisId}
-        className="w-full flex items-center justify-center gap-3 py-6 rounded-2xl border-4 border-[#0A2647] text-[#0A2647] bg-white hover:bg-[#0A2647] hover:text-white transition-all font-black mb-6 disabled:opacity-40 disabled:hover:bg-white disabled:hover:text-[#0A2647]"
-        style={{ minHeight: 80, fontSize: "1.4rem" }}
-      >
-        <Volume2 style={{ width: 34, height: 34 }} />🔊 최근 AI리포트 듣기
-      </button>
-      {!generatedAnalysisId && (
-        <p className="text-gray-400 font-bold text-center -mt-4 mb-6" style={{ fontSize: "1rem" }}>
-          위 "리포트 생성" 버튼을 먼저 눌러 주세요.
-        </p>
-      )}
 
       <div className="bg-gray-50 border-2 border-gray-200 rounded-xl p-5 text-gray-500 leading-relaxed font-bold" style={{ fontSize: "1rem" }}>
         <Info className="w-5 h-5 inline mr-2 text-gray-400" />
