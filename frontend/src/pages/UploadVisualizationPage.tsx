@@ -265,7 +265,6 @@ export function UploadVisualizationPage() {
         </button>
 
         <div className="mt-5 space-y-2 font-bold" style={{ fontSize: "1rem", color: "#6b7280" }}>
-          <p>• 올린 파일은 암호화되어 안전하게 보관됩니다.</p>
           <p>• 파일 올리기가 어려우시면 가족·보호자에게 도움을 요청하세요.</p>
         </div>
       </div>

@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Heart, LogOut, Menu, X, ChevronRight, Bell } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import api from "../../api/authApi";
 import { ReportPage } from "../../pages/ReportPage";
 import { ReportHistoryPage } from "../../pages/ReportHistoryPage";
 import { UploadVisualizationPage } from "../../pages/UploadVisualizationPage";
@@ -18,6 +19,19 @@ export function UserLayout({ onLogout }: { onLogout: () => void }) {
   const [screen, setScreen] = useState<UserScreen>("report");
   const [menuOpen, setMenuOpen] = useState(false);
   const navigate = useNavigate();
+  const [hasUnread, setHasUnread] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await api.get("/notifications");
+        const unread = (res.data || []).some((n: any) => !n.isRead && !n.is_read);
+        setHasUnread(unread);
+      } catch (err) {
+        console.error("알림 조회 실패", err);
+      }
+    })();
+  }, []);
   const { user } = useAuth();
 
   const nickname = (user as any)?.nickname || (user as any)?.email?.split("@")[0] || "사용자";
@@ -56,7 +70,7 @@ export function UserLayout({ onLogout }: { onLogout: () => void }) {
             className="relative p-2.5 rounded-xl hover:bg-white/10 transition-colors"
             title="알림함">
             <Bell className="w-6 h-6 text-white" />
-            <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full" />
+            {hasUnread && <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full" />}
           </button>
           <button onClick={() => navigate("/mypage")}
             className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-white/10 transition-colors group">
@@ -81,7 +95,7 @@ export function UserLayout({ onLogout }: { onLogout: () => void }) {
             className="w-full flex items-center gap-3 py-4 border-b border-white/10 mb-3">
             <div className="relative">
               <Bell className="w-7 h-7 text-white" />
-              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full" />
+              {hasUnread && <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full" />}
             </div>
             <span className="text-white font-black" style={{ fontSize: "1.1rem" }}>알림함</span>
             <ChevronRight className="w-4 h-4 text-white/50 ml-auto" />

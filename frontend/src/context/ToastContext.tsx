@@ -50,7 +50,7 @@ function ToastItem({ toast, onClose }: { toast: ToastData; onClose: () => void }
       <Icon className="w-7 h-7 flex-shrink-0 mt-0.5" style={{ color: meta.color }} />
       <div className="flex-1">
         <p className="font-black" style={{ color: meta.color, fontSize: "1.1rem" }}>{toast.title}</p>
-        <p className="text-gray-700 font-bold mt-0.5" style={{ fontSize: "0.95rem" }}>{toast.message}</p>
+        <p className="text-gray-700 font-bold mt-0.5" style={{ fontSize: "0.95rem", whiteSpace: "pre-line", lineHeight: 1.5 }}>{toast.message}</p>
       </div>
       <button onClick={handleClose} className="p-1 rounded-lg hover:bg-black/5 flex-shrink-0">
         <X className="w-5 h-5 text-gray-400" />
