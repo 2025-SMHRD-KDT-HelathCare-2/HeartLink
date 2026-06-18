@@ -2,12 +2,14 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 import PhoneVerification from '../models/PhoneVerification.js';
+import PasswordResetCode from '../models/PasswordResetCode.js';
 import Measurement from '../models/Measurement.js';
 import AnalysisResult from '../models/AnalysisResult.js';
 import Report from '../models/Report.js';
 import Notification from '../models/Notification.js';
 import GuardianRelation from '../models/GuardianRelation.js';
 import { sendSMS } from '../services/smsService.js';
+import { sendEmail } from '../services/emailService.js';
 
 const loginAttempts = new Map();
 const MAX_ATTEMPTS = 5;
@@ -328,6 +330,208 @@ export const deleteMe = async (req, res, next) => {
 
     res.clearCookie('refreshToken', { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production' });
     res.json({ message: '탈퇴가 완료되었습니다.' });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ─────────────────────────────────────────
+// 아이디(이메일) 찾기 — 휴대폰 OTP
+// ─────────────────────────────────────────
+
+export const sendFindEmailCode = async (req, res, next) => {
+  try {
+    const { phone } = req.body;
+    if (!phone) return res.status(400).json({ message: '휴대폰 번호를 입력해 주세요.' });
+
+    const user = await User.findOne({ phone }).select('_id');
+    if (!user) return res.status(404).json({ message: '가입된 휴대폰 번호가 아닙니다.' });
+
+    const recent = await PhoneVerification.findOne({
+      phone,
+      purpose: 'find_email',
+      createdAt: { $gt: new Date(Date.now() - 60 * 1000) },
+    });
+    if (recent) return res.status(429).json({ message: '1분 후 다시 요청해 주세요.' });
+
+    const code = String(Math.floor(100000 + Math.random() * 900000));
+    const hashed = await bcrypt.hash(code, 10);
+
+    await PhoneVerification.create({
+      phone,
+      code: hashed,
+      purpose: 'find_email',
+      verified: false,
+      attemptCount: 0,
+      expiresAt: new Date(Date.now() + 5 * 60 * 1000),
+    });
+
+    await sendSMS({ to: phone, message: `[HeartLink] 아이디 찾기 인증번호: ${code} (5분 이내 입력)` });
+
+    res.json({ message: '인증번호가 발송되었습니다.' });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const verifyFindEmailCode = async (req, res, next) => {
+  try {
+    const { phone, code } = req.body;
+    if (!phone || !code) return res.status(400).json({ message: '휴대폰 번호와 인증번호를 입력해 주세요.' });
+
+    const record = await PhoneVerification.findOne({
+      phone,
+      purpose: 'find_email',
+      verified: false,
+      expiresAt: { $gt: new Date() },
+    }).sort({ createdAt: -1 });
+
+    if (!record) return res.status(400).json({ message: '인증번호가 만료되었습니다. 다시 요청해 주세요.' });
+    if (record.attemptCount >= 5) return res.status(400).json({ message: '인증 시도 횟수를 초과했습니다. 다시 요청해 주세요.' });
+
+    const match = await bcrypt.compare(code, record.code);
+    if (!match) {
+      await PhoneVerification.findByIdAndUpdate(record._id, { $inc: { attemptCount: 1 } });
+      return res.status(400).json({ message: '인증번호가 올바르지 않습니다.' });
+    }
+
+    await PhoneVerification.findByIdAndUpdate(record._id, {
+      verified: true,
+      expiresAt: new Date(Date.now() + 5 * 60 * 1000),
+    });
+
+    const user = await User.findOne({ phone }).select('email');
+    const masked = user.email.replace(/^(.{2})(.*)(@.*)$/, (_, a, b, c) => a + '*'.repeat(b.length) + c);
+
+    res.json({ message: '인증 완료', maskedEmail: masked });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// FindIdPage: 인증 완료된 번호로 이메일 조회 (POST /auth/find-email)
+export const findEmailByPhone = async (req, res, next) => {
+  try {
+    const { phone } = req.body;
+    if (!phone) return res.status(400).json({ message: '휴대폰 번호를 입력해 주세요.' });
+
+    const record = await PhoneVerification.findOne({
+      phone,
+      purpose: 'find_email',
+      verified: true,
+      expiresAt: { $gt: new Date() },
+    });
+    if (!record) return res.status(400).json({ message: '인증이 만료되었습니다. 다시 시도해 주세요.' });
+
+    const user = await User.findOne({ phone }).select('email');
+    if (!user) return res.status(404).json({ message: '가입된 휴대폰 번호가 아닙니다.' });
+
+    await PhoneVerification.findByIdAndDelete(record._id);
+
+    res.json({ email: user.email });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ─────────────────────────────────────────
+// 비밀번호 찾기 — 이메일 OTP
+// ─────────────────────────────────────────
+
+export const sendPasswordResetCode = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ message: '이메일을 입력해 주세요.' });
+
+    const user = await User.findOne({ email }).select('_id');
+    if (!user) return res.status(404).json({ message: '가입된 이메일이 아닙니다.' });
+
+    const recent = await PasswordResetCode.findOne({
+      email,
+      createdAt: { $gt: new Date(Date.now() - 60 * 1000) },
+    });
+    if (recent) return res.status(429).json({ message: '1분 후 다시 요청해 주세요.' });
+
+    const code = String(Math.floor(100000 + Math.random() * 900000));
+    const hashed = await bcrypt.hash(code, 10);
+
+    await PasswordResetCode.create({
+      email,
+      code: hashed,
+      verified: false,
+      attemptCount: 0,
+      expiresAt: new Date(Date.now() + 5 * 60 * 1000),
+    });
+
+    await sendEmail({
+      to: email,
+      subject: '[HeartLink] 비밀번호 재설정 인증번호',
+      html: `
+        <div style="font-family:sans-serif;max-width:480px;margin:0 auto">
+          <h2 style="color:#0A2647">HeartLink 비밀번호 재설정</h2>
+          <p>아래 인증번호를 5분 이내에 입력해 주세요.</p>
+          <div style="font-size:2rem;font-weight:bold;letter-spacing:0.3em;color:#0E8080;margin:24px 0">${code}</div>
+          <p style="color:#888;font-size:0.9rem">본인이 요청하지 않았다면 이 메일을 무시하세요.</p>
+        </div>
+      `,
+    });
+
+    res.json({ message: '인증번호가 발송되었습니다.' });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const verifyPasswordResetCode = async (req, res, next) => {
+  try {
+    const { email, code } = req.body;
+    if (!email || !code) return res.status(400).json({ message: '이메일과 인증번호를 입력해 주세요.' });
+
+    const record = await PasswordResetCode.findOne({
+      email,
+      verified: false,
+      expiresAt: { $gt: new Date() },
+    }).sort({ createdAt: -1 });
+
+    if (!record) return res.status(400).json({ message: '인증번호가 만료되었습니다. 다시 요청해 주세요.' });
+    if (record.attemptCount >= 5) return res.status(400).json({ message: '인증 시도 횟수를 초과했습니다. 다시 요청해 주세요.' });
+
+    const match = await bcrypt.compare(code, record.code);
+    if (!match) {
+      await PasswordResetCode.findByIdAndUpdate(record._id, { $inc: { attemptCount: 1 } });
+      return res.status(400).json({ message: '인증번호가 올바르지 않습니다.' });
+    }
+
+    await PasswordResetCode.findByIdAndUpdate(record._id, {
+      verified: true,
+      expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+    });
+
+    res.json({ message: '인증이 완료되었습니다.' });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const resetPassword = async (req, res, next) => {
+  try {
+    const { email, password, newPassword } = req.body;
+    const pw = newPassword ?? password;
+    if (!email || !pw) return res.status(400).json({ message: '이메일과 새 비밀번호를 입력해 주세요.' });
+    if (pw.length < 8) return res.status(400).json({ message: '비밀번호는 8글자 이상이어야 합니다.' });
+
+    const verifiedRecord = await PasswordResetCode.findOne({
+      email,
+      verified: true,
+      expiresAt: { $gt: new Date() },
+    });
+    if (!verifiedRecord) return res.status(400).json({ message: '이메일 인증을 먼저 완료해 주세요.' });
+
+    const hashed = await bcrypt.hash(pw, 12);
+    await User.findOneAndUpdate({ email }, { password: hashed, refreshToken: null });
+    await PasswordResetCode.findByIdAndDelete(verifiedRecord._id);
+
+    res.json({ message: '비밀번호가 변경되었습니다. 새 비밀번호로 로그인해 주세요.' });
   } catch (err) {
     next(err);
   }

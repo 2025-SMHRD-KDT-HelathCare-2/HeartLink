@@ -1,6 +1,5 @@
 import Measurement from '../models/Measurement.js';
 import AnalysisResult from '../models/AnalysisResult.js';
-import Report from '../models/Report.js';
 import Notification from '../models/Notification.js';
 import User from '../models/User.js';
 import GuardianRelation from '../models/GuardianRelation.js';
@@ -219,38 +218,6 @@ export const uploadECG = async (req, res, next) => {
         );
       }
 
-      // 리포트 생성 (fire-and-forget)
-      aiService.generateReport({
-        analysisId:      analysis._id,
-        userId:          req.user.id,
-        age:             user?.age,
-        gender:          user?.gender,
-        medicalHistory:  user?.medicalHistory,
-        arrhythmiaClass: data.arrhythmia_class,
-        arrhythmiaProb:  data.arrhythmia_prob,
-        afDetected:      data.af_detected,
-        afProb:          data.af_prob,
-        hrvRmssd:        data.hrv_rmssd,
-        hrvSdnn:         data.hrv_sdnn,
-        hrvLfhf:         data.hrv_lfhf,
-        anomalyDetected: data.anomaly_detected,
-        riskScore:       score,
-        riskLevel,
-        heartRate:       data.heart_rate,
-      }).then(async ({ data: reportData }) => {
-        await Report.create({
-          analysisId:          analysis._id,
-          userId:              req.user.id,
-          reportType:          'self',
-          reportCategory:      'full_report',
-          reportTextUser:      reportData.report_text_user,
-          reportTextGuardian:  reportData.report_text_guardian,
-          recommendedAction:   reportData.recommended_action,
-          riskLevel:           data.risk_level,
-        });
-      }).catch(err => {
-        console.error('리포트 생성 실패:', err.message);
-      });
 
     }).catch(err => {
       console.error('AI 서버 분석 실패:', err.message);
