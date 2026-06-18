@@ -3,6 +3,8 @@ import { useAuth } from "../context/AuthContext";
 
 import { LoginPage } from "../pages/LoginPage";
 import { ForgotPasswordPage } from "../pages/ForgotPasswordPage";
+import { FindIdPage } from "../pages/FindIdPage";
+import { ResetPasswordPage } from "../pages/ResetPasswordPage";
 import { RegisterPage } from "../pages/Registerpage";
 import { UserLayout } from "../components/layout/UserLayout";
 import { GuardianLayout } from "../components/layout/GuardianLayout";

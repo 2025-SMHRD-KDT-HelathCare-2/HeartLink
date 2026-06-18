@@ -159,10 +159,15 @@ export function LoginPage() {
               {submitting ? "로그인 중..." : "로그인"}
             </button>
 
-            <div className="text-center">
+            <div className="flex items-center justify-center gap-3">
+              <button type="button" onClick={() => navigate("/find-id")}
+                className="text-gray-400 hover:text-[#0E8080] underline font-bold" style={{ fontSize: "1rem" }}>
+                아이디 찾기
+              </button>
+              <span className="text-gray-300">|</span>
               <button type="button" onClick={() => navigate("/forgot-password")}
                 className="text-gray-400 hover:text-[#0E8080] underline font-bold" style={{ fontSize: "1rem" }}>
-                비밀번호를 잊으셨나요?
+                비밀번호 찾기
               </button>
             </div>
           </form>

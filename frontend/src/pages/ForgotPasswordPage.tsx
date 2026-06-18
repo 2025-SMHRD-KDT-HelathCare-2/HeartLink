@@ -1,17 +1,22 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChevronLeft, Mail, Heart } from "lucide-react";
+import { ChevronLeft, Mail, Heart, ShieldCheck } from "lucide-react";
 import api from "../api/authApi";
 import { useToast } from "../context/ToastContext";
+
+type Step = "email" | "code";
 
 export function ForgotPasswordPage() {
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const [step, setStep] = useState<Step>("email");
   const [email, setEmail] = useState("");
+  const [code, setCode] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [verifying, setVerifying] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSendEmail = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
       setError("올바른 이메일 주소를 입력해 주세요.");
@@ -21,14 +26,14 @@ export function ForgotPasswordPage() {
     setSubmitting(true);
 
     try {
-      // 백엔드: 가입된 이메일이면 재설정 메일 발송 후 200, 가입 안 된 이메일이면 404
+      // 백엔드: 가입된 이메일이면 재설정 인증번호 메일 발송 후 200, 가입 안 된 이메일이면 404
       await api.post("/auth/password/reset-request", { email });
       showToast({
         level: "success",
         title: "메일을 보냈어요",
         message: "비밀번호 재설정 메일을 보냈습니다.",
       });
-      navigate("/login");
+      setStep("code");
     } catch (err: any) {
       const status = err?.response?.status;
       if (status === 404) {
@@ -46,6 +51,27 @@ export function ForgotPasswordPage() {
       }
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleVerifyCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (code.length < 4) {
+      setError("인증번호를 입력해 주세요.");
+      return;
+    }
+    setError("");
+    setVerifying(true);
+
+    try {
+      await api.post("/auth/password/verify-code", { email, code });
+      // 인증 성공 → 비밀번호 변경 페이지로 (email, code를 state로 전달)
+      navigate("/reset-password", { state: { email, code } });
+    } catch (err: any) {
+      const message = err?.response?.data?.message ?? "인증번호가 올바르지 않습니다.";
+      setError(message);
+    } finally {
+      setVerifying(false);
     }
   };
 
@@ -68,28 +94,56 @@ export function ForgotPasswordPage() {
 
           <h2 className="text-[#0A2647] font-black mb-2" style={{ fontSize: "1.6rem" }}>비밀번호를 잊으셨나요?</h2>
           <p className="text-gray-500 mb-6 font-bold" style={{ fontSize: "1.05rem" }}>
-            가입하신 이메일 주소를 입력해 주세요.<br />비밀번호 재설정 메일을 보내드릴게요.
+            {step === "email"
+              ? <>가입하신 이메일 주소를 입력해 주세요.<br />비밀번호 재설정 메일을 보내드릴게요.</>
+              : <>이메일로 받은 인증번호를 입력해 주세요.</>}
           </p>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div>
-              <label className="block text-gray-700 mb-2 font-bold" style={{ fontSize: "1.1rem" }}>이메일 주소</label>
-              <div className="relative">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-400" />
-                <input type="email" placeholder="example@email.com" value={email}
-                  onChange={e => { setEmail(e.target.value); setError(""); }}
-                  className="w-full pl-12 pr-4 py-4 border border-gray-200 rounded-xl focus:outline-none focus:border-[#0E8080] bg-gray-50 font-bold"
-                  style={{ minHeight: 56, fontSize: "1.1rem" }} />
+          {step === "email" ? (
+            <form onSubmit={handleSendEmail} className="space-y-5">
+              <div>
+                <label className="block text-gray-700 mb-2 font-bold" style={{ fontSize: "1.1rem" }}>이메일 주소</label>
+                <div className="relative">
+                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-400" />
+                  <input type="email" placeholder="example@email.com" value={email}
+                    onChange={e => { setEmail(e.target.value); setError(""); }}
+                    className="w-full pl-12 pr-4 py-4 border border-gray-200 rounded-xl focus:outline-none focus:border-[#0E8080] bg-gray-50 font-bold"
+                    style={{ minHeight: 56, fontSize: "1.1rem" }} />
+                </div>
+                {error && <p className="text-red-500 mt-1 font-bold" style={{ fontSize: "1rem" }}>{error}</p>}
               </div>
-              {error && <p className="text-red-500 mt-1 font-bold" style={{ fontSize: "1rem" }}>{error}</p>}
-            </div>
 
-            <button type="submit" disabled={submitting}
-              className="w-full py-5 bg-gradient-to-r from-[#0A2647] to-[#0E8080] text-white rounded-xl hover:opacity-90 active:scale-95 transition-all disabled:opacity-50 font-bold"
-              style={{ minHeight: 60, fontSize: "1.2rem" }}>
-              {submitting ? "확인 중..." : "재설정 메일 보내기"}
-            </button>
-          </form>
+              <button type="submit" disabled={submitting}
+                className="w-full py-5 bg-gradient-to-r from-[#0A2647] to-[#0E8080] text-white rounded-xl hover:opacity-90 active:scale-95 transition-all disabled:opacity-50 font-bold"
+                style={{ minHeight: 60, fontSize: "1.2rem" }}>
+                {submitting ? "확인 중..." : "재설정 메일 보내기"}
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={handleVerifyCode} className="space-y-5">
+              <div className="bg-gray-50 rounded-xl p-4 text-gray-600 font-bold" style={{ fontSize: "0.95rem" }}>
+                {email}로 인증번호를 보냈어요.
+              </div>
+
+              <div>
+                <label className="block text-gray-700 mb-2 font-bold" style={{ fontSize: "1.1rem" }}>인증번호</label>
+                <div className="relative">
+                  <ShieldCheck className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-400" />
+                  <input type="text" placeholder="인증번호 6자리" value={code}
+                    onChange={e => { setCode(e.target.value.replace(/[^0-9]/g, "")); setError(""); }}
+                    className="w-full pl-12 pr-4 py-4 border border-gray-200 rounded-xl focus:outline-none focus:border-[#0E8080] bg-gray-50 font-bold"
+                    style={{ minHeight: 56, fontSize: "1.1rem" }} />
+                </div>
+                {error && <p className="text-red-500 mt-1 font-bold" style={{ fontSize: "1rem" }}>{error}</p>}
+              </div>
+
+              <button type="submit" disabled={verifying}
+                className="w-full py-5 bg-gradient-to-r from-[#0A2647] to-[#0E8080] text-white rounded-xl hover:opacity-90 active:scale-95 transition-all disabled:opacity-50 font-bold"
+                style={{ minHeight: 60, fontSize: "1.2rem" }}>
+                {verifying ? "확인 중..." : "인증번호 확인"}
+              </button>
+            </form>
+          )}
         </div>
       </div>
     </div>
