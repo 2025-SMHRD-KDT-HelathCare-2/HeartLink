@@ -32,7 +32,7 @@ const analysisResultSchema = new Schema(
 
     // heartRate: 심박수 (카멜케이스 형태)
     heartRate: { type: Number },
-    // arrhythmia_count: 부정맥 발생 횟수
+    // arrhythmiaCount: 부정맥 발생 횟수
     arrhythmiaCount: { type: Number },
 
     // anomalyDetected: 이상 징후가 감지됐는지 여부(true/false)
