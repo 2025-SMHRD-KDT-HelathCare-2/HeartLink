@@ -30,13 +30,13 @@ export function ReportHistoryPage() {
   useEffect(() => {
     (async () => {
       try {
-        const res = await api.get("/reports");
+        const res = await api.get("/measurements");
         const mapped: ReportHistoryItem[] = (res.data || []).map((r: any) => ({
           id: r._id,
-          date: (r.createdAt || "").slice(0, 10),
-          time: (r.createdAt || "").slice(11, 16),
-          level: ({ high: "상", mid: "중", low: "하" } as Record<string, "상" | "중" | "하">)[r.riskLevel] ?? "하",
-          score: r.riskScore ?? 0,
+          date: (r.measuredAt || "").slice(0, 10),
+          time: (r.measuredAt || "").slice(11, 16),
+          level: ({ high: "상", mid: "중", low: "하" } as Record<string, "상" | "중" | "하">)[r.analysis?.riskLevel] ?? "하",
+          score: r.analysis?.riskScore ?? 0,
         }));
         setReports(mapped);
       } catch (err) {
