@@ -4,7 +4,6 @@ import 'dotenv/config';
 import mongoose from 'mongoose';
 import bcrypt from 'bcrypt';
 
-
 import User from '../src/models/User.js';
 import Measurement from '../src/models/Measurement.js';
 import AnalysisResult from '../src/models/AnalysisResult.js';
@@ -12,6 +11,9 @@ import GuardianRelation from '../src/models/GuardianRelation.js';
 
 const DAYS = 30;
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/heartlink';
+
+const SENIOR_EMAIL = 'senior@demo.com';
+const GUARDIAN_EMAIL = 'guardian@demo.com';
 
 function levelFromScore(score) {
     if (score >= 70) return 'high';
@@ -23,14 +25,35 @@ function jitter(base, range) {
     return Math.max(0, Math.min(100, Math.round(base + (Math.random() - 0.5) * range)));
 }
 
+// 재실행 대비: 기존 데모 계정과 관련 데이터를 먼저 정리
+async function cleanupExisting() {
+    const oldUsers = await User.find({ email: { $in: [SENIOR_EMAIL, GUARDIAN_EMAIL] } }).select('_id');
+    const oldUserIds = oldUsers.map((u) => u._id);
+    if (oldUserIds.length === 0) return;
+
+    const oldMeasurements = await Measurement.find({ userId: { $in: oldUserIds } }).select('_id');
+    const oldMeasurementIds = oldMeasurements.map((m) => m._id);
+
+    await AnalysisResult.deleteMany({ measurementId: { $in: oldMeasurementIds } });
+    await Measurement.deleteMany({ userId: { $in: oldUserIds } });
+    await GuardianRelation.deleteMany({
+        $or: [{ userId: { $in: oldUserIds } }, { guardianId: { $in: oldUserIds } }],
+    });
+    await User.deleteMany({ _id: { $in: oldUserIds } });
+
+    console.log('🧹 기존 데모 데이터 정리 완료');
+}
+
 async function run() {
     await mongoose.connect(MONGO_URI);
     console.log('✅ MongoDB 연결됨');
 
+    await cleanupExisting();
+
     const hashedPw = await bcrypt.hash('test1234', 10); // 공통 데모 비밀번호
 
     const senior = await User.create({
-        email: 'senior@demo.com',
+        email: SENIOR_EMAIL,
         password: hashedPw,
         provider: 'local',
         nickname: '데모 어르신',
@@ -43,7 +66,7 @@ async function run() {
     });
 
     const guardian = await User.create({
-        email: 'guardian@demo.com',
+        email: GUARDIAN_EMAIL,
         password: hashedPw,
         provider: 'local',
         nickname: '데모 보호자',
@@ -81,6 +104,13 @@ async function run() {
             ? 'SVEB'
             : ['N', 'N', 'N', 'VEB'][Math.floor(Math.random() * 4)];
 
+        // 심박수: 위험도가 높을수록 약간 높게 분포
+        const heartRate = jitter(70 + riskScore * 0.2, 12);
+        // 부정맥 발생 횟수: 정상(N)이 아니면 1회 이상 발생하도록
+        const arrhythmiaCount = arrhythmiaClass === 'N'
+            ? 0
+            : 1 + Math.floor(Math.random() * 5);
+
         const measurement = await Measurement.create({
             userId: senior._id,
             fileName: `ecg_${measuredAt.toISOString().slice(0, 10)}.csv`,
@@ -89,6 +119,7 @@ async function run() {
             leadType: 'Lead I',
             samplingRate: 250,
             ecgWaveformLite: [],
+            status: 'completed', // 분석 완료 상태
             rPeaks: [],
             measuredAt,
         });
@@ -103,6 +134,8 @@ async function run() {
             hrvRmssd: jitter(40 - (DAYS - 1 - i) * 0.5, 10),
             hrvSdnn: jitter(50 - (DAYS - 1 - i) * 0.5, 12),
             hrvLfhf: +(1 + Math.random()).toFixed(2),
+            heartRate,
+            arrhythmiaCount,
             anomalyDetected,
             riskScore,
             riskLevel,
@@ -121,4 +154,3 @@ run().catch((e) => {
     console.error(JSON.stringify(e.writeErrors?.[0]?.err ?? e, null, 2));
     process.exit(1);
 });
-
