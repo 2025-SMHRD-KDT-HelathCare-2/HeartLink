@@ -124,7 +124,6 @@ async function createCollectionsAndIndexes() {
 async function seedMeasurementsForSenior(senior, dayOffsetBase = 0) {
   const DAYS = 30;
   const analysisDocs = [];
-  const measurementMap = []; // { measuredAt, analysisDraft } 임시 보관
 
   for (let i = DAYS - 1; i >= 0; i--) {
     // 하루 측정 횟수: 0,1,1,2,3 중 랜덤 (가끔 미측정일 포함)
@@ -221,7 +220,8 @@ async function seedReportsAndNotifications(senior, guardianIds, analyses) {
     const report = await Report.create({
       userId: senior._id,
       reportType,
-      reportCategory: maxLevel === 'high' ? 'emergency_alert' : 'full_report',
+      // ⚠️ 최신 Report.js enum 반영: emergencyAlert / fullReport (camelCase)
+      reportCategory: maxLevel === 'high' ? 'emergencyAlert' : 'fullReport',
       reportPeriod: period,
       periodStart,
       periodEnd,
@@ -307,7 +307,6 @@ async function seedRelations() {
     medicalHistory: ['당뇨', '부정맥'],
   });
 
-
   // ── 보호자 5명 (시니어1 → 2명, 시니어2 → 3명) ──
   const guardianPlan = [
     { senior: senior1, count: 2, baseIdx: 1 },
@@ -329,7 +328,6 @@ async function seedRelations() {
         phone: GUARDIAN_PHONES[idx - 1],   // ← idx는 1부터 시작하므로 -1
         phoneVerified: true,
       });
-
 
       await GuardianRelation.create({
         userId: plan.senior._id,
@@ -391,4 +389,3 @@ run().catch((e) => {
   console.error(e?.stack);
   process.exit(1);
 });
-
