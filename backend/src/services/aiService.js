@@ -1,7 +1,19 @@
 import axios from 'axios';
 import FormData from 'form-data';
 
-export const analyze = ({ fileBuffer, fileName, measurementId, userId, age, gender, medicalHistory, samplingRate }) => {
+export const preview = ({ fileBuffer, fileName, measurementId, userId }) => {
+  const form = new FormData();
+  form.append('file', fileBuffer, fileName);
+  form.append('measurement_id', measurementId.toString());
+  form.append('user_id', userId.toString());
+
+  return axios.post(`${process.env.AI_SERVER_URL}/analyze/preview`, form, {
+    headers: form.getHeaders(),
+    timeout: 30000,
+  });
+};
+
+export const analyze = ({ fileBuffer, fileName, measurementId, userId, age, gender, medicalHistory }) => {
   const form = new FormData();
   form.append('file', fileBuffer, fileName);
   form.append('measurement_id', measurementId.toString());
@@ -9,7 +21,6 @@ export const analyze = ({ fileBuffer, fileName, measurementId, userId, age, gend
   form.append('age', String(age ?? 70));
   form.append('gender', gender ?? 'F');
   form.append('medical_history', (medicalHistory ?? []).join(','));
-  form.append('sampling_rate', String(samplingRate ?? 512));
 
   return axios.post(`${process.env.AI_SERVER_URL}/analyze`, form, {
     headers: form.getHeaders(),
