@@ -97,6 +97,7 @@ export const generateReport = async (req, res, next) => {
     }).sort({ analyzedAt: 1 });
 
     if (analyses.length === 0) {
+      console.log('[generateReport] 새 분석 없음 - periodStart:', periodStart, '/ userId:', req.user.id);
       return res.status(400).json({ message: '새로운 분석 결과가 없습니다.' });
     }
 

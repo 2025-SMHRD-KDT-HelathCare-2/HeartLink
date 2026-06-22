@@ -1,1 +1,4 @@
 작업 공간
+
+venv\Scripts\activate
+python -m uvicorn main:app --reload --port 8000

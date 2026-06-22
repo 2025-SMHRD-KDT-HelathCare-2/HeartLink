@@ -13,91 +13,8 @@ const RISK_MESSAGES = {
   low:  '오늘 심장 상태는 양호했어요. 좋은 컨디션을 유지하고 계세요.',
 };
 
-// CSV를 직접 파싱해서 경량 파형과 R-peak를 추출하는 임시 함수
-// (AI 서버 완성 전까지 사용, AI 서버 연동 시 이 부분 제거하고 fire-and-forget으로 복구)
-function parseCSV(buffer) {
-  const text = buffer.toString('utf-8');
-  const lines = text.trim().split(/\r?\n/);
-  if (lines.length < 2) throw new Error('CSV 데이터가 너무 적습니다.');
-
-  // 애플워치 CSV: 상단에 한글 메타데이터, 이후 숫자 한 줄씩
-  // 데이터 시작 줄 인덱스와 샘플링 레이트 자동 감지
-  let dataStartIdx = -1;
-  let detectedSampleRate = 250;
-
-  for (let i = 0; i < Math.min(lines.length, 30); i++) {
-    const line = lines[i].trim();
-    // 샘플링 레이트 추출: "심박수,512헤르츠" 형태
-    const hrMatch = line.match(/(\d+)\s*헤르츠/);
-    if (hrMatch) detectedSampleRate = parseInt(hrMatch[1], 10);
-    // 순수 숫자 줄이면 데이터 시작
-    if (dataStartIdx === -1 && /^-?\d+(\.\d+)?$/.test(line)) {
-      dataStartIdx = i;
-    }
-  }
-
-  const raw = [];
-
-  if (dataStartIdx !== -1) {
-    // 애플워치 포맷: 숫자 한 줄씩
-    for (let i = dataStartIdx; i < lines.length; i++) {
-      const y = parseFloat(lines[i].trim());
-      if (!isNaN(y)) raw.push(y);
-    }
-  } else {
-    // MIT-BIH 포맷: 컬럼 헤더 CSV
-    const headers = lines[0].split(',').map(h => h.trim().replace(/^['"]|['"]$/g, '').toLowerCase());
-    const candidates = ['ecg', 'y', 'value', 'signal', 'mv', 'mlii', 'v5', 'v1', 'v2', 'v6'];
-    let yIdx = headers.findIndex(h => candidates.includes(h));
-    if (yIdx === -1) {
-      const sampleIdx = headers.findIndex(h => h.includes('sample'));
-      yIdx = sampleIdx !== -1 ? sampleIdx + 1 : 1;
-    }
-    if (yIdx === -1 || yIdx >= headers.length) throw new Error('ECG 데이터 컬럼을 찾을 수 없습니다.');
-    for (let i = 1; i < lines.length; i++) {
-      const cols = lines[i].split(',');
-      const y = parseFloat(cols[yIdx]);
-      if (!isNaN(y)) raw.push(y);
-    }
-  }
-
-  if (raw.length < 10) throw new Error('유효한 데이터가 너무 적습니다.');
-
-  // 정규화: 평균을 빼고 -1~1 범위로 스케일링
-  const mean = raw.reduce((a, b) => a + b, 0) / raw.length;
-  const centered = raw.map(v => v - mean);
-  const maxAbs = centered.reduce((m, v) => Math.max(m, Math.abs(v)), 0) || 1;
-  const waveform = centered.map(v => Math.round((v / maxAbs) * 1000) / 1000);
-
-  const sampleRate = detectedSampleRate;
-
-  const max = waveform.reduce((m, v) => Math.max(m, v), -Infinity);
-  const threshold = max * 0.6;
-  const rPeaks = [];
-  for (let i = 1; i < waveform.length - 1; i++) {
-    if (waveform[i] > threshold && waveform[i] > waveform[i-1] && waveform[i] > waveform[i+1]) {
-      const idx = i;
-      if (rPeaks.length === 0 || (idx - rPeaks[rPeaks.length - 1]) > sampleRate * 0.3) {
-        rPeaks.push(idx);
-      }
-    }
-  }
-
-  // 시각화용 다운샘플링 (최대 5000개)
-  const MAX_POINTS = 5000;
-  let finalWaveform = waveform;
-  let finalRPeaks = rPeaks;
-  let finalSampleRate = sampleRate;
-
-  if (waveform.length > MAX_POINTS) {
-    const step = Math.ceil(waveform.length / MAX_POINTS);
-    finalWaveform = waveform.filter((_, i) => i % step === 0);
-    finalRPeaks = rPeaks.map(idx => Math.round(idx / step)).filter((v, i, arr) => arr.indexOf(v) === i);
-    finalSampleRate = Math.round(sampleRate / step);
-  }
-
-  return { waveform: finalWaveform, rPeaks: finalRPeaks, sampleRate: finalSampleRate, originalSampleRate: detectedSampleRate };
-}
+// AI 서버 응답 후 최초 조회 1회만 전달하기 위한 서버 메모리 캐시 (DB 미저장)
+const ecgFullCache = new Map();
 
 export const uploadECG = async (req, res, next) => {
   try {
@@ -119,25 +36,27 @@ export const uploadECG = async (req, res, next) => {
       measuredAt: measured_at || new Date(),
     });
 
-    // CSV 파형 추출 후 AI 서버로 분석 요청
-    let samplingRate = 512;
+    // 1단계: /analyze/preview - 전처리만 빠르게, lite 파형 즉시 저장
     try {
-      if (measurement.fileExt === 'CSV') {
-        const { waveform, rPeaks, sampleRate, originalSampleRate } = parseCSV(file.buffer);
-        samplingRate = originalSampleRate;
-        await Measurement.findByIdAndUpdate(measurement._id, {
-          ecgWaveformLite: waveform,
-          rPeaks,
-          samplingRate: sampleRate,
-        });
-      }
-    } catch (parseErr) {
-      console.error('CSV 파싱 실패:', parseErr.message);
-      await Measurement.findByIdAndUpdate(measurement._id, { status: 'failed' });
-      return res.status(201).json({ measurementId: measurement._id, status: 'failed' });
+      const { data: previewData } = await aiService.preview({
+        fileBuffer: file.buffer,
+        fileName: file.originalname,
+        measurementId: measurement._id,
+        userId: req.user.id,
+      });
+      await Measurement.findByIdAndUpdate(measurement._id, {
+        ecgWaveformLite: previewData.ecg_waveform_lite ?? [],
+        rPeaks: previewData.r_peaks ?? [],
+        samplingRate: 80,
+      });
+    } catch (previewErr) {
+      console.error('preview 실패, analyze 계속 진행:', previewErr.message);
     }
 
-    // AI 서버 분석 요청 (fire-and-forget)
+    // lite 저장 완료 후 프론트에 201 응답 (폴링 시작 가능)
+    res.status(201).json({ measurementId: measurement._id, status: 'processing' });
+
+    // 2단계: /analyze - 모델 추론 포함, fire-and-forget
     aiService.analyze({
       fileBuffer: file.buffer,
       fileName: file.originalname,
@@ -146,7 +65,6 @@ export const uploadECG = async (req, res, next) => {
       age: user?.age,
       gender: user?.gender,
       medicalHistory: user?.medicalHistory,
-      samplingRate,
     }).then(async ({ data }) => {
       const score = data.risk_score ?? 0;
       const riskLevel = data.risk_level ?? (score >= 67 ? 'high' : score >= 34 ? 'mid' : 'low');
@@ -174,7 +92,18 @@ export const uploadECG = async (req, res, next) => {
         { upsert: true, new: true }
       );
 
-      await Measurement.findByIdAndUpdate(measurement._id, { status: 'completed' });
+      // AI 서버가 보낸 경량화 파형(80Hz)과 R-peak를 DB에 저장, samplingRate는 80 고정
+      await Measurement.findByIdAndUpdate(measurement._id, {
+        status: 'completed',
+        ecgWaveformLite: data.ecg_waveform_lite ?? [],
+        rPeaks: data.r_peaks ?? [],
+        samplingRate: 80,
+      });
+
+      // ecg_waveform_full은 DB 미저장, 최초 조회 시 1회 전달 후 삭제
+      if (data.ecg_waveform_full?.length) {
+        ecgFullCache.set(measurement._id.toString(), data.ecg_waveform_full);
+      }
 
       // 수락된 보호자 목록 조회 (deviceToken 포함)
       const guardianRelations = await GuardianRelation.find({
@@ -225,7 +154,6 @@ export const uploadECG = async (req, res, next) => {
       Measurement.findByIdAndUpdate(measurement._id, { status: 'failed' }).catch(() => {});
     });
 
-    res.status(201).json({ measurementId: measurement._id, status: 'processing' });
   } catch (err) {
     next(err);
   }
@@ -255,7 +183,13 @@ export const getMeasurement = async (req, res, next) => {
     const measurement = await Measurement.findOne({ _id: req.params.id, userId: req.user.id });
     if (!measurement) return res.status(404).json({ message: '없는 측정 데이터입니다.' });
     const analysis = await AnalysisResult.findOne({ measurementId: measurement._id });
-    res.json({ ...measurement.toObject(), analysis: analysis ?? null });
+
+    // ecg_waveform_full은 최초 조회 시 1회만 응답에 포함 후 캐시에서 제거
+    const key = measurement._id.toString();
+    const ecgWaveformFull = ecgFullCache.get(key) ?? null;
+    if (ecgWaveformFull) ecgFullCache.delete(key);
+
+    res.json({ ...measurement.toObject(), analysis: analysis ?? null, ecgWaveformFull });
   } catch (err) {
     next(err);
   }
