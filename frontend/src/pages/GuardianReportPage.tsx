@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { AlertTriangle, Info, ChevronLeft, ChevronRight, Clock, FileText, Sparkles } from "lucide-react";
+import { AlertTriangle, Info, ChevronLeft, ChevronRight, Clock, FileText, Sparkles, X, CalendarDays, BarChart2 } from "lucide-react";
 import api from "../api/authApi";
 
 interface Patient {
@@ -34,6 +34,7 @@ export function GuardianReportPage() {
   const [selectedIdx, setSelectedIdx] = useState(0);
   const [records, setRecords] = useState<MeasurementRecord[]>([]);
   const [recordsLoading, setRecordsLoading] = useState(false);
+  const [showTypeModal, setShowTypeModal] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -225,7 +226,7 @@ export function GuardianReportPage() {
 
       {/* AI 상세 리포트 생성 */}
       <button
-        onClick={() => navigate(`/guardian-report-detail/${patient.userId}`)}
+        onClick={() => setShowTypeModal(true)}
         className="w-full flex items-center justify-center gap-3 py-5 bg-gradient-to-r from-[#0A2647] to-[#0E8080] text-white rounded-2xl hover:opacity-90 transition-all font-black mb-6 shadow-lg"
         style={{ minHeight: 68, fontSize: "1.2rem" }}
       >
@@ -237,6 +238,48 @@ export function GuardianReportPage() {
         <Info className="w-4 h-4 inline mr-2 text-gray-400" />
         이 리포트는 참고용이며 의사의 진단을 대신하지 않습니다.
       </div>
+
+      {/* 리포트 타입 선택 팝업 */}
+      {showTypeModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl p-7 w-full max-w-sm">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-[#0A2647] font-black" style={{ fontSize: "1.4rem" }}>AI 리포트 생성</h2>
+              <button onClick={() => setShowTypeModal(false)} className="p-1 rounded-lg hover:bg-gray-100">
+                <X className="w-6 h-6 text-gray-400" />
+              </button>
+            </div>
+            <p className="text-gray-500 font-bold mb-5" style={{ fontSize: "1rem" }}>어떤 기간의 리포트를 볼까요?</p>
+            <div className="space-y-3 mb-5">
+              <button
+                onClick={() => { setShowTypeModal(false); navigate(`/guardian-report-detail/${patient.userId}`, { state: { type: "daily" } }); }}
+                className="w-full flex items-center gap-4 p-5 rounded-2xl border-2 border-[#0E8080] bg-[#0E8080]/5 hover:bg-[#0E8080]/10 transition-all">
+                <div className="w-12 h-12 rounded-full bg-[#0E8080] flex items-center justify-center flex-shrink-0">
+                  <CalendarDays className="w-6 h-6 text-white" />
+                </div>
+                <div className="text-left flex-1">
+                  <p className="text-[#0A2647] font-black" style={{ fontSize: "1.15rem" }}>일간 리포트</p>
+                  <p className="text-gray-500 font-bold" style={{ fontSize: "0.9rem" }}>오늘 하루의 심장 상태</p>
+                </div>
+              </button>
+              <button
+                onClick={() => { setShowTypeModal(false); navigate(`/guardian-report-detail/${patient.userId}`, { state: { type: "weekly" } }); }}
+                className="w-full flex items-center gap-4 p-5 rounded-2xl border-2 border-[#0A2647] bg-[#0A2647]/5 hover:bg-[#0A2647]/10 transition-all">
+                <div className="w-12 h-12 rounded-full bg-[#0A2647] flex items-center justify-center flex-shrink-0">
+                  <BarChart2 className="w-6 h-6 text-white" />
+                </div>
+                <div className="text-left flex-1">
+                  <p className="text-[#0A2647] font-black" style={{ fontSize: "1.15rem" }}>주간 리포트</p>
+                  <p className="text-gray-500 font-bold" style={{ fontSize: "0.9rem" }}>최근 7일간의 심장 상태 추이</p>
+                </div>
+              </button>
+            </div>
+            <p className="text-gray-400 font-bold text-center" style={{ fontSize: "0.85rem", whiteSpace: "pre-line" }}>
+              {"측정 시점, 횟수, 빈도에 따라\n결과는 달라질 수 있습니다."}
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
