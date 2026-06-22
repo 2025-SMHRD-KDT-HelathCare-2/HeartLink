@@ -1,17 +1,18 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { AlertTriangle, CheckCircle, Info, Clock, Bell, Sparkles } from "lucide-react";
+import { AlertTriangle, CheckCircle, Info, Clock, Bell, Sparkles, X, CalendarDays, BarChart2 } from "lucide-react";
 import api from "../api/authApi";
 
 type RiskLevel = "high" | "mid" | "low";
+type ReportType = "daily" | "weekly";
 
 interface MeasurementItem {
-  id: string;              // measurement _id
-  analysisId: string | null; // analysis._id (분석 완료된 경우만 존재)
+  id: string;
+  analysisId: string | null;
   riskLevel: "상" | "중" | "하";
   riskScore: number;
-  date: string;             // measuredAt 포맷
-  status: string;           // processing / completed / failed
+  date: string;
+  status: string;
 }
 
 const RISK_META = {
@@ -21,25 +22,18 @@ const RISK_META = {
 };
 
 const LEVEL_MAP: Record<string, "상" | "중" | "하"> = { high: "상", mid: "중", low: "하" };
+const MAX_LIST = 7;
 
 function formatDate(iso: string) {
   if (!iso) return "";
   const d = new Date(iso);
-  const date = iso.slice(0, 10);
-  const time = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-  return `${date} ${time}`;
+  return `${iso.slice(0, 10)} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
-// ===== 오늘의 알림 (위험도 '상'만, 당일) =====
-interface DailyAlert {
-  id: string;
-  message: string;
-  time: string;
-}
+interface DailyAlert { id: string; message: string; time: string; }
 
 function DailyAlertSection() {
   const [alerts, setAlerts] = useState<DailyAlert[]>([]);
-
   useEffect(() => {
     (async () => {
       try {
@@ -49,37 +43,97 @@ function DailyAlertSection() {
           n.level === "high" && (n.createdAt || "").slice(0, 10) === today
         );
         setAlerts(todays.map((n: any) => ({
-          id: n._id,
-          message: n.message,
-          time: (n.createdAt || "").slice(11, 16),
+          id: n._id, message: n.message, time: (n.createdAt || "").slice(11, 16),
         })));
-      } catch (err) {
-        console.error("오늘의 알림 조회 실패", err);
-      }
+      } catch { /* 알림 없으면 무시 */ }
     })();
   }, []);
 
   if (alerts.length === 0) return null;
-
   return (
     <div className="mb-6">
       <div className="flex items-center gap-2 mb-3">
         <Bell className="w-6 h-6 text-[#DC2626]" />
         <h3 className="text-[#DC2626] font-black" style={{ fontSize: "1.25rem" }}>오늘의 알림</h3>
       </div>
-      <div className="space-y-3">
-        {alerts.map(a => (
-          <div key={a.id} className="bg-[#FEF2F2] border-2 border-[#FECACA] rounded-2xl p-5 flex items-start gap-3">
-            <AlertTriangle className="w-7 h-7 flex-shrink-0 mt-0.5" style={{ color: "#DC2626" }} />
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="px-3 py-1 rounded-full text-white font-bold" style={{ backgroundColor: "#DC2626", fontSize: "0.85rem" }}>위험</span>
-                <span className="text-gray-400 font-bold ml-auto" style={{ fontSize: "0.9rem" }}>{a.time}</span>
-              </div>
-              <p className="text-gray-700 font-bold leading-relaxed" style={{ fontSize: "1.05rem" }}>{a.message}</p>
+      {alerts.map(a => (
+        <div key={a.id} className="bg-[#FEF2F2] border-2 border-[#FECACA] rounded-2xl p-5 flex items-start gap-3 mb-3">
+          <AlertTriangle className="w-7 h-7 flex-shrink-0 mt-0.5" style={{ color: "#DC2626" }} />
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="px-3 py-1 rounded-full text-white font-bold" style={{ backgroundColor: "#DC2626", fontSize: "0.85rem" }}>위험</span>
+              <span className="text-gray-400 font-bold ml-auto" style={{ fontSize: "0.9rem" }}>{a.time}</span>
             </div>
+            <p className="text-gray-700 font-bold leading-relaxed" style={{ fontSize: "1.05rem" }}>{a.message}</p>
           </div>
-        ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ===== 리포트 타입 선택 팝업 =====
+interface ReportTypeModalProps {
+  onSelect: (type: ReportType) => void;
+  onClose: () => void;
+  generating: boolean;
+}
+
+function ReportTypeModal({ onSelect, onClose, generating }: ReportTypeModalProps) {
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl p-7 w-full max-w-sm">
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="text-[#0A2647] font-black" style={{ fontSize: "1.4rem" }}>AI 리포트 생성</h2>
+          <button onClick={onClose} className="p-1 rounded-lg hover:bg-gray-100">
+            <X className="w-6 h-6 text-gray-400" />
+          </button>
+        </div>
+
+        <p className="text-gray-500 font-bold mb-5" style={{ fontSize: "1rem" }}>
+          어떤 기간의 리포트를 생성할까요?
+        </p>
+
+        <div className="space-y-3 mb-5">
+          <button
+            onClick={() => onSelect("daily")}
+            disabled={generating}
+            className="w-full flex items-center gap-4 p-5 rounded-2xl border-2 border-[#0E8080] bg-[#0E8080]/5 hover:bg-[#0E8080]/10 transition-all disabled:opacity-50"
+          >
+            <div className="w-12 h-12 rounded-full bg-[#0E8080] flex items-center justify-center flex-shrink-0">
+              <CalendarDays className="w-6 h-6 text-white" />
+            </div>
+            <div className="text-left flex-1">
+              <p className="text-[#0A2647] font-black" style={{ fontSize: "1.15rem" }}>일간 리포트</p>
+              <p className="text-gray-500 font-bold" style={{ fontSize: "0.9rem" }}>오늘 하루의 심장 상태</p>
+            </div>
+          </button>
+
+          <button
+            onClick={() => onSelect("weekly")}
+            disabled={generating}
+            className="w-full flex items-center gap-4 p-5 rounded-2xl border-2 border-[#0A2647] bg-[#0A2647]/5 hover:bg-[#0A2647]/10 transition-all disabled:opacity-50"
+          >
+            <div className="w-12 h-12 rounded-full bg-[#0A2647] flex items-center justify-center flex-shrink-0">
+              <BarChart2 className="w-6 h-6 text-white" />
+            </div>
+            <div className="text-left flex-1">
+              <p className="text-[#0A2647] font-black" style={{ fontSize: "1.15rem" }}>주간 리포트</p>
+              <p className="text-gray-500 font-bold" style={{ fontSize: "0.9rem" }}>최근 7일간의 심장 상태 추이</p>
+            </div>
+          </button>
+        </div>
+
+        {generating && (
+          <div className="flex items-center justify-center gap-3 py-3">
+            <div className="w-5 h-5 border-3 border-[#0E8080] border-t-transparent rounded-full animate-spin" />
+            <span className="text-gray-500 font-bold" style={{ fontSize: "1rem" }}>리포트 생성 중...</span>
+          </div>
+        )}
+
+        <p className="text-gray-400 font-bold text-center" style={{ fontSize: "0.85rem", whiteSpace: "pre-line" }}>
+          {"측정 시점, 횟수, 빈도에 따라\n결과는 달라질 수 있습니다."}
+        </p>
       </div>
     </div>
   );
@@ -90,15 +144,15 @@ export function ReportPage() {
   const [measurements, setMeasurements] = useState<MeasurementItem[]>([]);
   const [selectedIdx, setSelectedIdx] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
   const [generating, setGenerating] = useState(false);
 
   useEffect(() => {
     (async () => {
       try {
         const res = await api.get("/measurements");
-        const today = new Date().toISOString().slice(0, 10);
         const mapped: MeasurementItem[] = (res.data || [])
-          .filter((m: any) => m.status === "completed" && (m.measuredAt || "").slice(0, 10) === today)
+          .filter((m: any) => m.status === "completed")
           .map((m: any) => ({
             id: m._id,
             analysisId: m.analysis?._id ?? null,
@@ -106,7 +160,8 @@ export function ReportPage() {
             riskScore: m.analysis?.riskScore ?? 0,
             date: formatDate(m.measuredAt),
             status: m.status,
-          }));
+          }))
+          .slice(0, MAX_LIST);
         setMeasurements(mapped);
       } catch (err) {
         console.error("측정 목록 조회 실패", err);
@@ -115,6 +170,27 @@ export function ReportPage() {
       }
     })();
   }, []);
+
+  const handleSelectType = async (type: ReportType) => {
+    const item = measurements[Math.min(selectedIdx, measurements.length - 1)];
+    if (!item?.analysisId) return;
+    try {
+      setGenerating(true);
+      // 백엔드: POST /reports/generate { type, analysisId, measurementId }
+      const res = await api.post("/reports/generate", {
+        type,
+        analysisId: item.analysisId,
+        measurementId: item.id,
+      });
+      const reportId = res.data?._id;
+      setShowModal(false);
+      navigate("/report-detail", { state: { reportId, type } });
+    } catch (err) {
+      console.error("리포트 생성 실패", err);
+    } finally {
+      setGenerating(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -129,19 +205,6 @@ export function ReportPage() {
   const meta = item ? RISK_META[item.riskLevel] : RISK_META["하"];
   const RiskIcon = meta.icon;
 
-  const handleGenerateReport = async () => {
-    try {
-      setGenerating(true);
-      const res = await api.post("/reports/generate");
-      const reportId = res.data?._id;
-      navigate("/report-detail", { state: { analysisId: reportId } });
-    } catch (err) {
-      console.error("리포트 생성 실패", err);
-    } finally {
-      setGenerating(false);
-    }
-  };
-
   return (
     <div className="max-w-2xl mx-auto p-5">
       <div className="mb-7">
@@ -151,7 +214,7 @@ export function ReportPage() {
 
       <DailyAlertSection />
 
-      {/* 측정 결과 목록 */}
+      {/* 측정 결과 목록 (최근 7개) */}
       {hasData && (
         <div className="bg-white rounded-2xl shadow-sm border-2 border-gray-100 mb-6 overflow-hidden">
           <div className="p-5 border-b-2 border-gray-100">
@@ -160,12 +223,9 @@ export function ReportPage() {
           {measurements.map((m, i) => {
             const mm = RISK_META[m.riskLevel];
             return (
-              <button
-                key={m.id}
-                onClick={() => setSelectedIdx(i)}
+              <button key={m.id} onClick={() => setSelectedIdx(i)}
                 className={`w-full flex items-center gap-4 p-5 text-left transition-colors border-b-2 border-gray-50 last:border-0 ${selectedIdx === i ? "bg-blue-50" : "hover:bg-gray-50"}`}
-                style={{ minHeight: 80 }}
-              >
+                style={{ minHeight: 80 }}>
                 <div className="w-4 h-16 rounded-full shrink-0" style={{ backgroundColor: mm.color }} />
                 <div className="flex-1">
                   <div className="flex items-center gap-3 flex-wrap mb-1">
@@ -192,9 +252,7 @@ export function ReportPage() {
               <RiskIcon className="text-white" style={{ width: 48, height: 48 }} />
             </div>
             <div className="flex-1">
-              <div style={{ color: meta.color, fontSize: "2.2rem", fontWeight: 900, lineHeight: 1.1 }}>
-                위험도 {item.riskLevel}
-              </div>
+              <div style={{ color: meta.color, fontSize: "2.2rem", fontWeight: 900, lineHeight: 1.1 }}>위험도 {item.riskLevel}</div>
               <div style={{ color: meta.color, fontSize: "1.6rem", fontWeight: 800 }}>{meta.label}</div>
             </div>
             <div className="text-right shrink-0">
@@ -208,22 +266,29 @@ export function ReportPage() {
         </div>
       )}
 
-      {/* 리포트 생성 버튼 */}
+      {/* AI 리포트 생성 버튼 */}
       <button
-        onClick={handleGenerateReport}
-        disabled={!hasData || generating}
-        className="w-full flex items-center justify-center gap-3 py-5 bg-linear-to-r from-[#0A2647] to-[#0E8080] text-white rounded-2xl hover:opacity-90 transition-all font-black mb-4 shadow-lg disabled:opacity-50"
+        onClick={() => setShowModal(true)}
+        disabled={!hasData || !item?.analysisId}
+        className="w-full flex items-center justify-center gap-3 py-5 bg-gradient-to-r from-[#0A2647] to-[#0E8080] text-white rounded-2xl hover:opacity-90 transition-all font-black mb-4 shadow-lg disabled:opacity-50"
         style={{ minHeight: 68, fontSize: "1.2rem" }}
       >
         <Sparkles className="w-6 h-6" />
-        {generating ? "리포트 생성 중..." : hasData ? "이 측정으로 리포트 생성" : "측정 후 생성해주세요"}
+        {hasData ? "AI 리포트 생성" : "측정 후 생성해주세요"}
       </button>
-
 
       <div className="bg-gray-50 border-2 border-gray-200 rounded-xl p-5 text-gray-500 leading-relaxed font-bold" style={{ fontSize: "1rem" }}>
         <Info className="w-5 h-5 inline mr-2 text-gray-400" />
         이 리포트는 참고용이며 의사의 진단을 대신하지 않습니다.
       </div>
+
+      {showModal && (
+        <ReportTypeModal
+          onSelect={handleSelectType}
+          onClose={() => !generating && setShowModal(false)}
+          generating={generating}
+        />
+      )}
     </div>
   );
 }
