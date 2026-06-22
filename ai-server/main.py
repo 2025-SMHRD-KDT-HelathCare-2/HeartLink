@@ -34,6 +34,86 @@ from services.predictor import predict
 from services.report_generator import generate_report
 from services.tts_service import text_to_speech
 
+
+def _parse_ecg_signal(contents: bytes) -> np.ndarray:
+    """CSV bytes → signal_raw ndarray. Apple Watch / MIT-BIH 포맷 공통 처리."""
+    csv_text = contents.decode('utf-8')
+    lines    = csv_text.strip().split('\n')
+    signal_raw = None
+
+    data_start_idx = None
+    for i, line in enumerate(lines[:30]):
+        stripped = line.strip()
+        if stripped and _is_number(stripped):
+            data_start_idx = i
+            break
+
+    if data_start_idx is not None and data_start_idx > 0:
+        ecg_values = []
+        for i in range(data_start_idx, len(lines)):
+            stripped = lines[i].strip()
+            if stripped and _is_number(stripped):
+                ecg_values.append(float(stripped))
+        signal_raw = np.array(ecg_values, dtype=np.float32)
+    else:
+        first_cols = [c.strip().strip("'\"") for c in lines[0].split(',')]
+        is_header  = any(not _is_number(v) for v in first_cols)
+        if is_header:
+            headers    = [h.lower() for h in first_cols]
+            data_lines = lines[1:]
+        else:
+            headers    = []
+            data_lines = lines
+
+        candidates = ['ecg', 'y', 'value', 'signal', 'mv', 'mlii', 'v5', 'v1', 'v2']
+        y_idx = next((i for i, h in enumerate(headers) if h in candidates), None)
+
+        all_rows = []
+        for line in data_lines:
+            cols = line.split(',')
+            row  = []
+            for c in cols:
+                try:
+                    row.append(float(c.strip()))
+                except ValueError:
+                    row.append(float('nan'))
+            if row:
+                all_rows.append(row)
+
+        if not all_rows:
+            raise HTTPException(status_code=400, detail="ECG 데이터가 없습니다.")
+
+        max_cols = max(len(r) for r in all_rows)
+        data_arr = np.full((len(all_rows), max_cols), np.nan, dtype=np.float32)
+        for i, row in enumerate(all_rows):
+            data_arr[i, :len(row)] = row
+
+        if y_idx is None:
+            if max_cols == 1:
+                y_idx = 0
+            else:
+                col_stds = np.nanstd(data_arr, axis=0)
+                col_stds = np.where(np.isnan(col_stds), -1.0, col_stds)
+                y_idx    = int(np.argmax(col_stds))
+
+        signal_raw = data_arr[:, y_idx]
+        signal_raw = signal_raw[~np.isnan(signal_raw)]
+
+    if signal_raw is None or len(signal_raw) < 100:
+        raise HTTPException(status_code=400, detail="ECG 데이터가 너무 적습니다.")
+
+    return signal_raw.astype(np.float32)
+
+
+def _build_waveforms(filtered_signal: np.ndarray) -> dict:
+    """필터링된 250Hz 신호 → ecg_waveform_full / ecg_waveform_lite 딕셔너리."""
+    signal_lightweight = downsample_for_storage(filtered_signal, fs_original=250, target_fs=80)
+    return {
+        "ecg_waveform_full": filtered_signal.tolist(),
+        "ecg_waveform_lite": signal_lightweight.tolist(),
+    }
+
+
 app = FastAPI(
     title="HeartLink AI Server",
     version="0.1.0"
@@ -54,6 +134,32 @@ def health_check():
     백엔드 연결 상태 확인용 API
     """
     return {"status": "ok"}
+
+
+@app.post("/analyze/preview")
+async def analyze_preview(
+    file: UploadFile = File(...),
+    sampling_rate: int = Form(default=250),
+):
+    """
+    ECG 파형 빠른 미리보기 엔드포인트 (모델 추론 없음)
+
+    분석 결과가 도착하기 전에 파형을 먼저 화면에 표시할 때 사용.
+    리샘플링 + 밴드패스 필터까지만 실행하므로 /analyze보다 훨씬 빠름.
+
+    Returns
+    -------
+    JSON: { ecg_waveform_full, ecg_waveform_lite }
+    """
+    try:
+        contents     = await file.read()
+        signal_raw   = _parse_ecg_signal(contents)
+        preprocessed = preprocess_ecg(signal_raw, fs_original=sampling_rate)
+        return _build_waveforms(preprocessed['filtered_signal'])
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/analyze")
@@ -79,90 +185,13 @@ async def analyze(
 
     Returns
     -------
-    JSON: AnalysisResult 스키마와 동일한 형식
+    JSON: AnalysisResult 스키마와 동일한 형식 + ecg_waveform_full/lite
     """
     try:
-        # 파일 읽기
-        contents = await file.read()
-
-        # CSV 파싱 → numpy 배열
-        csv_text = contents.decode('utf-8')
-        lines    = csv_text.strip().split('\n')
-
-        signal_raw = None
-
-        # Apple Watch 포맷 감지: 메타데이터 이후 순수 숫자 한 줄씩 시작
-        data_start_idx = None
-        for i, line in enumerate(lines[:30]):
-            stripped = line.strip()
-            if stripped and _is_number(stripped):
-                data_start_idx = i
-                break
-
-        if data_start_idx is not None and data_start_idx > 0:
-            # Apple Watch 포맷: 숫자 한 줄씩
-            ecg_values = []
-            for i in range(data_start_idx, len(lines)):
-                stripped = lines[i].strip()
-                if stripped and _is_number(stripped):
-                    ecg_values.append(float(stripped))
-            signal_raw = np.array(ecg_values, dtype=np.float32)
-        else:
-            # MIT-BIH 포맷: 컬럼 CSV
-            first_cols = [c.strip().strip("'\"") for c in lines[0].split(',')]
-            is_header  = any(not _is_number(v) for v in first_cols)
-
-            if is_header:
-                headers    = [h.lower() for h in first_cols]
-                data_lines = lines[1:]
-            else:
-                headers    = []
-                data_lines = lines
-
-            candidates = ['ecg', 'y', 'value', 'signal', 'mv', 'mlii', 'v5', 'v1', 'v2']
-            y_idx = next((i for i, h in enumerate(headers) if h in candidates), None)
-
-            all_rows = []
-            for line in data_lines:
-                cols = line.split(',')
-                row  = []
-                for c in cols:
-                    try:
-                        row.append(float(c.strip()))
-                    except ValueError:
-                        row.append(float('nan'))
-                if row:
-                    all_rows.append(row)
-
-            if not all_rows:
-                raise HTTPException(status_code=400, detail="ECG 데이터가 없습니다.")
-
-            max_cols = max(len(r) for r in all_rows)
-            data_arr = np.full((len(all_rows), max_cols), np.nan, dtype=np.float32)
-            for i, row in enumerate(all_rows):
-                data_arr[i, :len(row)] = row
-
-            if y_idx is None:
-                if max_cols == 1:
-                    y_idx = 0
-                else:
-                    col_stds = np.nanstd(data_arr, axis=0)
-                    # nan을 -1로 치환해서 argmax가 nan 컬럼을 선택하지 않도록 방지
-                    col_stds = np.where(np.isnan(col_stds), -1.0, col_stds)
-                    y_idx    = int(np.argmax(col_stds))
-
-            signal_raw = data_arr[:, y_idx]
-            signal_raw = signal_raw[~np.isnan(signal_raw)]
-
-        if signal_raw is None or len(signal_raw) < 100:
-            raise HTTPException(status_code=400, detail="ECG 데이터가 너무 적습니다.")
-
-        signal_raw = signal_raw.astype(np.float32)
-
-        # 전처리 (실제 sampling_rate 전달)
+        contents     = await file.read()
+        signal_raw   = _parse_ecg_signal(contents)
         preprocessed = preprocess_ecg(signal_raw, fs_original=sampling_rate)
 
-        # 모델 추론 + 위험도 산출
         medical_history_list = medical_history.split(',') if medical_history else []
 
         result = predict(
@@ -176,8 +205,7 @@ async def analyze(
             r_peaks         = preprocessed['r_peaks'],
         )
 
-        filtered_signal    = preprocessed['filtered_signal']
-        signal_lightweight = downsample_for_storage(filtered_signal, fs_original=250, target_fs=80)
+        waveforms = _build_waveforms(preprocessed['filtered_signal'])
 
         return {
             "measurement_id":    measurement_id,
@@ -195,8 +223,7 @@ async def analyze(
             "risk_score":        result['risk_score'],
             "risk_level":        result['risk_level'],
             "analyzed_at":       result['analyzed_at'],
-            "ecg_waveform_full": filtered_signal.tolist(),
-            "ecg_waveform_lite": signal_lightweight.tolist(),
+            **waveforms,
         }
 
     except HTTPException:
