@@ -29,7 +29,7 @@ def _is_number(s: str) -> bool:
     except ValueError:
         return False
 
-from services.preprocessing import preprocess_ecg
+from services.preprocessing import preprocess_ecg, downsample_for_storage
 from services.predictor import predict
 from services.report_generator import generate_report
 from services.tts_service import text_to_speech
@@ -176,6 +176,9 @@ async def analyze(
             r_peaks         = preprocessed['r_peaks'],
         )
 
+        filtered_signal    = preprocessed['filtered_signal']
+        signal_lightweight = downsample_for_storage(filtered_signal, fs_original=250, target_fs=80)
+
         return {
             "measurement_id":    measurement_id,
             "user_id":           user_id,
@@ -192,6 +195,8 @@ async def analyze(
             "risk_score":        result['risk_score'],
             "risk_level":        result['risk_level'],
             "analyzed_at":       result['analyzed_at'],
+            "ecg_waveform_full": filtered_signal.tolist(),
+            "ecg_waveform_lite": signal_lightweight.tolist(),
         }
 
     except HTTPException:

@@ -221,9 +221,22 @@ def preprocess_ecg(signal_raw, fs_original=250):
         window[:len(signal)] = signal.astype(np.float32)
 
     return {
-        'beat':         beat,
-        'window':       window,
-        'hrv_features': hrv_features,
-        'heart_rate':   heart_rate,
-        'r_peaks':      r_peaks.tolist(),
+        'beat':            beat,
+        'window':          window,
+        'hrv_features':    hrv_features,
+        'heart_rate':      heart_rate,
+        'r_peaks':         r_peaks.tolist(),
+        'filtered_signal': signal,
     }
+
+
+def downsample_for_storage(signal_raw, fs_original, target_fs=80):
+    """
+    DB 저장용 ECG 경량화
+    - 1차 조회(방금 측정) 시에는 512Hz 원본을 그대로 보여주고,
+      이후 재조회부터는 이 함수로 만든 경량 파형을 사용
+    - scipy resample은 FFT 기반으로 안티앨리어싱이 자동 처리되어,
+      기존 백엔드의 단순 decimation 방식보다 더 안정적인 품질을 보장함
+    """
+    new_length = int(len(signal_raw) * target_fs / fs_original)
+    return sp_resample(signal_raw, new_length)
