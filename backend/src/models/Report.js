@@ -19,7 +19,7 @@ const reportSchema = new Schema(
     // reportCategory: 리포트 성격. 'emergency_alert'(긴급 알림) / 'full_report'(종합 리포트). 필수
     reportCategory: {
       type: String,
-      enum: ['emergency_alert', 'full_report'],
+      enum: ['emergencyAlert', 'fullReport'],
       required: true,
     },
 
