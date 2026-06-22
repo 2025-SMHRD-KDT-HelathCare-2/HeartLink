@@ -89,6 +89,20 @@ export function UploadVisualizationPage() {
       await new Promise(r => setTimeout(r, 2000));
       const res = await api.get(`/measurements/${measurementId}`);
       const data = res.data;
+
+      // processing 상태에서도 ecgWaveformLite가 있으면 파형 먼저 표시
+      if (data.status === "processing" && data.ecgWaveformLite?.length) {
+        const riskLevelMap: Record<string, "상" | "중" | "하"> = { high: "상", mid: "중", low: "하" };
+        setResult({
+          ecgPoints: data.ecgWaveformLite,
+          rPeaks: data.rPeaks ?? [],
+          sampleRate: data.samplingRate ?? 250,
+          riskLevel: undefined,
+          riskScore: null,
+        });
+        setPhase("scanning");
+      }
+
       if (data.status === "completed") return data;
       if (data.status === "failed") throw new Error("분석에 실패했습니다.");
       setProgress(prev => Math.min(prev + 2, 95));
@@ -139,7 +153,8 @@ export function UploadVisualizationPage() {
         riskLevel,
         riskScore,
       });
-      setPhase("scanning");
+      // 이미 scanning 중이면 애니메이션 유지, 아니면 scanning 시작
+      setPhase(prev => prev === "scanning" ? "scanning" : "scanning");
 
       // 위험도 '상'이면 토스트로 알림 (보호자에게는 백엔드가 별도 발송)
       if (riskLevel === "상") {
