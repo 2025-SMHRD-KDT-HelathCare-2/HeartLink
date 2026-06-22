@@ -14,7 +14,7 @@ const phoneVerificationSchema = new Schema(
     code: { type: String, required: true }, // 해시 저장
 
     // purpose: 인증의 목적. 'signup'(회원가입) / 'find_pw'(비밀번호 찾기) / 'find_email'(이메일). 필수
-    purpose: { type: String, enum: ['signup', 'find_pw', 'find_email' ], required: true },
+    purpose: { type: String, enum: ['signup', 'findPw', 'findEmail' ], required: true },
 
     // verified: 이 번호가 인증에 성공했는지 여부. 기본 false, 필수
     verified: { type: Boolean, default: false, required: true },
