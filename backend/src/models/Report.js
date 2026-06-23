@@ -53,8 +53,10 @@ const reportSchema = new Schema(
     analysisCount: { type: Number, required: true, min: 1 },
 
     // ───────── 리포트 본문/산출물 ─────────
-    // reportText: LLM이 생성한 리포트 본문(본인/보호자 통합, 타입으로 구분). 최대 10000자
+    // reportText: 사용자(어르신)용 리포트 본문. 최대 10000자
     reportText: { type: String, maxlength: 10000 },
+    // reportTextGuardian: 보호자용 리포트 본문 (의학적 표현 포함). 최대 10000자
+    reportTextGuardian: { type: String, maxlength: 10000 },
     // recommendedAction: 권장 조치 사항. 최대 2000자
     recommendedAction: { type: String, maxlength: 2000 },
     // ttsAudioUrl: TTS로 생성한 음성(mp3) 파일 경로(URL). 최대 1000자

@@ -40,7 +40,7 @@ function DailyAlertSection() {
         const res = await api.get("/notifications");
         const today = new Date().toISOString().slice(0, 10);
         const todays = (res.data || []).filter((n: any) =>
-          n.level === "high" && (n.createdAt || "").slice(0, 10) === today
+          n.level === "상" && (n.createdAt || "").slice(0, 10) === today
         );
         setAlerts(todays.map((n: any) => ({
           id: n._id, message: n.message, time: (n.createdAt || "").slice(11, 16),
@@ -176,7 +176,6 @@ export function ReportPage() {
     if (!item?.analysisId) return;
     try {
       setGenerating(true);
-      // 백엔드: POST /reports/generate { type, analysisId, measurementId }
       const res = await api.post("/reports/generate", {
         type,
         analysisId: item.analysisId,

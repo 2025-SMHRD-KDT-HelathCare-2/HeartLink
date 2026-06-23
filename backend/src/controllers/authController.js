@@ -349,7 +349,7 @@ export const sendFindEmailCode = async (req, res, next) => {
 
     const recent = await PhoneVerification.findOne({
       phone,
-      purpose: 'find_email',
+      purpose: 'findEmail',
       createdAt: { $gt: new Date(Date.now() - 60 * 1000) },
     });
     if (recent) return res.status(429).json({ message: '1분 후 다시 요청해 주세요.' });
@@ -360,7 +360,7 @@ export const sendFindEmailCode = async (req, res, next) => {
     await PhoneVerification.create({
       phone,
       code: hashed,
-      purpose: 'find_email',
+      purpose: 'findEmail',
       verified: false,
       attemptCount: 0,
       expiresAt: new Date(Date.now() + 5 * 60 * 1000),
@@ -381,7 +381,7 @@ export const verifyFindEmailCode = async (req, res, next) => {
 
     const record = await PhoneVerification.findOne({
       phone,
-      purpose: 'find_email',
+      purpose: 'findEmail',
       verified: false,
       expiresAt: { $gt: new Date() },
     }).sort({ createdAt: -1 });
@@ -417,7 +417,7 @@ export const findEmailByPhone = async (req, res, next) => {
 
     const record = await PhoneVerification.findOne({
       phone,
-      purpose: 'find_email',
+      purpose: 'findEmail',
       verified: true,
       expiresAt: { $gt: new Date() },
     });

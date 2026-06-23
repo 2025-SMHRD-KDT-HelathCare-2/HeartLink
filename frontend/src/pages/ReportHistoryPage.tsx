@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
-import { Download, ChevronLeft, ChevronRight, Filter, FileText } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { ChevronLeft, ChevronRight, Filter, FileText, ChevronRight as ArrowRight } from "lucide-react";
 import api from "../api/authApi";
+import { toKSTDate, toKSTTime } from "../utils/formatKST";
 
 // ===== 백엔드 응답 구조 =====
 interface ReportHistoryItem {
@@ -21,6 +23,7 @@ const PERIOD_OPTIONS = ["전체", "1주일", "1개월", "3개월", "6개월", "1
 const PAGE_SIZE = 8;
 
 export function ReportHistoryPage() {
+  const navigate = useNavigate();
   const [reports, setReports] = useState<ReportHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [periodFilter, setPeriodFilter] = useState<typeof PERIOD_OPTIONS[number]>("전체");
@@ -33,8 +36,8 @@ export function ReportHistoryPage() {
         const res = await api.get("/measurements");
         const mapped: ReportHistoryItem[] = (res.data || []).map((r: any) => ({
           id: r._id,
-          date: (r.measuredAt || "").slice(0, 10),
-          time: (r.measuredAt || "").slice(11, 16),
+          date: toKSTDate(r.measuredAt || ""),
+          time: toKSTTime(r.measuredAt || ""),
           level: ({ high: "상", mid: "중", low: "하" } as Record<string, "상" | "중" | "하">)[r.analysis?.riskLevel] ?? "하",
           score: r.analysis?.riskScore ?? 0,
         }));
@@ -128,7 +131,9 @@ export function ReportHistoryPage() {
           {paged.map(r => {
             const meta = LEVEL_META[r.level];
             return (
-              <div key={r.id} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center gap-4">
+              <button key={r.id}
+                onClick={() => navigate(`/measurement/${r.id}`)}
+                className="w-full bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center gap-4 hover:border-[#0E8080] hover:shadow-md transition-all text-left">
                 <div className="w-2 h-14 rounded-full flex-shrink-0" style={{ backgroundColor: meta.color }} />
                 <div className="flex-1">
                   <div className="flex items-center gap-3 flex-wrap">
@@ -140,12 +145,8 @@ export function ReportHistoryPage() {
                     {meta.label} {r.score}점
                   </span>
                 </div>
-                <button onClick={() => alert(`${r.date} 리포트 PDF 저장`)}
-                  className="p-3 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors flex-shrink-0"
-                  style={{ minHeight: 52, minWidth: 52 }}>
-                  <Download className="w-6 h-6 text-gray-600" />
-                </button>
-              </div>
+                <ArrowRight className="w-5 h-5 text-gray-400 shrink-0" />
+              </button>
             );
           })}
         </div>

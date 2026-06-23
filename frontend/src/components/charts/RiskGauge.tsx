@@ -2,14 +2,40 @@ import {
   RadialBarChart, RadialBar, PolarAngleAxis, ResponsiveContainer
 } from "recharts";
 
+type RiskLevelEn = "high" | "mid" | "low";
+
 interface RiskGaugeProps {
   score: number;
+  riskLevel?: RiskLevelEn;
 }
 
-export function RiskGauge({ score }: RiskGaugeProps) {
-  const color = score >= 70 ? "#DC2626" : score >= 40 ? "#F59E0B" : "#16A34A";
-  const label = score >= 70 ? "위험도 상" : score >= 40 ? "위험도 중" : "위험도 하";
-  const bgColor = score >= 70 ? "bg-red-600" : score >= 40 ? "bg-amber-500" : "bg-green-600";
+const LEVEL_COLOR: Record<RiskLevelEn, string> = {
+  high: "#DC2626",
+  mid:  "#F59E0B",
+  low:  "#16A34A",
+};
+const LEVEL_LABEL: Record<RiskLevelEn, string> = {
+  high: "위험도 상",
+  mid:  "위험도 중",
+  low:  "위험도 하",
+};
+const LEVEL_BG: Record<RiskLevelEn, string> = {
+  high: "bg-red-600",
+  mid:  "bg-amber-500",
+  low:  "bg-green-600",
+};
+
+function scoreToLevel(score: number): RiskLevelEn {
+  if (score >= 14) return "high";
+  if (score >= 3)  return "mid";
+  return "low";
+}
+
+export function RiskGauge({ score, riskLevel }: RiskGaugeProps) {
+  const level   = riskLevel ?? scoreToLevel(score);
+  const color   = LEVEL_COLOR[level];
+  const label   = LEVEL_LABEL[level];
+  const bgColor = LEVEL_BG[level];
 
   return (
     <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
