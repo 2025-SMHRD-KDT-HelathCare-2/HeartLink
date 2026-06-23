@@ -36,7 +36,7 @@ const notificationSchema = new Schema(
   { timestamps: { createdAt: 'createdAt', updatedAt: false } }
 );
 
-// guardianId + 보낸시각(내림차순): "특정 보호자가 받은 최신 알림"을 빠르게 조회
+// guardianId + sentAt(내림차순): "특정 보호자가 받은 최신 알림"을 빠르게 조회
 notificationSchema.index({ guardianId: 1, sentAt: -1 });
 // analysisId 인덱스: 특정 분석과 연결된 알림을 빠르게 찾기 위함
 notificationSchema.index({ analysisId: 1 });
