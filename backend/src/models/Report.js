@@ -16,7 +16,7 @@ const reportSchema = new Schema(
     //  - 본인과 보호자가 각각 요청하므로 타입으로 분리
     reportType: { type: String, enum: ['self', 'guardian'], required: true },
 
-    // reportCategory: 리포트 성격. 'emergency_alert'(긴급 알림) / 'full_report'(종합 리포트). 필수
+    // reportCategory: 리포트 성격. 'emergencyAlert'(긴급 알림) / 'fullReport'(종합 리포트). 필수
     reportCategory: {
       type: String,
       enum: ['emergencyAlert', 'fullReport'],
@@ -45,7 +45,7 @@ const reportSchema = new Schema(
       type: [{ type: Schema.Types.ObjectId, ref: 'AnalysisResult' }],
       required: true,
       validate: {
-        validator: (v) => Array.isArray(v) && v.length > 0,
+        validator: (value) => Array.isArray(value) && value.length > 0,
         message: 'analysisIds는 최소 1개 이상이어야 합니다.',
       },
     },
@@ -59,7 +59,7 @@ const reportSchema = new Schema(
     recommendedAction: { type: String, maxlength: 2000 },
     // ttsAudioUrl: TTS로 생성한 음성(mp3) 파일 경로(URL). 최대 1000자
     ttsAudioUrl: { type: String, maxlength: 1000 },
-    // ※ pdf_url 제거됨: PDF는 프론트엔드에서 생성/다운로드 처리
+    // ※ pdfUrl 제거됨: PDF는 프론트엔드에서 생성/다운로드 처리
 
     // chartData: 그래프용으로 미리 집계해 둔 데이터(캐시 응답 속도 향상)
     //  - 시간대별/요일별/주차별 심박수, 위험도 카운트, HRV 추이, 미측정일(gap) 등
