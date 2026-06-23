@@ -191,12 +191,40 @@ def calculate_risk(af_detected, af_prob, arr_class, arr_prob,
     # ==================================================
     risk_score = min(100, round(ecg_score * clinical_factor))
 
+    # --------------------------------------------------
+    # [점수 임계값 산출 근거]
+    # 계산일   : 2026-06-23
+    # 계산 방법: 실제 사용자 데이터가 없으므로 아래 조건으로 2,000건을
+    #            가상 시뮬레이션한 뒤, 특수 케이스(절대 기준 해당 건)를
+    #            제외한 1,951건을 대상으로 percentile 산출
+    #
+    # 시뮬레이션 분포 설계 (ai-server/scripts/calc_percentile_v2.py 참고)
+    #   트랙1 클래스 비율 : N=89%, SVEB=4%, VEB=7%, F=1%, Q=0%
+    #     (MIT-BIH 데이터셋 기반 실제 트랙1 모델 출력 분포와 동일하게 맞춤)
+    #   arr_prob         : N~Normal(0.90,0.05), SVEB~Normal(0.72,0.14),
+    #                      VEB~Normal(0.55,0.13) clip 0.699, F~Normal(0.65,0.15)
+    #   heart_rate       : Normal(76,14), clip(45,138) / AF시 Normal(85,18) clip(50,99)
+    #   hrv_sdnn         : Normal(38,14), clip(8,90)
+    #   hrv_rmssd        : Normal(28,12), clip(5,70)
+    #   hrv_lfhf         : Normal(1.4,0.7), clip(0.2,3.5)
+    #   anomaly_detected : N=15%, 이상클래스=45% 확률
+    #   환자 프로파일     : age Normal(72,8), 여성 60%, 고혈압 55%, 당뇨 25%
+    #   AF 발생률        : 3% (트랙2 모델 별도, 전원 특수케이스 제외됨)
+    #
+    #   산출 결과
+    #   - 50th percentile (MID_THRESHOLD) = 3점
+    #   - 90th percentile (HIGH_THRESHOLD) = 14점
+    #
+    # ※ 이 임계값(14, 3)은 2026-06-23에 가상 시뮬레이션 데이터로
+    #   계산한 추정치이며, 실제 사용자 risk_score 분포와 다를 수 있음.
+    #   서비스 운영 후 실제 데이터가 쌓이면 반드시 재계산 필요.
+    # --------------------------------------------------
+    HIGH_THRESHOLD = 14  # 90th percentile (비특수케이스 상위 10% 기준)
+    MID_THRESHOLD  = 3   # 50th percentile
+
     # 위험도 등급 결정
+    # 1순위: 특수 케이스(임상적 절대 기준) — percentile과 무관하게 우선 적용
     # AF는 심박수랑 같이 봐야 함 (간호사 임상 피드백)
-    # [v2 추가] 점수 계산보다 먼저 특수 케이스(예외 규칙)를 확인함
-    # → 가중 합산 점수는 "여러 항목이 골고루 위험해야" 높게 나오는
-    #   구조라서, "딱 한 가지 지표만 매우 위험한" 경우(예: 부정맥
-    #   분류는 정상인데 심박수만 142인 경우)를 놓칠 수 있기 때문
     if af_detected and heart_rate >= 100:
         # AF + 빠른 심박수 → 당장 응급실
         risk_level = 'high'
@@ -207,13 +235,12 @@ def calculate_risk(af_detected, af_prob, arr_class, arr_prob,
         # 심실성 부정맥 빈발 → 위험
         risk_level = 'high'
     elif heart_rate >= 140 or heart_rate <= 40:
-        # [v2 신규] 부정맥 클래스 분류 결과와 무관하게,
-        # 심박수 자체가 심한 빈맥/서맥 수준이면 무조건 high
-        # (140 BPM은 심실빈맥을 의심할 수 있는 위험 수준)
+        # 심한 빈맥/서맥 → 부정맥 분류 결과와 무관하게 high
         risk_level = 'high'
-    elif risk_score >= 67:
+    # 2순위: 비특수케이스 — percentile 기반 상대 기준
+    elif risk_score >= HIGH_THRESHOLD:
         risk_level = 'high'
-    elif risk_score >= 34:
+    elif risk_score >= MID_THRESHOLD:
         risk_level = 'mid'
     else:
         risk_level = 'low'
