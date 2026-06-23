@@ -67,7 +67,7 @@ export const uploadECG = async (req, res, next) => {
       medicalHistory: user?.medicalHistory,
     }).then(async ({ data }) => {
       const score = data.risk_score ?? 0;
-      const riskLevel = data.risk_level ?? (score >= 67 ? 'high' : score >= 34 ? 'mid' : 'low');
+      const riskLevel = data.risk_level ?? (score >= 14 ? 'high' : score >= 3 ? 'mid' : 'low');
       
       // 분석 결과 저장
       const analysis = await AnalysisResult.findOneAndUpdate(
@@ -198,6 +198,13 @@ export const getMeasurement = async (req, res, next) => {
 // 보호자가 특정 사용자(피보호자)의 측정 목록 조회
 export const getPatientMeasurements = async (req, res, next) => {
   try {
+    const hasAccess = await GuardianRelation.findOne({
+      guardianId: req.user.id,
+      userId: req.params.userId,
+      relationStatus: 'accepted',
+    });
+    if (!hasAccess) return res.status(403).json({ message: '해당 환자의 데이터에 접근 권한이 없습니다.' });
+
     const measurements = await Measurement.find({ userId: req.params.userId }).sort({ measuredAt: -1 });
 
     const ids = measurements.map(m => m._id);
@@ -218,9 +225,18 @@ export const getPatientMeasurements = async (req, res, next) => {
 // 보호자가 특정 사용자(피보호자)의 측정 단건 조회
 export const getPatientMeasurement = async (req, res, next) => {
   try {
+    const hasAccess = await GuardianRelation.findOne({
+      guardianId: req.user.id,
+      userId: req.params.userId,
+      relationStatus: 'accepted',
+    });
+    if (!hasAccess) return res.status(403).json({ message: '해당 환자의 데이터에 접근 권한이 없습니다.' });
+
     const measurement = await Measurement.findOne({ _id: req.params.id, userId: req.params.userId });
     if (!measurement) return res.status(404).json({ message: '없는 측정 데이터입니다.' });
-    res.json(measurement);
+
+    const analysis = await AnalysisResult.findOne({ measurementId: measurement._id });
+    res.json({ ...measurement.toObject(), analysis: analysis ?? null });
   } catch (err) {
     next(err);
   }

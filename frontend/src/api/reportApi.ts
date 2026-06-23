@@ -6,15 +6,15 @@ export const getReportList = async () => {
   return data;
 };
 
-/** 특정 분석 결과의 리포트 조회 */
-export const getReport = async (analysisId: string) => {
-  const { data } = await api.get(`/reports/${analysisId}`);
+/** 특정 리포트 단건 조회 (aggregated chart data 포함) */
+export const getReport = async (reportId: string) => {
+  const { data } = await api.get(`/reports/${reportId}`);
   return data;
 };
 
-/** 리포트 생성 (Gemini 연동) */
-export const generateReport = async (analysisId: string) => {
-  const { data } = await api.post(`/reports/${analysisId}/generate`);
+/** 리포트 생성 (type: 'daily'|'weekly', analysisId 기준 날짜 범위 필터링) */
+export const generateReport = async (type: "daily" | "weekly", analysisId: string, measurementId: string) => {
+  const { data } = await api.post("/reports/generate", { type, analysisId, measurementId });
   return data;
 };
 
@@ -25,7 +25,7 @@ export const getPatientReportList = async (userId: string) => {
 };
 
 /** 보호자가 환자의 특정 리포트 조회 */
-export const getPatientReport = async (userId: string, analysisId: string) => {
-  const { data } = await api.get(`/reports/patient/${userId}/${analysisId}`);
+export const getPatientReport = async (userId: string, reportId: string) => {
+  const { data } = await api.get(`/reports/patient/${userId}/${reportId}`);
   return data;
 };

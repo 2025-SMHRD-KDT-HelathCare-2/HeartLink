@@ -33,6 +33,7 @@ export const generateReport = ({
   arrhythmiaClass, arrhythmiaProb, afDetected, afProb,
   hrvRmssd, hrvSdnn, hrvLfhf, anomalyDetected,
   riskScore, riskLevel, heartRate,
+  target = 'both',
 }) => {
   const form = new FormData();
   form.append('analysis_id',      analysisId.toString());
@@ -51,6 +52,7 @@ export const generateReport = ({
   form.append('risk_score',       String(riskScore ?? 0));
   form.append('risk_level',       riskLevel ?? 'low');
   form.append('heart_rate',       String(heartRate ?? 75));
+  form.append('target',           target);
 
   return axios.post(`${process.env.AI_SERVER_URL}/report`, form, {
     headers: form.getHeaders(),

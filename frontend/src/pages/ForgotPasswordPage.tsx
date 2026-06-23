@@ -35,20 +35,12 @@ export function ForgotPasswordPage() {
       });
       setStep("code");
     } catch (err: any) {
-      const status = err?.response?.status;
-      if (status === 404) {
-        showToast({
-          level: "중",
-          title: "가입된 이메일이 아니에요",
-          message: "이메일을 다시 확인해 주세요.",
-        });
-      } else {
-        showToast({
-          level: "중",
-          title: "요청 실패",
-          message: "잠시 후 다시 시도해 주세요.",
-        });
-      }
+      const msg: string = err?.message ?? "잠시 후 다시 시도해 주세요.";
+      showToast({
+        level: "중",
+        title: msg.includes("가입된 이메일") ? "가입된 이메일이 아니에요" : "요청 실패",
+        message: msg,
+      });
     } finally {
       setSubmitting(false);
     }

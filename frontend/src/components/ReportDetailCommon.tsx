@@ -148,35 +148,56 @@ export function ReportDetailPage({ mode, memberId }: ReportDetailPageProps) {
   const captureRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    let cancelled = false;
     (async () => {
       try {
-        // 백엔드 완성 시 주석 해제
-        // const endpoint = mode === "guardian"
-        //   ? `/reports/guardian/${memberId}?type=${type}`
-        //   : `/reports/${reportId}`;
-        // const res = await api.get(endpoint);
-        // const r = res.data;
-        // setReport({ ...r, riskLevel: LEVEL_MAP[r.riskLevel] ?? "하" });
-        await new Promise(r => setTimeout(r, 500));
-        setReport(type === "daily" ? DUMMY_DAILY : DUMMY_WEEKLY);
+        const endpoint = mode === "guardian"
+          ? `/reports/guardian/${memberId}?type=${type}`
+          : `/reports/${reportId}`;
+        const res = await api.get(endpoint);
+        const r = res.data;
+        if (!cancelled) {
+          setReport({ ...r, riskLevel: LEVEL_MAP[r.riskLevel] ?? "하" });
+          // 리포트가 아직 생성 중이면 폴링으로 텍스트 업데이트
+          if (r.reportStatus === "generating" && mode === "user" && reportId) {
+            pollReportText(reportId, r);
+          }
+        }
       } catch (err) {
         console.error("리포트 조회 실패", err);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     })();
-  }, [reportId, type, memberId]);
+    return () => { cancelled = true; };
+  }, [reportId, type, memberId, mode]);
+
+  const pollReportText = async (id: string, base: ReportData) => {
+    for (let i = 0; i < 20; i++) {
+      await new Promise(r => setTimeout(r, 3000));
+      try {
+        const res = await api.get(`/reports/${id}`);
+        const r = res.data;
+        if (r.reportStatus === "completed" || r.reportStatus === "failed") {
+          setReport(prev => prev ? { ...prev, reportText: r.reportText ?? "" } : prev);
+          return;
+        }
+      } catch { return; }
+    }
+  };
 
   const config = report ? RISK_CONFIG[report.riskLevel] : RISK_CONFIG.하;
   const typeLabel = type === "daily" ? "일간" : "주간";
 
   const stopTTS = () => { audioRef.current?.pause(); setPlaying(false); };
   const playTTS = async (speed: number) => {
-    const id = mode === "guardian" ? memberId : reportId;
-    if (!id) return;
+    if (mode === "guardian" ? !memberId : !reportId) return;
     try {
       stopTTS(); setTtsLoading(true);
-      const res = await api.get(`/reports/${id}/tts`, { params: { speed }, responseType: "blob" });
+      const ttsUrl = mode === "guardian"
+        ? `/reports/guardian/${memberId}/tts`
+        : `/reports/${reportId}/tts`;
+      const res = await api.get(ttsUrl, { params: { speed }, responseType: "blob" });
       const url = URL.createObjectURL(res.data);
       const audio = new Audio(url);
       audioRef.current = audio;

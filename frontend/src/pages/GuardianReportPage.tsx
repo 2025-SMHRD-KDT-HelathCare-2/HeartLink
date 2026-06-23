@@ -2,15 +2,8 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { AlertTriangle, Info, ChevronLeft, ChevronRight, Clock, FileText, Sparkles, X, CalendarDays, BarChart2 } from "lucide-react";
 import api from "../api/authApi";
-
-interface Patient {
-  userId: string;       // user_id - 실제 MongoDB ObjectId
-  name: string;         // nickname
-  age: number;
-  riskLevel: "상" | "중" | "하";
-  riskScore: number;
-  lastMeasuredAt: string | null;
-}
+import type { Patient } from "../components/layout/GuardianLayout";
+import { toKSTDatetime } from "../utils/formatKST";
 
 interface MeasurementRecord {
   id: string;
@@ -27,40 +20,36 @@ const RISK_CONFIG = {
   하: { color: "#16A34A", bg: "#F0FDF4", border: "#BBF7D0", label: "양호" },
 };
 
-export function GuardianReportPage() {
+interface GuardianReportPageProps {
+  patients: Patient[];
+  selectedUserId: string | null;
+  onSelectUser: (userId: string) => void;
+}
+
+export function GuardianReportPage({ patients, selectedUserId, onSelectUser }: GuardianReportPageProps) {
   const navigate = useNavigate();
-  const [patients, setPatients] = useState<Patient[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedIdx, setSelectedIdx] = useState(0);
+
+  // selectedUserId가 있으면 그 인덱스로, 없으면 0
+  const initialIdx = selectedUserId
+    ? Math.max(0, patients.findIndex(p => p.user_id === selectedUserId))
+    : 0;
+  const [selectedIdx, setSelectedIdx] = useState(initialIdx);
   const [records, setRecords] = useState<MeasurementRecord[]>([]);
   const [recordsLoading, setRecordsLoading] = useState(false);
   const [showTypeModal, setShowTypeModal] = useState(false);
 
+  // 부모의 selectedUserId가 바뀌면 선택 인덱스도 동기화
   useEffect(() => {
-    (async () => {
-      try {
-        const res = await api.get("/guardians/patients");
-        const mapped: Patient[] = (res.data || []).map((p: any) => ({
-          userId: p.user_id,
-          name: p.nickname,
-          age: p.age,
-          riskLevel: LEVEL_MAP[p.risk_level] ?? "하",
-          riskScore: p.risk_score ?? 0,
-          lastMeasuredAt: p.latest_measured_at,
-        }));
-        setPatients(mapped);
-      } catch (err) {
-        console.error("환자 목록 조회 실패", err);
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, []);
+    if (!selectedUserId) return;
+    const idx = patients.findIndex(p => p.user_id === selectedUserId);
+    if (idx >= 0) setSelectedIdx(idx);
+  }, [selectedUserId, patients]);
 
   // 선택된 환자가 바뀌면 최근 측정 기록 3건 조회
   useEffect(() => {
     if (patients.length === 0) return;
-    const userId = patients[Math.min(selectedIdx, patients.length - 1)].userId;
+    const userId = patients[Math.min(selectedIdx, patients.length - 1)].user_id;
+    onSelectUser(userId);
     (async () => {
       try {
         setRecordsLoading(true);
@@ -69,7 +58,7 @@ export function GuardianReportPage() {
           .slice(0, 3)
           .map((m: any) => ({
             id: m._id,
-            date: (m.measuredAt || "").slice(0, 16).replace("T", " "),
+            date: toKSTDatetime(m.measuredAt || ""),
             riskLevel: LEVEL_MAP[m.analysis?.riskLevel] ?? "하",
             riskScore: m.analysis?.riskScore ?? 0,
           }));
@@ -83,14 +72,6 @@ export function GuardianReportPage() {
     })();
   }, [patients, selectedIdx]);
 
-  if (loading) {
-    return (
-      <div className="max-w-2xl mx-auto p-6 flex justify-center py-20">
-        <div className="w-8 h-8 border-4 border-[#0E8080] border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
-
   if (patients.length === 0) {
     return (
       <div className="max-w-2xl mx-auto p-6">
@@ -103,7 +84,8 @@ export function GuardianReportPage() {
   }
 
   const patient = patients[Math.min(selectedIdx, patients.length - 1)];
-  const config = RISK_CONFIG[patient.riskLevel];
+  const patientRiskLevel = LEVEL_MAP[patient.risk_level ?? "low"] ?? "하";
+  const config = RISK_CONFIG[patientRiskLevel];
 
   return (
     <div className="max-w-2xl mx-auto p-6">
@@ -118,10 +100,11 @@ export function GuardianReportPage() {
         </div>
         <div className="flex">
           {patients.map((p, i) => {
-            const c = RISK_CONFIG[p.riskLevel];
+            const rl = LEVEL_MAP[p.risk_level ?? "low"] ?? "하";
+            const c = RISK_CONFIG[rl];
             const active = selectedIdx === i;
             return (
-              <button key={p.userId}
+              <button key={p.user_id}
                 onClick={() => setSelectedIdx(i)}
                 className={`flex-1 flex flex-col items-center gap-1 py-4 transition-all border-b-4 ${
                   active ? "border-[#0A2647] bg-blue-50" : "border-transparent hover:bg-gray-50"
@@ -129,9 +112,9 @@ export function GuardianReportPage() {
                 style={{ minHeight: 80 }}>
                 <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold"
                   style={{ backgroundColor: c.color, fontSize: "1rem" }}>
-                  {p.name[0]}
+                  {p.nickname[0]}
                 </div>
-                <span className="font-bold text-gray-800" style={{ fontSize: "1rem" }}>{p.name}</span>
+                <span className="font-bold text-gray-800" style={{ fontSize: "1rem" }}>{p.nickname}</span>
                 <span className="px-2 py-0.5 rounded-full text-white font-bold"
                   style={{ backgroundColor: c.color, fontSize: "0.8rem" }}>
                   {c.label}
@@ -180,7 +163,9 @@ export function GuardianReportPage() {
             {records.map((r, i) => {
               const rc = RISK_CONFIG[r.riskLevel];
               return (
-                <div key={r.id} className="flex items-center gap-4 px-5 py-4">
+                <button key={r.id}
+                  onClick={() => navigate(`/measurement/${r.id}`, { state: { patientUserId: patient.user_id } })}
+                  className="w-full flex items-center gap-4 px-5 py-4 hover:bg-gray-50 transition-colors text-left">
                   <div className="w-2 h-10 rounded-full flex-shrink-0" style={{ backgroundColor: rc.color }} />
                   <div className="flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -194,7 +179,8 @@ export function GuardianReportPage() {
                       <Clock className="w-3 h-3" />{r.date}
                     </div>
                   </div>
-                </div>
+                  <ChevronRight className="w-4 h-4 text-gray-300 shrink-0" />
+                </button>
               );
             })}
           </div>
@@ -207,20 +193,20 @@ export function GuardianReportPage() {
           <AlertTriangle className="w-10 h-10 flex-shrink-0" style={{ color: config.color }} />
           <div className="flex-1">
             <div style={{ color: config.color, fontSize: "1.8rem", fontWeight: 900 }}>
-              위험도 {patient.riskLevel} — {config.label}
+              위험도 {patientRiskLevel} — {config.label}
             </div>
             <div className="text-gray-600 font-bold mt-1" style={{ fontSize: "1rem" }}>
-              {patient.name} ({patient.age}세)
-              {patient.lastMeasuredAt && ` · 최근 측정 ${patient.lastMeasuredAt.slice(0, 16).replace("T", " ")}`}
+              {patient.nickname}{patient.age != null ? ` (${patient.age}세)` : ""}
+              {patient.latest_measured_at && ` · 최근 측정 ${toKSTDatetime(patient.latest_measured_at)}`}
             </div>
           </div>
           <div className="text-right flex-shrink-0">
-            <div style={{ color: config.color, fontSize: "2.8rem", fontWeight: 900, lineHeight: 1 }}>{patient.riskScore}</div>
+            <div style={{ color: config.color, fontSize: "2.8rem", fontWeight: 900, lineHeight: 1 }}>{patient.risk_score ?? 0}</div>
             <div className="text-gray-400 font-bold" style={{ fontSize: "1rem" }}>/ 100점</div>
           </div>
         </div>
         <div className="w-full bg-white rounded-full h-4 overflow-hidden">
-          <div className="h-4 rounded-full" style={{ width: `${patient.riskScore}%`, backgroundColor: config.color }} />
+          <div className="h-4 rounded-full" style={{ width: `${patient.risk_score ?? 0}%`, backgroundColor: config.color }} />
         </div>
       </div>
 
@@ -252,7 +238,7 @@ export function GuardianReportPage() {
             <p className="text-gray-500 font-bold mb-5" style={{ fontSize: "1rem" }}>어떤 기간의 리포트를 볼까요?</p>
             <div className="space-y-3 mb-5">
               <button
-                onClick={() => { setShowTypeModal(false); navigate(`/guardian-report-detail/${patient.userId}`, { state: { type: "daily" } }); }}
+                onClick={() => { setShowTypeModal(false); navigate(`/guardian-report-detail/${patient.user_id}`, { state: { type: "daily" } }); }}
                 className="w-full flex items-center gap-4 p-5 rounded-2xl border-2 border-[#0E8080] bg-[#0E8080]/5 hover:bg-[#0E8080]/10 transition-all">
                 <div className="w-12 h-12 rounded-full bg-[#0E8080] flex items-center justify-center flex-shrink-0">
                   <CalendarDays className="w-6 h-6 text-white" />
@@ -263,7 +249,7 @@ export function GuardianReportPage() {
                 </div>
               </button>
               <button
-                onClick={() => { setShowTypeModal(false); navigate(`/guardian-report-detail/${patient.userId}`, { state: { type: "weekly" } }); }}
+                onClick={() => { setShowTypeModal(false); navigate(`/guardian-report-detail/${patient.user_id}`, { state: { type: "weekly" } }); }}
                 className="w-full flex items-center gap-4 p-5 rounded-2xl border-2 border-[#0A2647] bg-[#0A2647]/5 hover:bg-[#0A2647]/10 transition-all">
                 <div className="w-12 h-12 rounded-full bg-[#0A2647] flex items-center justify-center flex-shrink-0">
                   <BarChart2 className="w-6 h-6 text-white" />

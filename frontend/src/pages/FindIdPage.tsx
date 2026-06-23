@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChevronLeft, Phone, ShieldCheck, Heart, Mail, RotateCcw } from "lucide-react";
-import { sendVerificationCode, verifyPhoneCode } from "../api/authApi";
-import api from "../api/authApi";
+import { ChevronLeft, Phone, ShieldCheck, Heart, Mail } from "lucide-react";
+import { sendFindEmailCode, verifyFindEmailCode } from "../api/authApi";
+import api from "../api/authApi"; // find-email 조회용
 import { useToast } from "../context/ToastContext";
 
 type Step = "phone" | "code" | "result";
@@ -27,7 +27,7 @@ export function FindIdPage() {
     setError("");
     setSending(true);
     try {
-      await sendVerificationCode(phone);
+      await sendFindEmailCode(phone);
       setCodeSent(true);
       setStep("code");
       showToast({ level: "success", title: "인증번호 발송", message: "휴대전화로 인증번호를 보냈습니다." });
@@ -47,7 +47,7 @@ export function FindIdPage() {
     setError("");
     setVerifying(true);
     try {
-      await verifyPhoneCode(phone, code);
+      await verifyFindEmailCode(phone, code);
       // 인증 성공 → 가입된 이메일 조회
       const { data } = await api.post("/auth/find-email", { phone });
       setFoundEmail(data.email);

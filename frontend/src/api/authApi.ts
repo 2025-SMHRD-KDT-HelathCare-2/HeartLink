@@ -88,7 +88,7 @@ api.interceptors.response.use(
   }
 );
 
-// ───────────────── 휴대폰 인증 ─────────────────
+// ───────────────── 휴대폰 인증 (회원가입용) ─────────────────
 export async function sendVerificationCode(phone: string) {
   const { data } = await api.post("/auth/phone/send", { phone });
   return data;
@@ -96,6 +96,17 @@ export async function sendVerificationCode(phone: string) {
 
 export async function verifyPhoneCode(phone: string, code: string) {
   const { data } = await api.post("/auth/phone/verify", { phone, code });
+  return data;
+}
+
+// ───────────────── 아이디 찾기 OTP ─────────────────
+export async function sendFindEmailCode(phone: string) {
+  const { data } = await api.post("/auth/find-email/send", { phone });
+  return data;
+}
+
+export async function verifyFindEmailCode(phone: string, code: string) {
+  const { data } = await api.post("/auth/find-email/verify", { phone, code });
   return data;
 }
 

@@ -1,5 +1,4 @@
 import { useState, useRef, useMemo, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { Upload, AlertCircle, Activity, Info } from "lucide-react";
 import api from "../api/authApi";
 import { useToast } from "../context/ToastContext";
@@ -13,14 +12,13 @@ interface ECGResult {
   ecgPoints: number[];
   rPeaks: number[];
   sampleRate: number;
-  riskLevel?: "상" | "중" | "하";
+  riskLevel?: "high" | "mid" | "low";
   riskScore?: number | null;
 }
 
 const DEFAULT_SAMPLE_RATE = 250;
 
 export function UploadVisualizationPage() {
-  const navigate = useNavigate();
   const { showToast } = useToast();
   const [phase, setPhase] = useState<Phase>("upload");
   const [progress, setProgress] = useState(0);
@@ -92,7 +90,6 @@ export function UploadVisualizationPage() {
 
       // processing 상태에서도 ecgWaveformLite가 있으면 파형 먼저 표시
       if (data.status === "processing" && data.ecgWaveformLite?.length) {
-        const riskLevelMap: Record<string, "상" | "중" | "하"> = { high: "상", mid: "중", low: "하" };
         setResult({
           ecgPoints: data.ecgWaveformLite,
           rPeaks: data.rPeaks ?? [],
@@ -142,8 +139,7 @@ export function UploadVisualizationPage() {
 
       const data = await pollMeasurement(measurementId);
 
-      const riskLevelMap: Record<string, "상" | "중" | "하"> = { high: "상", mid: "중", low: "하" };
-      const riskLevel = riskLevelMap[data.analysis?.riskLevel] ?? "하";
+      const riskLevel = (data.analysis?.riskLevel as "high" | "mid" | "low") ?? "low";
       const riskScore = data.analysis?.riskScore ?? null;
 
       setResult({
@@ -153,11 +149,10 @@ export function UploadVisualizationPage() {
         riskLevel,
         riskScore,
       });
-      // 이미 scanning 중이면 애니메이션 유지, 아니면 scanning 시작
       setPhase(prev => prev === "scanning" ? "scanning" : "scanning");
 
-      // 위험도 '상'이면 토스트로 알림 (보호자에게는 백엔드가 별도 발송)
-      if (riskLevel === "상") {
+      // 위험도 high이면 토스트로 알림 (보호자에게는 백엔드가 별도 발송)
+      if (riskLevel === "high") {
         showToast({
           level: "상",
           title: "위험 신호가 감지되었어요",
@@ -307,7 +302,9 @@ export function UploadVisualizationPage() {
               onZoomOut={() => {}}
             />
           )}
-          {result.riskScore != null && <RiskGauge score={result.riskScore} />}
+          {result.riskScore != null && (
+            <RiskGauge score={result.riskScore} riskLevel={result.riskLevel} />
+          )}
 
           <button
             onClick={() => {
