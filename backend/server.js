@@ -5,6 +5,7 @@ import cookieParser from 'cookie-parser';
 import { spawn } from 'child_process';
 import connectDB from './src/config/db.js';
 import errorHandler from './src/middlewares/errorHandler.js';
+import { startWeeklyReportJob } from './src/jobs/weeklyReportJob.js';
 import authRouter from './src/routes/auth.js';
 import measurementsRouter from './src/routes/measurements.js';
 import reportsRouter from './src/routes/reports.js';
@@ -15,6 +16,7 @@ import internalRouter from './src/routes/internal.js';
 const app = express();
 
 connectDB();
+startWeeklyReportJob();
 
 // MCP 서버 시작 (AI 서버가 MongoDB 데이터에 접근하기 위한 MCP HTTP 서버)
 const MCP_PORT = process.env.MCP_PORT || 3001;
