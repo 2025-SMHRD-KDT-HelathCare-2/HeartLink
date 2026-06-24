@@ -115,7 +115,16 @@ async def generate_report(
     gender: str = 'F',
     medical_history: list = None,
     user_id: str = '',
-    target: str = 'both'
+    target: str = 'both',
+    report_period: str = 'daily',
+    measurement_count: int = 1,
+    avg_heart_rate: int = 0,
+    max_risk_level: str = 'low',
+    af_detected_days: int = 0,
+    total_arrhythmia_count: int = 0,
+    risk_distribution_low: int = 100,
+    risk_distribution_mid: int = 0,
+    risk_distribution_high: int = 0,
 ) -> dict:
     """
     Gemini API로 고령자용 + 보호자용 리포트 동시 생성
@@ -141,11 +150,20 @@ async def generate_report(
         - risk_score       : 위험도 점수 (0~100)
         - risk_level       : 위험도 등급 (high/mid/low)
         - heart_rate       : 심박수 (BPM)
-        
-    age            : int,  나이
-    gender         : str,  성별 ('M'/'F')
-    medical_history: list, 과거력 (None이면 빈 리스트로 처리)
-    user_id        : str,  MCP 과거 데이터 조회용
+
+    age                    : int,  나이
+    gender                 : str,  성별 ('M'/'F')
+    medical_history        : list, 과거력 (None이면 빈 리스트로 처리)
+    user_id                : str,  MCP 과거 데이터 조회용
+    report_period          : str,  'daily' | 'weekly' | 'monthly'
+    measurement_count      : int,  기간 내 총 측정 건수
+    avg_heart_rate         : int,  기간 평균 심박수 (BPM)
+    max_risk_level         : str,  기간 최고 위험도 (high/mid/low)
+    af_detected_days       : int,  AFib 감지 일수
+    total_arrhythmia_count : int,  총 부정맥 발생 건수
+    risk_distribution_low  : int,  위험도 '하' 비율 (%)
+    risk_distribution_mid  : int,  위험도 '중' 비율 (%)
+    risk_distribution_high : int,  위험도 '상' 비율 (%)
 
     Returns
     -------
@@ -194,6 +212,20 @@ async def generate_report(
     past_risk_text = ', '.join(past_risk[-7:]) if past_risk else '데이터 없음'
     past_hrv_text  = ', '.join([str(h) for h in past_hrv[-7:]]) if past_hrv else '데이터 없음'
     arr_hist_text  = ', '.join(arr_history[-3:]) if arr_history else '이력 없음'
+
+    # 주간 리포트일 때만 종합 섹션 텍스트 생성 (daily는 빈 문자열)
+    max_risk_kor = {'high': '상', 'mid': '중', 'low': '하'}
+    if report_period == 'weekly':
+        weekly_section = f"""
+[주간 종합 ({measurement_count}회 측정)]
+- 기간 최고 위험도: {max_risk_kor.get(max_risk_level, '하')}
+- 평균 심박수: {avg_heart_rate}BPM
+- AFib 감지 일수: {af_detected_days}일
+- 총 부정맥 발생 건수: {total_arrhythmia_count}건
+- 위험도 분포: 하 {risk_distribution_low}% / 중 {risk_distribution_mid}% / 상 {risk_distribution_high}%
+"""
+    else:
+        weekly_section = ''
 
     # target에 따라 Gemini에게 요청할 출력 필드를 다르게 구성
     if target == 'user':
@@ -248,7 +280,7 @@ async def generate_report(
 
 [부정맥 이력]
 {arr_hist_text}
-
+{weekly_section}
 [위험도별 작성 지침]
 ■ 위험도가 '하'일 때
   - 어르신용: 안심시키는 말 + 심장에 좋은 생활 정보(음식, 가벼운 운동, 약 챙기기, 수면 등)
