@@ -84,7 +84,7 @@ export function GuardianMyPage() {
   const nickname = (user as any)?.nickname || (user as any)?.email?.split("@")[0] || "보호자";
   const acceptedCount = requests.filter(r => r.relationStatus === "accepted").length;
 
-  const handleSendRequest = async (e: React.FormEvent) => {
+  const handleSendRequest = async (e: { preventDefault(): void }) => {
     e.preventDefault();
     if (!userEmail.trim()) { setError("사용자 아이디를 입력해 주세요."); return; }
     if (!userEmail.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) { setError("올바른 이메일 형식이 아닙니다."); return; }
@@ -94,7 +94,7 @@ export function GuardianMyPage() {
     setSending(true);
     try {
       const newRelation = await requestUser(userEmail.trim());
-      setRequests(prev => [newRelation, ...prev]);
+      setRequests(prev => [{ ...newRelation, userId: { email: userEmail.trim() } }, ...prev]);
       setUserEmail("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "요청 전송에 실패했습니다.");
