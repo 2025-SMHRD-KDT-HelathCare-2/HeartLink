@@ -13,6 +13,11 @@ const RISK_MESSAGES = {
   low:  '오늘 심장 상태는 양호했어요. 좋은 컨디션을 유지하고 계세요.',
 };
 
+const GUARDIAN_RISK_MESSAGES = {
+  high: '즉시 상태를 확인하고 필요 시 병원 방문을 도와주세요.',
+  mid:  '어르신 상태를 한번 확인해 보세요.',
+};
+
 // AI 서버 응답 후 최초 조회 1회만 전달하기 위한 서버 메모리 캐시 (DB 미저장)
 const ecgFullCache = new Map();
 
@@ -30,7 +35,7 @@ export const uploadECG = async (req, res, next) => {
     }
 
     const samplingRate = DEVICE_SAMPLING_RATE[device_type] ?? 250;
-    const user = await User.findById(req.user.id).select('age gender medicalHistory deviceToken');
+    const user = await User.findById(req.user.id).select('age gender medicalHistory deviceToken nickname');
 
     const measurement = await Measurement.create({
       userId: req.user.id,
@@ -138,7 +143,7 @@ export const uploadECG = async (req, res, next) => {
         for (const rel of guardianRelations) {
           const token = rel.guardianId?.deviceToken;
           if (token) {
-            sendPushNotification(token, '보호 중인 분에게 이상이 감지됐어요', RISK_MESSAGES[riskLevel] ?? RISK_MESSAGES.low)
+            sendPushNotification(token, `${user.nickname ?? '어르신'}님에게 이상이 감지됐어요`, GUARDIAN_RISK_MESSAGES[riskLevel] ?? GUARDIAN_RISK_MESSAGES.mid)
               .catch(err => console.error('보호자 FCM 실패:', err.message));
           }
         }

@@ -45,12 +45,15 @@ export const addGuardian = async (req, res, next) => {
     });
 
     // 사용자에게 보호자 등록 요청 FCM 알림
+    console.log('[FCM] patientUser.deviceToken:', patientUser.deviceToken);
     if (patientUser.deviceToken) {
       sendPushNotification(
         patientUser.deviceToken,
         '보호자 등록 요청',
         `${guardian.nickname}님이 보호자 등록을 요청했습니다.`
-      ).catch(() => {});
+      ).catch((err) => console.error('[FCM] 발송 실패:', err.message));
+    } else {
+      console.log('[FCM] deviceToken 없음 - 알림 건너뜀');
     }
 
     res.status(201).json(relation);
