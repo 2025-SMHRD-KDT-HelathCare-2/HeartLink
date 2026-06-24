@@ -1,9 +1,14 @@
 import api from "./authApi";
 
 /** ECG 파일 업로드 (측정 생성) */
-export const uploadECG = async (file: File, measuredAt?: string) => {
+export const uploadECG = async (
+  file: File,
+  measuredAt?: string,
+  deviceType: string = "apple_watch"
+) => {
   const formData = new FormData();
   formData.append("ecg_file", file);
+  formData.append("device_type", deviceType);
   if (measuredAt) formData.append("measured_at", measuredAt);
   const { data } = await api.post("/measurements", formData, {
     headers: { "Content-Type": "multipart/form-data" },
