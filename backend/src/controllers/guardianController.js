@@ -114,12 +114,11 @@ export const getPatients = async (req, res, next) => {
   }
 };
 
-// 사용자(환자)가 자신에게 온 보호자 요청 목록 조회
+// 사용자(환자)가 자신에게 온 보호자 요청 목록 조회 (전체 상태)
 export const getPendingRequests = async (req, res, next) => {
   try {
     const requests = await GuardianRelation.find({
       userId: req.user.id,
-      relationStatus: 'pending',
     }).populate('guardianId', 'nickname email');
     res.json(requests);
   } catch (err) {
