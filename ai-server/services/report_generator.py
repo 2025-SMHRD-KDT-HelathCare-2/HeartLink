@@ -213,11 +213,18 @@ async def generate_report(
     past_hrv_text  = ', '.join([str(h) for h in past_hrv[-7:]]) if past_hrv else '데이터 없음'
     arr_hist_text  = ', '.join(arr_history[-3:]) if arr_history else '이력 없음'
 
-    # 주간 리포트일 때만 종합 섹션 텍스트 생성 (daily는 빈 문자열)
+    # 기간 종합 섹션 생성 (daily 2건 이상, weekly 모두 포함)
     max_risk_kor = {'high': '상', 'mid': '중', 'low': '하'}
     if report_period == 'weekly':
+        period_label = '주간'
+    elif measurement_count > 1:
+        period_label = '오늘'
+    else:
+        period_label = None
+
+    if period_label:
         weekly_section = f"""
-[주간 종합 ({measurement_count}회 측정)]
+[{period_label} 종합 ({measurement_count}회 측정)]
 - 기간 최고 위험도: {max_risk_kor.get(max_risk_level, '하')}
 - 평균 심박수: {avg_heart_rate}BPM
 - AFib 감지 일수: {af_detected_days}일
