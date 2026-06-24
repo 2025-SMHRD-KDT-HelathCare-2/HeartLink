@@ -1,10 +1,9 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { AlertTriangle, CheckCircle, Info, Clock, Bell, Sparkles, X, CalendarDays, BarChart2 } from "lucide-react";
+import { AlertTriangle, CheckCircle, Info, Clock, Bell, Sparkles, FileText } from "lucide-react";
 import api from "../api/authApi";
 
 type RiskLevel = "high" | "mid" | "low";
-type ReportType = "daily" | "weekly";
 
 interface MeasurementItem {
   id: string;
@@ -72,79 +71,11 @@ function DailyAlertSection() {
   );
 }
 
-// ===== 리포트 타입 선택 팝업 =====
-interface ReportTypeModalProps {
-  onSelect: (type: ReportType) => void;
-  onClose: () => void;
-  generating: boolean;
-}
-
-function ReportTypeModal({ onSelect, onClose, generating }: ReportTypeModalProps) {
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl p-7 w-full max-w-sm">
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="text-[#0A2647] font-black" style={{ fontSize: "1.4rem" }}>AI 리포트 생성</h2>
-          <button onClick={onClose} className="p-1 rounded-lg hover:bg-gray-100">
-            <X className="w-6 h-6 text-gray-400" />
-          </button>
-        </div>
-
-        <p className="text-gray-500 font-bold mb-5" style={{ fontSize: "1rem" }}>
-          어떤 기간의 리포트를 생성할까요?
-        </p>
-
-        <div className="space-y-3 mb-5">
-          <button
-            onClick={() => onSelect("daily")}
-            disabled={generating}
-            className="w-full flex items-center gap-4 p-5 rounded-2xl border-2 border-[#0E8080] bg-[#0E8080]/5 hover:bg-[#0E8080]/10 transition-all disabled:opacity-50"
-          >
-            <div className="w-12 h-12 rounded-full bg-[#0E8080] flex items-center justify-center flex-shrink-0">
-              <CalendarDays className="w-6 h-6 text-white" />
-            </div>
-            <div className="text-left flex-1">
-              <p className="text-[#0A2647] font-black" style={{ fontSize: "1.15rem" }}>일간 리포트</p>
-              <p className="text-gray-500 font-bold" style={{ fontSize: "0.9rem" }}>오늘 하루의 심장 상태</p>
-            </div>
-          </button>
-
-          <button
-            onClick={() => onSelect("weekly")}
-            disabled={generating}
-            className="w-full flex items-center gap-4 p-5 rounded-2xl border-2 border-[#0A2647] bg-[#0A2647]/5 hover:bg-[#0A2647]/10 transition-all disabled:opacity-50"
-          >
-            <div className="w-12 h-12 rounded-full bg-[#0A2647] flex items-center justify-center flex-shrink-0">
-              <BarChart2 className="w-6 h-6 text-white" />
-            </div>
-            <div className="text-left flex-1">
-              <p className="text-[#0A2647] font-black" style={{ fontSize: "1.15rem" }}>주간 리포트</p>
-              <p className="text-gray-500 font-bold" style={{ fontSize: "0.9rem" }}>최근 7일간의 심장 상태 추이</p>
-            </div>
-          </button>
-        </div>
-
-        {generating && (
-          <div className="flex items-center justify-center gap-3 py-3">
-            <div className="w-5 h-5 border-3 border-[#0E8080] border-t-transparent rounded-full animate-spin" />
-            <span className="text-gray-500 font-bold" style={{ fontSize: "1rem" }}>리포트 생성 중...</span>
-          </div>
-        )}
-
-        <p className="text-gray-400 font-bold text-center" style={{ fontSize: "0.85rem", whiteSpace: "pre-line" }}>
-          {"측정 시점, 횟수, 빈도에 따라\n결과는 달라질 수 있습니다."}
-        </p>
-      </div>
-    </div>
-  );
-}
-
 export function ReportPage() {
   const navigate = useNavigate();
   const [measurements, setMeasurements] = useState<MeasurementItem[]>([]);
   const [selectedIdx, setSelectedIdx] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [showModal, setShowModal] = useState(false);
   const [generating, setGenerating] = useState(false);
 
   useEffect(() => {
@@ -171,19 +102,18 @@ export function ReportPage() {
     })();
   }, []);
 
-  const handleSelectType = async (type: ReportType) => {
+  const handleDailyReport = async () => {
     const item = measurements[Math.min(selectedIdx, measurements.length - 1)];
     if (!item?.analysisId) return;
     try {
       setGenerating(true);
       const res = await api.post("/reports/generate", {
-        type,
+        type: "daily",
         analysisId: item.analysisId,
         measurementId: item.id,
       });
       const reportId = res.data?._id;
-      setShowModal(false);
-      navigate("/report-detail", { state: { reportId, type } });
+      navigate("/report-detail", { state: { reportId, type: "daily" } });
     } catch (err) {
       console.error("리포트 생성 실패", err);
     } finally {
@@ -265,29 +195,31 @@ export function ReportPage() {
         </div>
       )}
 
-      {/* AI 리포트 생성 버튼 */}
+      {/* 일일 AI 리포트 보기 */}
       <button
-        onClick={() => setShowModal(true)}
-        disabled={!hasData || !item?.analysisId}
-        className="w-full flex items-center justify-center gap-3 py-5 bg-gradient-to-r from-[#0A2647] to-[#0E8080] text-white rounded-2xl hover:opacity-90 transition-all font-black mb-4 shadow-lg disabled:opacity-50"
+        onClick={handleDailyReport}
+        disabled={!hasData || !item?.analysisId || generating}
+        className="w-full flex items-center justify-center gap-3 py-5 bg-gradient-to-r from-[#0A2647] to-[#0E8080] text-white rounded-2xl hover:opacity-90 transition-all font-black mb-3 shadow-lg disabled:opacity-50"
         style={{ minHeight: 68, fontSize: "1.2rem" }}
       >
         <Sparkles className="w-6 h-6" />
-        {hasData ? "AI 리포트 생성" : "측정 후 생성해주세요"}
+        {generating ? "리포트 생성 중..." : "일일 AI 리포트 보기"}
+      </button>
+
+      {/* 리포트 기록 보기 */}
+      <button
+        onClick={() => navigate("/report-history-list")}
+        className="w-full flex items-center justify-center gap-3 py-4 border-2 border-[#0A2647] text-[#0A2647] rounded-2xl hover:bg-[#0A2647]/5 transition-all font-bold mb-5"
+        style={{ minHeight: 56, fontSize: "1.1rem" }}
+      >
+        <FileText className="w-5 h-5" />
+        리포트 기록 보기
       </button>
 
       <div className="bg-gray-50 border-2 border-gray-200 rounded-xl p-5 text-gray-500 leading-relaxed font-bold" style={{ fontSize: "1rem" }}>
         <Info className="w-5 h-5 inline mr-2 text-gray-400" />
         이 리포트는 참고용이며 의사의 진단을 대신하지 않습니다.
       </div>
-
-      {showModal && (
-        <ReportTypeModal
-          onSelect={handleSelectType}
-          onClose={() => !generating && setShowModal(false)}
-          generating={generating}
-        />
-      )}
     </div>
   );
 }
