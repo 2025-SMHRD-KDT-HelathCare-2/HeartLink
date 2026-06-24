@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { AlertTriangle, Info, ChevronLeft, ChevronRight, Clock, FileText, Sparkles, X, CalendarDays, BarChart2 } from "lucide-react";
+import { AlertTriangle, Info, ChevronLeft, ChevronRight, Clock, FileText, Sparkles } from "lucide-react";
 import api from "../api/authApi";
 import type { Patient } from "../components/layout/GuardianLayout";
 import { toKSTDatetime } from "../utils/formatKST";
@@ -29,23 +29,19 @@ interface GuardianReportPageProps {
 export function GuardianReportPage({ patients, selectedUserId, onSelectUser }: GuardianReportPageProps) {
   const navigate = useNavigate();
 
-  // selectedUserId가 있으면 그 인덱스로, 없으면 0
   const initialIdx = selectedUserId
     ? Math.max(0, patients.findIndex(p => p.user_id === selectedUserId))
     : 0;
   const [selectedIdx, setSelectedIdx] = useState(initialIdx);
   const [records, setRecords] = useState<MeasurementRecord[]>([]);
   const [recordsLoading, setRecordsLoading] = useState(false);
-  const [showTypeModal, setShowTypeModal] = useState(false);
 
-  // 부모의 selectedUserId가 바뀌면 선택 인덱스도 동기화
   useEffect(() => {
     if (!selectedUserId) return;
     const idx = patients.findIndex(p => p.user_id === selectedUserId);
     if (idx >= 0) setSelectedIdx(idx);
   }, [selectedUserId, patients]);
 
-  // 선택된 환자가 바뀌면 최근 측정 기록 3건 조회
   useEffect(() => {
     if (patients.length === 0) return;
     const userId = patients[Math.min(selectedIdx, patients.length - 1)].user_id;
@@ -127,9 +123,7 @@ export function GuardianReportPage({ patients, selectedUserId, onSelectUser }: G
 
       {/* 이전/다음 네비게이션 */}
       <div className="flex items-center justify-between mb-6">
-        <button
-          onClick={() => setSelectedIdx(i => Math.max(0, i - 1))}
-          disabled={selectedIdx === 0}
+        <button onClick={() => setSelectedIdx(i => Math.max(0, i - 1))} disabled={selectedIdx === 0}
           className="flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-30 font-bold transition-colors"
           style={{ fontSize: "1rem" }}>
           <ChevronLeft className="w-5 h-5" />이전
@@ -137,9 +131,7 @@ export function GuardianReportPage({ patients, selectedUserId, onSelectUser }: G
         <span className="text-gray-500 font-bold" style={{ fontSize: "1rem" }}>
           {selectedIdx + 1} / {patients.length}
         </span>
-        <button
-          onClick={() => setSelectedIdx(i => Math.min(patients.length - 1, i + 1))}
-          disabled={selectedIdx === patients.length - 1}
+        <button onClick={() => setSelectedIdx(i => Math.min(patients.length - 1, i + 1))} disabled={selectedIdx === patients.length - 1}
           className="flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-30 font-bold transition-colors"
           style={{ fontSize: "1rem" }}>
           다음<ChevronRight className="w-5 h-5" />
@@ -154,7 +146,7 @@ export function GuardianReportPage({ patients, selectedUserId, onSelectUser }: G
         </div>
         {recordsLoading ? (
           <div className="flex justify-center py-8">
-            <div className="w-6 h-6 border-3 border-[#0E8080] border-t-transparent rounded-full animate-spin" />
+            <div className="w-6 h-6 border-2 border-[#0E8080] border-t-transparent rounded-full animate-spin" />
           </div>
         ) : records.length === 0 ? (
           <p className="text-gray-400 font-bold text-center py-8" style={{ fontSize: "0.95rem" }}>측정 기록이 없습니다.</p>
@@ -210,62 +202,30 @@ export function GuardianReportPage({ patients, selectedUserId, onSelectUser }: G
         </div>
       </div>
 
-      {/* AI 상세 리포트 생성 */}
+      {/* 일일 AI 리포트 보기 */}
       <button
-        onClick={() => setShowTypeModal(true)}
-        className="w-full flex items-center justify-center gap-3 py-5 bg-gradient-to-r from-[#0A2647] to-[#0E8080] text-white rounded-2xl hover:opacity-90 transition-all font-black mb-6 shadow-lg"
+        onClick={() => navigate(`/guardian-report-detail/${patient.user_id}`, { state: { type: "daily" } })}
+        className="w-full flex items-center justify-center gap-3 py-5 bg-gradient-to-r from-[#0A2647] to-[#0E8080] text-white rounded-2xl hover:opacity-90 transition-all font-black mb-3 shadow-lg"
         style={{ minHeight: 68, fontSize: "1.2rem" }}
       >
         <Sparkles className="w-7 h-7" />
-        AI 상세 리포트 보기
+        일일 AI 리포트 보기
+      </button>
+
+      {/* 리포트 기록 보기 */}
+      <button
+        onClick={() => navigate(`/guardian-report-history/${patient.user_id}`)}
+        className="w-full flex items-center justify-center gap-3 py-4 border-2 border-[#0A2647] text-[#0A2647] rounded-2xl hover:bg-[#0A2647]/5 transition-all font-bold mb-5"
+        style={{ minHeight: 56, fontSize: "1.1rem" }}
+      >
+        <FileText className="w-5 h-5" />
+        리포트 기록 보기
       </button>
 
       <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-500 font-bold" style={{ fontSize: "0.95rem" }}>
         <Info className="w-4 h-4 inline mr-2 text-gray-400" />
         이 리포트는 참고용이며 의사의 진단을 대신하지 않습니다.
       </div>
-
-      {/* 리포트 타입 선택 팝업 */}
-      {showTypeModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl p-7 w-full max-w-sm">
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="text-[#0A2647] font-black" style={{ fontSize: "1.4rem" }}>AI 리포트 생성</h2>
-              <button onClick={() => setShowTypeModal(false)} className="p-1 rounded-lg hover:bg-gray-100">
-                <X className="w-6 h-6 text-gray-400" />
-              </button>
-            </div>
-            <p className="text-gray-500 font-bold mb-5" style={{ fontSize: "1rem" }}>어떤 기간의 리포트를 볼까요?</p>
-            <div className="space-y-3 mb-5">
-              <button
-                onClick={() => { setShowTypeModal(false); navigate(`/guardian-report-detail/${patient.user_id}`, { state: { type: "daily" } }); }}
-                className="w-full flex items-center gap-4 p-5 rounded-2xl border-2 border-[#0E8080] bg-[#0E8080]/5 hover:bg-[#0E8080]/10 transition-all">
-                <div className="w-12 h-12 rounded-full bg-[#0E8080] flex items-center justify-center flex-shrink-0">
-                  <CalendarDays className="w-6 h-6 text-white" />
-                </div>
-                <div className="text-left flex-1">
-                  <p className="text-[#0A2647] font-black" style={{ fontSize: "1.15rem" }}>일간 리포트</p>
-                  <p className="text-gray-500 font-bold" style={{ fontSize: "0.9rem" }}>오늘 하루의 심장 상태</p>
-                </div>
-              </button>
-              <button
-                onClick={() => { setShowTypeModal(false); navigate(`/guardian-report-detail/${patient.user_id}`, { state: { type: "weekly" } }); }}
-                className="w-full flex items-center gap-4 p-5 rounded-2xl border-2 border-[#0A2647] bg-[#0A2647]/5 hover:bg-[#0A2647]/10 transition-all">
-                <div className="w-12 h-12 rounded-full bg-[#0A2647] flex items-center justify-center flex-shrink-0">
-                  <BarChart2 className="w-6 h-6 text-white" />
-                </div>
-                <div className="text-left flex-1">
-                  <p className="text-[#0A2647] font-black" style={{ fontSize: "1.15rem" }}>주간 리포트</p>
-                  <p className="text-gray-500 font-bold" style={{ fontSize: "0.9rem" }}>최근 7일간의 심장 상태 추이</p>
-                </div>
-              </button>
-            </div>
-            <p className="text-gray-400 font-bold text-center" style={{ fontSize: "0.85rem", whiteSpace: "pre-line" }}>
-              {"측정 시점, 횟수, 빈도에 따라\n결과는 달라질 수 있습니다."}
-            </p>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
