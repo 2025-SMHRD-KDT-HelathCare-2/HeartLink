@@ -115,9 +115,9 @@ function generateDummyEcg(heartRate = 75) {
 
     // ── 한 박동 안에서 P / QRS / T 파를 각각 그립니다 ──
     // 봉우리 중심 위치는 박동 길이에 대한 상대 비율로 잡습니다.
-    const pWave   = gaussian(posInBeat, samplesPerBeat * 0.20, 0.10, samplesPerBeat * 0.03); // P파
+    const pWave = gaussian(posInBeat, samplesPerBeat * 0.20, 0.10, samplesPerBeat * 0.03); // P파
     const qrsWave = gaussian(posInBeat, samplesPerBeat * 0.40, 1.20, samplesPerBeat * 0.012); // QRS(R파)
-    const tWave   = gaussian(posInBeat, samplesPerBeat * 0.65, 0.25, samplesPerBeat * 0.05); // T파
+    const tWave = gaussian(posInBeat, samplesPerBeat * 0.65, 0.25, samplesPerBeat * 0.05); // T파
 
     // 잡음: 아주 작은 랜덤 값 (실제 센서 노이즈 흉내)
     const noise = (Math.random() - 0.5) * 0.03;
@@ -204,7 +204,7 @@ async function dropAllCollections() {
 async function createCollectionsAndIndexes() {
   for (const model of MODELS) {
     const name = model.collection.collectionName;
-    await model.createCollection().catch(() => {});
+    await model.createCollection().catch(() => { });
     await model.syncIndexes();
     console.log(`📁 ${name} 생성 및 인덱스 동기화`);
   }
@@ -212,19 +212,25 @@ async function createCollectionsAndIndexes() {
 }
 
 // ───────── 3) 데모 사용자 + 보호자 관계 생성 ─────────
-// 시니어 2명, 보호자 5명을 만들고, (시니어1 ↔ 보호자2명) / (시니어2 ↔ 보호자3명) 으로 연결합니다.
+// 시니어(측정 본인=role:'user') 2명, 보호자(role:'guardian') 5명을 만들고
+// (시니어1 ↔ 보호자2명) / (시니어2 ↔ 보호자3명) 으로 연결합니다.
 async function seedUsersAndRelations() {
   // 비밀번호는 실제 가입과 동일하게 bcrypt 해싱 (salt rounds = 10)
   const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 10);
 
-  // 시니어 2명 생성
+  // 시니어(측정 본인) 2명 생성
   const seniors = [];
   for (let i = 0; i < SENIOR_PHONES.length; i++) {
     const senior = await User.create({
+      email: `demo.senior${i + 1}@heartlink.demo`, // email 필수 + unique
       nickname: `데모시니어${i + 1}`,
-      phoneNumber: SENIOR_PHONES[i],
       password: passwordHash,
-      role: 'senior',          // 역할: 피보호자(측정 대상자)
+      provider: 'local',          // 일반 가입
+      role: 'user',               // ★ 'senior'가 아니라 'user' (측정 본인)
+      phone: SENIOR_PHONES[i],    // ★ 필드명은 phoneNumber가 아니라 phone
+      phoneVerified: true,        // 데모이므로 인증 완료 상태
+      age: 70 + i,                // 데모용 나이
+      gender: i % 2 === 0 ? 'M' : 'F',
     });
     seniors.push(senior);
   }
@@ -233,10 +239,15 @@ async function seedUsersAndRelations() {
   const guardians = [];
   for (let i = 0; i < GUARDIAN_PHONES.length; i++) {
     const guardian = await User.create({
+      email: `demo.guardian${i + 1}@heartlink.demo`,
       nickname: `데모보호자${i + 1}`,
-      phoneNumber: GUARDIAN_PHONES[i],
       password: passwordHash,
-      role: 'guardian',        // 역할: 보호자
+      provider: 'local',
+      role: 'guardian',           // 보호자
+      phone: GUARDIAN_PHONES[i],
+      phoneVerified: true,
+      age: 40 + i,
+      gender: i % 2 === 0 ? 'F' : 'M',
     });
     guardians.push(guardian);
   }
@@ -252,9 +263,13 @@ async function seedUsersAndRelations() {
   for (const { senior, guardians: gs } of relationMap) {
     for (const g of gs) {
       await GuardianRelation.create({
-        seniorId: senior._id,
+        userId: senior._id,          // ★ seniorId가 아니라 userId (측정 본인)
         guardianId: g._id,
-        status: 'accepted',    // 데모이므로 이미 수락된 상태로 생성
+        guardianName: g.nickname,    // 선택 필드: 보호자 이름
+        guardianContact: g.phone,    // 선택 필드: 보호자 연락처
+        guardianEmail: g.email,      // 선택 필드: 보호자 이메일
+        notifyPermission: true,      // 알림 수신 허용
+        relationStatus: 'accepted',  // ★ status가 아니라 relationStatus
       });
     }
   }
@@ -267,6 +282,7 @@ async function seedUsersAndRelations() {
     guardianIds: gs.map((g) => g._id),
   }));
 }
+
 
 // ───────── 4) 한 명의 시니어에 대한 30일치 측정/분석 생성 ─────────
 // 하루 측정 횟수를 0~3회로 랜덤 → "여러 번 잰 날 / 안 잰 날"이 섞이도록 합니다.
@@ -421,6 +437,8 @@ async function seedReportsAndNotifications(senior, guardianIds, analyses) {
             riskLevel: r.maxRiskLevel,
             channel: 'push',
             message: `${senior.nickname}님의 위험도가 높습니다. 확인이 필요합니다.`,
+            sendStatus: 'success',        // 발송 결과: 데모이므로 성공 처리
+            sentAt: r.lastAnalysisAt,     // 발송 시각: 해당 리포트의 마지막 분석 시각
           });
         }
       }
