@@ -30,9 +30,11 @@ export const analyze = ({ fileBuffer, fileName, measurementId, userId, age, gend
 
 export const generateReport = ({
   analysisId, userId, age, gender, medicalHistory,
+  reportPeriod, measurementCount,
   arrhythmiaClass, arrhythmiaProb, afDetected, afProb,
   hrvRmssd, hrvSdnn, hrvLfhf, anomalyDetected,
   riskScore, riskLevel, heartRate,
+  avgHeartRate, maxRiskLevel, afDetectedDays, totalArrhythmiaCount, riskDistribution,
   target = 'both',
 }) => {
   const form = new FormData();
@@ -41,6 +43,10 @@ export const generateReport = ({
   form.append('age',              String(age ?? 70));
   form.append('gender',           gender ?? 'F');
   form.append('medical_history',  (medicalHistory ?? []).join(','));
+  // 리포트 기간 정보
+  form.append('report_period',    reportPeriod ?? 'daily');
+  form.append('measurement_count', String(measurementCount ?? 1));
+  // 최신 측정값
   form.append('arrhythmia_class', arrhythmiaClass ?? 'N');
   form.append('arrhythmia_prob',  String(arrhythmiaProb ?? 0));
   form.append('af_detected',      String(afDetected ?? false));
@@ -52,6 +58,14 @@ export const generateReport = ({
   form.append('risk_score',       String(riskScore ?? 0));
   form.append('risk_level',       riskLevel ?? 'low');
   form.append('heart_rate',       String(heartRate ?? 75));
+  // 기간 종합 요약값 (daily=1건이면 최신값과 동일, weekly는 집계값)
+  form.append('avg_heart_rate',          String(avgHeartRate ?? heartRate ?? 75));
+  form.append('max_risk_level',          maxRiskLevel ?? riskLevel ?? 'low');
+  form.append('af_detected_days',        String(afDetectedDays ?? 0));
+  form.append('total_arrhythmia_count',  String(totalArrhythmiaCount ?? 0));
+  form.append('risk_distribution_low',   String(riskDistribution?.low  ?? 100));
+  form.append('risk_distribution_mid',   String(riskDistribution?.mid  ?? 0));
+  form.append('risk_distribution_high',  String(riskDistribution?.high ?? 0));
   form.append('target',           target);
 
   return axios.post(`${process.env.AI_SERVER_URL}/report`, form, {
