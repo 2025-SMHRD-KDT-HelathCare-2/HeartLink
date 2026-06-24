@@ -50,7 +50,7 @@ export const addGuardian = async (req, res, next) => {
       sendPushNotification(
         patientUser.deviceToken,
         '보호자 등록 요청',
-        `${guardian.nickname}님이 보호자 등록을 요청했습니다.`
+        `${guardian.nickname}님이 보호자 등록 요청을 하셨습니다.`
       ).catch((err) => console.error('[FCM] 발송 실패:', err.message));
     } else {
       console.log('[FCM] deviceToken 없음 - 알림 건너뜀');
@@ -73,13 +73,16 @@ export const acceptRelation = async (req, res, next) => {
     if (!relation) return res.status(404).json({ message: '수락할 보호자 요청이 없습니다.' });
 
     // 보호자에게 수락 FCM 알림
-    const guardian = await User.findById(relation.guardianId).select('deviceToken');
+    const [guardian, acceptingUser] = await Promise.all([
+      User.findById(relation.guardianId).select('deviceToken'),
+      User.findById(req.user.id).select('nickname'),
+    ]);
     console.log('[FCM] guardian.deviceToken:', guardian?.deviceToken);
     if (guardian?.deviceToken) {
       sendPushNotification(
         guardian.deviceToken,
         '보호자 등록 수락',
-        '사용자가 보호자 등록 요청을 수락했습니다.'
+        `${acceptingUser?.nickname}님이 보호자 등록 요청을 수락했습니다.`
       ).catch((err) => console.error('[FCM] 수락 알림 실패:', err.message));
     } else {
       console.log('[FCM] guardian deviceToken 없음 - 알림 건너뜀');

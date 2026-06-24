@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback, useRef } f
 import { callLogout, exchangeToken } from "../api/authApi";
 import { setAccessToken } from "../api/tokenStore";
 import api from "../api/authApi";
+import { onMessage } from 'firebase/messaging';
 import { messaging, getToken, VAPID_KEY } from '../firebase';
 
 type Role = "user" | "guardian";
@@ -37,6 +38,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (permission !== 'granted') return;
       const token = await getToken(messaging, { vapidKey: VAPID_KEY });
       if (token) await api.patch('/auth/device-token', { deviceToken: token });
+      // 앱이 열려 있을 때(포그라운드)도 알림 표시
+      onMessage(messaging, (payload) => {
+        if (payload.notification?.title) {
+          new Notification(payload.notification.title, {
+            body: payload.notification.body ?? '',
+            icon: '/favicon.ico',
+          });
+        }
+      });
     } catch (e) {
       console.error('FCM 토큰 등록 실패', e);
     }
