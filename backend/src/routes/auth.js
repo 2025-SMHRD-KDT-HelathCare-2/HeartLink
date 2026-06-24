@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import {
-  register, login, refreshToken, getToken, logout, getMe, updateMe, deleteMe,
+  register, login, refreshToken, getToken, logout, getMe, updateMe, deleteMe, saveDeviceToken,
   sendVerificationCode, verifyPhoneCode,
   sendFindEmailCode, verifyFindEmailCode, findEmailByPhone,
   sendPasswordResetCode, verifyPasswordResetCode, resetPassword,
@@ -27,6 +27,7 @@ router.post('/refresh',                           refreshToken);
 router.post('/logout',                            logout);
 router.get('/me',                  auth,          getMe);
 router.patch('/me',                auth,          updateMe);
+router.patch('/device-token',      auth,          saveDeviceToken);
 router.delete('/me',               auth,          deleteMe);
 
 // 소셜 로그인

@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { ChevronLeft, UserPlus, User, Check, Clock, Users, AlertTriangle, LogOut } from "lucide-react";
 import { requestUser, getSentRequests } from "../api/guardianApi";
-
 type RequestStatus = "pending" | "accepted" | "rejected";
 
 interface SentRequest {
