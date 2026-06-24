@@ -16,15 +16,20 @@ const RISK_MESSAGES = {
 // AI 서버 응답 후 최초 조회 1회만 전달하기 위한 서버 메모리 캐시 (DB 미저장)
 const ecgFullCache = new Map();
 
+const DEVICE_SAMPLING_RATE = {
+  apple_watch: 512,
+};
+
 export const uploadECG = async (req, res, next) => {
   try {
-    const { measured_at } = req.body;
+    const { measured_at, device_type } = req.body;
     const file = req.file;
 
     if (!file) {
       return res.status(400).json({ message: '파일이 전송되지 않았습니다. 다시 시도해 주세요.' });
     }
 
+    const samplingRate = DEVICE_SAMPLING_RATE[device_type] ?? 250;
     const user = await User.findById(req.user.id).select('age gender medicalHistory deviceToken');
 
     const measurement = await Measurement.create({
@@ -32,6 +37,7 @@ export const uploadECG = async (req, res, next) => {
       fileName: file.originalname,
       fileExt: file.originalname.split('.').pop().toUpperCase(),
       fileSize: file.size,
+      deviceType: device_type ?? null,
       status: 'processing',
       measuredAt: measured_at || new Date(),
     });
@@ -43,6 +49,7 @@ export const uploadECG = async (req, res, next) => {
         fileName: file.originalname,
         measurementId: measurement._id,
         userId: req.user.id,
+        samplingRate,
       });
       await Measurement.findByIdAndUpdate(measurement._id, {
         ecgWaveformLite: previewData.ecg_waveform_lite ?? [],
@@ -65,6 +72,7 @@ export const uploadECG = async (req, res, next) => {
       age: user?.age,
       gender: user?.gender,
       medicalHistory: user?.medicalHistory,
+      samplingRate,
     }).then(async ({ data }) => {
       const score = data.risk_score ?? 0;
       const riskLevel = data.risk_level ?? (score >= 14 ? 'high' : score >= 3 ? 'mid' : 'low');

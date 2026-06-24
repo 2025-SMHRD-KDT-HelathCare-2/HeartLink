@@ -11,10 +11,15 @@ const transporter = nodemailer.createTransport({
 });
 
 export const sendEmail = async ({ to, subject, html }) => {
-  await transporter.sendMail({
-    from: `"HeartLink" <${process.env.SMTP_USER}>`,
-    to,
-    subject,
-    html,
-  });
+  try {
+    await transporter.sendMail({
+      from: `"HeartLink" <${process.env.SMTP_USER}>`,
+      to,
+      subject,
+      html,
+    });
+  } catch (err) {
+    console.error('[emailService] 이메일 발송 실패:', err.message);
+    throw err;
+  }
 };

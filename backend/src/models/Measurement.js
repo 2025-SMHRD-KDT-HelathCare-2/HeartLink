@@ -25,6 +25,9 @@ const measurementSchema = new Schema(
     // leadType: 심전도 리드(전극) 종류 (선택, 최대 20글자)
     leadType: { type: String, maxlength: 20 },
 
+    // deviceType: 측정 기기 종류 (apple_watch 등, 선택)
+    deviceType: { type: String, maxlength: 50 },
+
     // samplingRate: 샘플링 주파수 (1초당 측정 횟수, 선택)
     samplingRate: { type: Number },
 
