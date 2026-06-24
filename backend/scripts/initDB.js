@@ -222,7 +222,7 @@ async function seedUsersAndRelations() {
   const seniors = [];
   for (let i = 0; i < SENIOR_PHONES.length; i++) {
     const senior = await User.create({
-      email: `demo.senior${i + 1}@heartlink.demo`, // email 필수 + unique
+      email: `senior${i + 1}@demo.com`, // email 필수 + unique
       nickname: `데모시니어${i + 1}`,
       password: passwordHash,
       provider: 'local',          // 일반 가입
@@ -239,7 +239,7 @@ async function seedUsersAndRelations() {
   const guardians = [];
   for (let i = 0; i < GUARDIAN_PHONES.length; i++) {
     const guardian = await User.create({
-      email: `demo.guardian${i + 1}@heartlink.demo`,
+      email: `guardian${i + 1}@demo.com`,
       nickname: `데모보호자${i + 1}`,
       password: passwordHash,
       provider: 'local',
