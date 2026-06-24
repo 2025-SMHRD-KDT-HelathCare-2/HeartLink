@@ -2,6 +2,7 @@ import GuardianRelation from '../models/GuardianRelation.js';
 import User from '../models/User.js';
 import Measurement from '../models/Measurement.js';
 import AnalysisResult from '../models/AnalysisResult.js';
+import { sendPushNotification } from '../utils/notification.js';
 
 export const getGuardians = async (req, res, next) => {
   try {
@@ -42,6 +43,16 @@ export const addGuardian = async (req, res, next) => {
       notifyPermission: false,
       relationStatus: 'pending',
     });
+
+    // 사용자에게 보호자 등록 요청 FCM 알림
+    if (patientUser.deviceToken) {
+      sendPushNotification(
+        patientUser.deviceToken,
+        '보호자 등록 요청',
+        `${guardian.nickname}님이 보호자 등록을 요청했습니다.`
+      ).catch(() => {});
+    }
+
     res.status(201).json(relation);
   } catch (err) {
     next(err);
@@ -57,6 +68,17 @@ export const acceptRelation = async (req, res, next) => {
       { new: true }
     );
     if (!relation) return res.status(404).json({ message: '수락할 보호자 요청이 없습니다.' });
+
+    // 보호자에게 수락 FCM 알림
+    const guardian = await User.findById(relation.guardianId).select('deviceToken');
+    if (guardian?.deviceToken) {
+      sendPushNotification(
+        guardian.deviceToken,
+        '보호자 등록 수락',
+        '사용자가 보호자 등록 요청을 수락했습니다.'
+      ).catch(() => {});
+    }
+
     res.json(relation);
   } catch (err) {
     next(err);

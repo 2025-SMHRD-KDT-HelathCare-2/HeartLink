@@ -537,6 +537,17 @@ export const resetPassword = async (req, res, next) => {
   }
 };
 
+export const saveDeviceToken = async (req, res, next) => {
+  try {
+    const { deviceToken } = req.body;
+    if (!deviceToken) return res.status(400).json({ message: 'deviceToken이 필요합니다.' });
+    await User.findByIdAndUpdate(req.user.id, { deviceToken });
+    res.json({ message: 'deviceToken이 저장되었습니다.' });
+  } catch (err) {
+    next(err);
+  }
+};
+
 export const logout = async (req, res, next) => {
   try {
     const incomingRT = req.cookies?.refreshToken;
