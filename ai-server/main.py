@@ -234,36 +234,54 @@ async def analyze(
 
 @app.post("/report")
 async def report(
-    analysis_id:      str   = Form(...),
-    user_id:          str   = Form(...),
-    age:              int   = Form(default=70),
-    gender:           str   = Form(default='F'),
-    medical_history:  str   = Form(default=''),
-    arrhythmia_class: str   = Form(default='N'),
-    arrhythmia_prob:  float = Form(default=0.0),
-    af_detected:      bool  = Form(default=False),
-    af_prob:          float = Form(default=0.0),
-    hrv_rmssd:        float = Form(default=0.0),
-    hrv_sdnn:         float = Form(default=0.0),
-    hrv_lfhf:         float = Form(default=1.0),
-    anomaly_detected: bool  = Form(default=False),
-    risk_score:       int   = Form(default=0),
-    risk_level:       str   = Form(default='low'),
-    heart_rate:       float = Form(default=75.0),
-    target:           str   = Form(default='both'),
+    analysis_id:             str   = Form(...),
+    user_id:                 str   = Form(...),
+    age:                     int   = Form(default=70),
+    gender:                  str   = Form(default='F'),
+    medical_history:         str   = Form(default=''),
+    arrhythmia_class:        str   = Form(default='N'),
+    arrhythmia_prob:         float = Form(default=0.0),
+    af_detected:             bool  = Form(default=False),
+    af_prob:                 float = Form(default=0.0),
+    hrv_rmssd:               float = Form(default=0.0),
+    hrv_sdnn:                float = Form(default=0.0),
+    hrv_lfhf:                float = Form(default=1.0),
+    anomaly_detected:        bool  = Form(default=False),
+    risk_score:              int   = Form(default=0),
+    risk_level:              str   = Form(default='low'),
+    heart_rate:              float = Form(default=75.0),
+    target:                  str   = Form(default='both'),
+    report_period:           str   = Form(default='daily'),
+    measurement_count:       int   = Form(default=1),
+    avg_heart_rate:          int   = Form(default=0),
+    max_risk_level:          str   = Form(default='low'),
+    af_detected_days:        int   = Form(default=0),
+    total_arrhythmia_count:  int   = Form(default=0),
+    risk_distribution_low:   int   = Form(default=100),
+    risk_distribution_mid:   int   = Form(default=0),
+    risk_distribution_high:  int   = Form(default=0),
 ):
     """
     리포트 생성 엔드포인트
     백엔드 generateReport에서 호출
     AnalysisResult 데이터 + 유저 정보 받아서 Gemini로 리포트 생성
 
-    - analysis_id    : 분석 결과 ID
-    - user_id        : 유저 ID (MCP 과거 데이터 조회용)
-    - age            : 나이
-    - gender         : 성별
-    - medical_history: 과거력 (쉼표 구분)
-    - target         : 'user'(시니어용만) | 'guardian'(보호자용만) | 'both'(기본값, 둘 다)
-    - 나머지          : AnalysisResult 데이터
+    - analysis_id            : 분석 결과 ID
+    - user_id                : 유저 ID (MCP 과거 데이터 조회용)
+    - age                    : 나이
+    - gender                 : 성별
+    - medical_history        : 과거력 (쉼표 구분)
+    - target                 : 'user'(시니어용만) | 'guardian'(보호자용만) | 'both'(기본값, 둘 다)
+    - 나머지 단건 필드         : AnalysisResult 데이터 (최신 1건 기준)
+    - report_period          : 'daily' | 'weekly' | 'monthly'
+    - measurement_count      : 기간 내 총 측정 건수
+    - avg_heart_rate         : 기간 평균 심박수 (BPM)
+    - max_risk_level         : 기간 최고 위험도 (high/mid/low)
+    - af_detected_days       : AFib 감지 일수
+    - total_arrhythmia_count : 총 부정맥 발생 건수
+    - risk_distribution_low  : 위험도 '하' 비율 (%)
+    - risk_distribution_mid  : 위험도 '중' 비율 (%)
+    - risk_distribution_high : 위험도 '상' 비율 (%)
 
     Returns
     -------
@@ -290,12 +308,21 @@ async def report(
         }
 
         result = await generate_report(
-            analysis_result = analysis_result,
-            age             = age,
-            gender          = gender,
-            medical_history = medical_history_list,
-            user_id         = user_id,
-            target          = target,
+            analysis_result         = analysis_result,
+            age                     = age,
+            gender                  = gender,
+            medical_history         = medical_history_list,
+            user_id                 = user_id,
+            target                  = target,
+            report_period           = report_period,
+            measurement_count       = measurement_count,
+            avg_heart_rate          = avg_heart_rate,
+            max_risk_level          = max_risk_level,
+            af_detected_days        = af_detected_days,
+            total_arrhythmia_count  = total_arrhythmia_count,
+            risk_distribution_low   = risk_distribution_low,
+            risk_distribution_mid   = risk_distribution_mid,
+            risk_distribution_high  = risk_distribution_high,
         )
 
         return result
