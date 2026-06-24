@@ -193,10 +193,11 @@ MongoDB **8개 컬렉션**으로 구성됩니다.
 
 작업 중 발생한 이슈와 해결 과정을 기록합니다.
 
-#### 🐛 이슈 #1: Atlas Schema Validation enum 불일치
-- **문제**: `phoneVerifications.purpose`에 `find_email` 추가 후 문서 저장 시 *Document failed validation* 오류
-- **원인**: Atlas validator의 enum이 `["signup","find_pw"]`로 고정되어 있어 Mongoose 변경분과 불일치
-- **해결**: `collMod`로 validator의 purpose enum에 `find_email` 추가 (mongosh/Compass 실행)
+#### 🐛 이슈 #1: [DB] MongoDB Atlas SRV 주소 연결 실패
+- **문제**: mongodb+srv:// 형식의 SRV 주소로 Atlas 연결 시 querySrv ENOTFOUND / ENODATA / DNS timeout 등의 오류 발생하며 접속 실패 (비밀번호·IP 허용 설정은 모두 정상)
+- **원인**: SRV 주소는 연결 전 DNS에서 SRV 레코드(실제 서버 목록·포트)와 TXT 레코드(replicaSet, authSource, ssl=true 등 옵션)를 조회해야 하는데, 일부 회사·학교·공공기관 네트워크, 국내 ISP, 공유기·방화벽 환경에서 이 특수 DNS 조회가 차단·미응답되어 실제 서버를 찾지 못함 (일반 A 레코드 조회는 정상)
+- **해결**: 서버 주소·포트와 연결 옵션이 모두 명시된 non-SRV(Standard) 주소 사용 — mongodb://...shard-00-00...:27017,...shard-00-01...:27017,...shard-00-02...:27017/...?ssl=true&replicaSet=...&authSource=admin. SRV 조회 단계를 건너뛰므로 해당 환경에서도 정상 접속됨
+- **참고**: non-SRV는 서버 주소가 고정 기재되어 있어, 추후 Atlas가 클러스터 노드를 변경하면 주소를 수동 갱신해야 할 수 있음. 다만 SRV 조회가 막히는 환경에서는 가장 확실한 해결책
 
 #### 🐛 이슈 #2: reports 유니크 인덱스 중복 키(E11000)
 - **문제**: `{userId, reportType, reportPeriod, lastAnalysisAt}` 유니크 인덱스 생성 시 `E11000 duplicate key` 발생
