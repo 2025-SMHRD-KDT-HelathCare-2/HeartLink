@@ -13,21 +13,27 @@ export async function sendHighRiskSMS(userId, riskScore) {
       .populate('guardianId', 'phone nickname'),
   ]);
 
-  const message =
-    `[HeartLink] ${user?.nickname ?? '사용자'}님의 측정 결과가 ` +
-    `${riskScore}점(위험)으로 측정됐습니다. 즉시 확인해 주세요.`;
+  const userMessage =
+    `[HeartLink] ${user?.nickname ?? '사용자'}님의 심전도 측정 결과 위험 신호가 감지됐습니다(${riskScore}점). ` +
+    `즉시 병원을 방문하시거나 보호자에게 연락하실 것을 권장합니다. ` +
+    `(본 서비스는 의료기기가 아니며 의사의 진단을 대신하지 않습니다)`;
+
+  const guardianMessage =
+    `[HeartLink] ${user?.nickname ?? '어르신'}님의 심전도 측정 결과 위험 신호가 감지됐습니다(${riskScore}점). ` +
+    `즉시 연락하시거나 병원 방문을 도와주실 것을 권장합니다. ` +
+    `(본 서비스는 의료기기가 아니며 의사의 진단을 대신하지 않습니다)`;
 
   const targets = [];
 
-  if (user?.phone) targets.push({ to: user.phone, label: '사용자' });
+  if (user?.phone) targets.push({ to: user.phone, label: '사용자', message: userMessage });
 
   for (const rel of relations) {
     const guardian = rel.guardianId;
-    if (guardian?.phone) targets.push({ to: guardian.phone, label: '보호자' });
+    if (guardian?.phone) targets.push({ to: guardian.phone, label: '보호자', message: guardianMessage });
   }
 
   const results = await Promise.allSettled(
-    targets.map(t => sendSMS({ to: t.to, message }))
+    targets.map(t => sendSMS({ to: t.to, message: t.message }))
   );
 
   results.forEach((r, i) => {
