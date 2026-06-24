@@ -4,11 +4,11 @@
 // 이 스크립트가 하는 일 (한 번 실행하면 아래 작업을 순서대로 수행합니다)
 //   1) 기존 8개 컬렉션을 전부 삭제(drop)  → 데이터/인덱스/Atlas validator 까지 깨끗이 제거
 //   2) 모델(models) 정의를 기준으로 컬렉션을 다시 만들고 인덱스를 동기화
-//   3) 데모용 사용자(시니어 2명 + 보호자 5명)와 보호자 관계를 생성
+//   3) 데모용 사용자(시니어 2명 + 보호자 5명)와 보호자 관계(N:M)를 생성
 //   4) 시니어마다 30일치 측정/분석 데이터를 생성 (하루 0~3회 랜덤)
-//      - 이때 measurement 에는 "진짜 같은" 더미 심전도 파형(ecgWaveformLite)과
+//      - 측정에는 "진짜 같은" 더미 심전도 파형(ecgWaveformLite)과
 //        R파 위치(rPeaks)를 80Hz × 10초 = 800 샘플 분량으로 채워 넣습니다.
-//   5) 일/주/월 리포트와 (고위험인 경우) 보호자 알림을 생성
+//   5) 일일/주간 리포트와 (고위험인 경우) 보호자 알림을 생성  ※ 월간 리포트는 생성하지 않음
 //
 // ※ .env 파일에 MONGO_URI, DEMO_*_PN 등의 값이 미리 설정되어 있어야 합니다.
 
@@ -67,7 +67,7 @@ const MODELS = [
 ];
 
 // ════════════════════════════════════════════════════════════════════
-//  더미 심전도(ECG) 데이터 생성 영역  ★ 이번에 핵심으로 추가/변경된 부분 ★
+//  더미 심전도(ECG) 데이터 생성 영역
 // ════════════════════════════════════════════════════════════════════
 
 // 더미 심전도의 기본 사양: 80Hz(1초에 80번 측정) × 10초 = 총 800개 샘플
@@ -168,13 +168,6 @@ function startOfWeek(date) {
   d.setHours(0, 0, 0, 0);
   return d;
 }
-// 달(month) 시작(1일 00:00) 계산
-function startOfMonth(date) {
-  const d = new Date(date);
-  d.setDate(1);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
 // 하루(day) 시작(00:00) 계산
 function startOfDay(date) {
   const d = new Date(date);
@@ -211,9 +204,10 @@ async function createCollectionsAndIndexes() {
   console.log('✅ 컬렉션/인덱스 재생성 완료');
 }
 
-// ───────── 3) 데모 사용자 + 보호자 관계 생성 ─────────
+// ───────── 3) 데모 사용자 + 보호자 관계(N:M) 생성 ─────────
 // 시니어(측정 본인=role:'user') 2명, 보호자(role:'guardian') 5명을 만들고
 // (시니어1 ↔ 보호자2명) / (시니어2 ↔ 보호자3명) 으로 연결합니다.
+//  - 본인-보호자는 N:M 관계이며, 인원 수 제한은 없습니다(데모는 예시 수치).
 async function seedUsersAndRelations() {
   // 비밀번호는 실제 가입과 동일하게 bcrypt 해싱 (salt rounds = 10)
   const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 10);
@@ -226,8 +220,8 @@ async function seedUsersAndRelations() {
       nickname: `데모시니어${i + 1}`,
       password: passwordHash,
       provider: 'local',          // 일반 가입
-      role: 'user',               // ★ 'senior'가 아니라 'user' (측정 본인)
-      phone: SENIOR_PHONES[i],    // ★ 필드명은 phoneNumber가 아니라 phone
+      role: 'user',               // 측정 본인
+      phone: SENIOR_PHONES[i],    // 필드명은 phone
       phoneVerified: true,        // 데모이므로 인증 완료 상태
       age: 70 + i,                // 데모용 나이
       gender: i % 2 === 0 ? 'M' : 'F',
@@ -252,9 +246,10 @@ async function seedUsersAndRelations() {
     guardians.push(guardian);
   }
 
-  // 보호자 관계 연결
+  // 보호자 관계(N:M) 연결
   //  - 시니어1: 보호자 0,1번 (2명)
-  //  - 시니어2: 보호자 2,3,4번 (3명)  → 시니어당 보호자는 최대 3명 정책
+  //  - 시니어2: 보호자 2,3,4번 (3명)
+  //  ※ 인원 제한 없음 — 아래 매핑은 데모용 예시일 뿐입니다.
   const relationMap = [
     { senior: seniors[0], guardians: [guardians[0], guardians[1]] },
     { senior: seniors[1], guardians: [guardians[2], guardians[3], guardians[4]] },
@@ -263,13 +258,13 @@ async function seedUsersAndRelations() {
   for (const { senior, guardians: gs } of relationMap) {
     for (const g of gs) {
       await GuardianRelation.create({
-        userId: senior._id,          // ★ seniorId가 아니라 userId (측정 본인)
-        guardianId: g._id,
-        guardianName: g.nickname,    // 선택 필드: 보호자 이름
-        guardianContact: g.phone,    // 선택 필드: 보호자 연락처
-        guardianEmail: g.email,      // 선택 필드: 보호자 이메일
+        userId: senior._id,          // 측정 본인
+        guardianId: g._id,           // 보호자
+        guardianName: g.nickname,    // 선택: 보호자 이름
+        guardianContact: g.phone,    // 선택: 보호자 연락처
+        guardianEmail: g.email,      // 선택: 보호자 이메일
         notifyPermission: true,      // 알림 수신 허용
-        relationStatus: 'accepted',  // ★ status가 아니라 relationStatus
+        relationStatus: 'accepted',  // 연계 상태: 수락됨
       });
     }
   }
@@ -282,7 +277,6 @@ async function seedUsersAndRelations() {
     guardianIds: gs.map((g) => g._id),
   }));
 }
-
 
 // ───────── 4) 한 명의 시니어에 대한 30일치 측정/분석 생성 ─────────
 // 하루 측정 횟수를 0~3회로 랜덤 → "여러 번 잰 날 / 안 잰 날"이 섞이도록 합니다.
@@ -317,13 +311,13 @@ async function seedMeasurementsForSenior(senior, dayOffsetBase = 0) {
       const heartRate = jitter(70 + riskScore * 0.2, 12);
       const arrhythmiaCount = arrhythmiaClass === 'N' ? 0 : 1 + Math.floor(Math.random() * 5);
 
-      // ★ 핵심: 이 측정의 심박수에 맞춰 80Hz × 10초짜리 더미 심전도 파형과 R-peak 생성 ★
+      // ★ 이 측정의 심박수에 맞춰 80Hz × 10초짜리 더미 심전도 파형과 R-peak 생성 ★
       const { waveform, rPeaks } = generateDummyEcg(heartRate);
 
       const measurement = await Measurement.create({
         userId: senior._id,
         fileName: `ecg_${measuredAt.toISOString().slice(0, 19).replace(/[:T]/g, '')}.csv`,
-        fileExt: 'CSV',
+        fileExt: 'CSV',                // CSV 단독 지원
         fileSize: 50000 + Math.floor(Math.random() * 10000),
         leadType: 'Lead I',
         samplingRate: DUMMY_FS,        // 80Hz 로 맞춤 (더미 파형과 일치)
@@ -361,7 +355,8 @@ async function seedMeasurementsForSenior(senior, dayOffsetBase = 0) {
   return inserted; // AnalysisResult 문서 배열 반환
 }
 
-// ───────── 5) 시니어의 분석 결과로 일/주/월 리포트 + 알림 생성 ─────────
+// ───────── 5) 시니어의 분석 결과로 일일/주간 리포트 + 알림 생성 ─────────
+//  ※ 월간 리포트는 생성하지 않습니다 (daily / weekly 만).
 async function seedReportsAndNotifications(senior, guardianIds, analyses) {
   if (!analyses.length) return;
 
@@ -393,7 +388,7 @@ async function seedReportsAndNotifications(senior, guardianIds, analyses) {
       reportType,
       // 최신 Report.js enum 반영: emergencyAlert / fullReport (camelCase)
       reportCategory: maxLevel === 'high' ? 'emergencyAlert' : 'fullReport',
-      reportPeriod: period,
+      reportPeriod: period, // 'daily' 또는 'weekly'
       periodStart,
       periodEnd,
       lastAnalysisAt,
@@ -414,11 +409,10 @@ async function seedReportsAndNotifications(senior, guardianIds, analyses) {
     return report;
   }
 
-  // self + guardian 두 타입, 일/주/월 각각 생성
+  // self + guardian 두 타입, 일일/주간 각각 생성 (월간 제외)
   const periods = [
     ['daily', startOfDay(now), now],
     ['weekly', startOfWeek(now), now],
-    ['monthly', startOfMonth(now), now],
   ];
 
   let reportCount = 0;
@@ -459,7 +453,7 @@ async function main() {
   await dropAllCollections();
   // 2) 컬렉션/인덱스 재생성
   await createCollectionsAndIndexes();
-  // 3) 사용자 + 보호자 관계 생성
+  // 3) 사용자 + 보호자 관계(N:M) 생성
   const seniorInfos = await seedUsersAndRelations();
 
   // 4) + 5) 시니어별로 측정/분석/리포트/알림 생성

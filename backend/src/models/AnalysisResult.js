@@ -4,22 +4,23 @@ import mongoose from 'mongoose';
 const { Schema } = mongoose;
 
 // analysisResultSchema: 측정 데이터에 대한 'AI 분석 결과'를 저장하는 스키마
+//  - 측정(Measurement) 1건당 분석 결과 1건이 생기는 1:1 관계입니다.
 const analysisResultSchema = new Schema(
   {
-    // measurementId: 어떤 측정(Measurement)에 대한 분석인지 가리키는 ID (필수)
+    // measurementId: 어떤 측정에 대한 분석인지 가리키는 ID. Measurement 참조. 필수
     measurementId: { type: Schema.Types.ObjectId, ref: 'Measurement', required: true },
-    // userId: 이 분석 결과의 소유자(회원) ID, User 참조 (필수)
+    // userId: 이 분석 결과의 소유자(회원) ID. User 참조. 필수
     userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
 
     // ───────── 부정맥(불규칙한 심장박동) 분석 ─────────
-    // arrhythmiaClass: 부정맥 분류 결과
-    //  - N(정상), SVEB/VEB(이소성 박동), F(융합 박동), Q(미분류) 중 하나
+    // arrhythmiaClass: 부정맥 분류 결과 (AAMI 5분류)
+    //  - N(정상) / SVEB(상심실성 이소성) / VEB(심실성 이소성) / F(융합 박동) / Q(미분류)
     arrhythmiaClass: { type: String, enum: ['N', 'SVEB', 'VEB', 'F', 'Q'] },
     // arrhythmiaProb: 부정맥일 확률 (0~1 사이 숫자)
     arrhythmiaProb: { type: Number },
     // afDetected: 심방세동(AF) 감지 여부 (true/false)
     afDetected: { type: Boolean },
-    // afProb: 심방세동일 확률
+    // afProb: 심방세동일 확률 (0~1 사이 숫자)
     afProb: { type: Number },
 
     // ───────── HRV(심박변이도) 지표 ─────────
@@ -30,7 +31,7 @@ const analysisResultSchema = new Schema(
     // hrvLfhf: 저주파/고주파 비율 (자율신경 균형 지표)
     hrvLfhf: { type: Number },
 
-    // heartRate: 심박수
+    // heartRate: 심박수 (bpm)
     heartRate: { type: Number },
     // arrhythmiaCount: 부정맥 발생 횟수
     arrhythmiaCount: { type: Number },
@@ -38,9 +39,9 @@ const analysisResultSchema = new Schema(
     // anomalyDetected: 이상 징후 감지 여부 (true/false)
     anomalyDetected: { type: Boolean },
 
-    // riskScore: 위험도 점수, 0~100 사이만 허용 (필수)
+    // riskScore: 위험도 점수. 0~100 사이만 허용 (필수)
     riskScore: { type: Number, required: true, min: 0, max: 100 },
-    // riskLevel: 위험 등급, high(높음)/mid(보통)/low(낮음) 중 하나 (필수)
+    // riskLevel: 위험 등급. high(높음)/mid(보통)/low(낮음) 중 하나 (필수)
     riskLevel: { type: String, enum: ['high', 'mid', 'low'], required: true },
 
     // analyzedAt: 분석이 수행된 시각 (필수)
@@ -50,12 +51,13 @@ const analysisResultSchema = new Schema(
   { timestamps: { createdAt: 'createdAt', updatedAt: false } }
 );
 
-// measurementId 인덱스 + unique: 한 측정에는 분석 결과가 단 하나만 존재 (1:1 관계)
+// measurementId 유니크 인덱스: 한 측정에는 분석 결과가 단 하나만 존재 (1:1 관계 보장)
 analysisResultSchema.index({ measurementId: 1 }, { unique: true });
 // userId + analyzedAt(내림차순): "특정 사용자의 최신 분석"을 빠르게 조회
 analysisResultSchema.index({ userId: 1, analyzedAt: -1 });
 // riskLevel 인덱스: 위험 등급별로 빠르게 조회하기 위함
 analysisResultSchema.index({ riskLevel: 1 });
 
-// 'AnalysisResult' 모델로 내보냄 (컬렉션 이름은 자동으로 'analysisresults')
+// analysisResultSchema를 'AnalysisResult' 모델로 생성해 내보냄
+//  - 실제 컬렉션명은 'analysisresults'
 export default mongoose.model('AnalysisResult', analysisResultSchema);
