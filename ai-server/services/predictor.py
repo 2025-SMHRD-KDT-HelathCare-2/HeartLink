@@ -39,6 +39,20 @@ sess_track1 = ort.InferenceSession(TRACK1_MODEL)
 sess_track2 = ort.InferenceSession(TRACK2_MODEL)
 sess_hrv    = ort.InferenceSession(HRV_MODEL)
 
+# ==================================================
+# 위험도 정규화용 시뮬레이션 분포 로드
+# --------------------------------------------------
+# calc_percentile_v3.py 실행 결과 파일 (2026-06-24 계산)
+# normalize_score()가 이 배열을 참조해 raw_score를 percentile 순위로 변환.
+# 파일이 없으면 None → normalize_score()가 fallback 모드로 동작.
+# ==================================================
+DATA_DIR   = os.path.join(BASE_DIR, '..', 'data')
+_DIST_PATH = os.path.join(DATA_DIR, 'risk_score_distribution.npy')
+try:
+    _distribution = np.load(_DIST_PATH)
+except FileNotFoundError:
+    _distribution = None
+
 # AAMI 5클래스 매핑
 # 트랙 1 모델 출력 인덱스 → 클래스 이름
 CLASS_NAMES = {0: 'N', 1: 'SVEB', 2: 'VEB', 3: 'F', 4: 'Q'}
@@ -52,6 +66,33 @@ def softmax(x):
     """
     e_x = np.exp(x - np.max(x))
     return e_x / e_x.sum()
+
+
+def normalize_score(raw_score: float) -> int:
+    """
+    raw_score를 시뮬레이션 분포 기준 percentile 순위(0~100)로 변환.
+
+    [변환 방식]
+    _distribution(2000건 시뮬레이션 risk_score 배열)에서
+    raw_score보다 작은 값의 비율 × 100을 정수로 반환한다.
+    raw_score가 분포의 X번째 percentile에 해당하면 X점을 반환.
+
+    예시 (calc_percentile_v3.py 결과 기준, 2026-06-24):
+      raw_score = 0  → 0점 미만인 값 없음 (~0%)  → 반환:  0
+      raw_score = 3  → 분포의 50%가 3점 미만     → 반환: 50  (MID 경계)
+      raw_score = 15 → 분포의 90%가 15점 미만    → 반환: 90  (HIGH 경계)
+      raw_score = 41 → 분포의 99%+가 41점 미만   → 반환: ~99
+
+    [fallback]
+    data/risk_score_distribution.npy가 없으면 raw_score를 그대로 반환.
+    서버 최초 배포·파일 삭제 시 서버가 중단되지 않도록 함.
+    단, fallback 상태에서는 raw_score 최댓값이 ~41점이라 HIGH(≥90)/
+    MID(≥50) 기준에 거의 걸리지 않아 등급이 낮게 나올 수 있음.
+    반드시 calc_percentile_v3.py를 실행해 파일을 생성할 것.
+    """
+    if _distribution is None:
+        return int(min(100, max(0, round(raw_score))))
+    return round(float(np.mean(_distribution < raw_score) * 100))
 
 
 def calculate_risk(af_detected, af_prob, arr_class, arr_prob,
@@ -136,19 +177,44 @@ def calculate_risk(af_detected, af_prob, arr_class, arr_prob,
         HR_score = 0        # 정상 범위 (60~100)
 
     # HRV_score (가중치 0.15)
-    # 정상 범위 이탈 정도를 점수화
-    # SDNN 30ms 미만: 자율신경 기능 저하
-    # RMSSD 18ms 미만: 부교감신경 활동 저하
-    # [v2 추가] 위 지표가 너무 "높은" 경우도 위험 신호로 추가
-    # (리듬이 불규칙하면 RR간격 변동성이 비정상적으로 커져서
-    #  HRV 수치 자체가 매우 높게 측정될 수 있음)
-    # 30초 미만 측정: LF 대역 Welch 주파수 해상도 부족으로 LF/HF 제외
-    SDNN_dev  = max(0, (30 - hrv_sdnn) / 30, (hrv_sdnn - 60) / 60) * 100
-    RMSSD_dev = max(0, (18 - hrv_rmssd) / 18, (hrv_rmssd - 45) / 45) * 100
+    # ─────────────────────────────────────────────────────────────────────
+    # [왜 두 가지 정상 범위가 있는가]
+    #
+    # 일반적으로 인용되는 임상 정상값(SDNN 30~60ms, RMSSD 18~45ms)은
+    # ESC/HRS 1996 Task Force(Malik et al., Eur Heart J 1996)가
+    # "안정 시 5분 측정 + 임상 환자군"을 기준으로 수립한 값이다.
+    #
+    # 30초 단일 측정(갤럭시워치, 애플워치 ECG)에서는 이 범위를 자연스럽게
+    # 벗어나는 것이 오히려 정상이다. 주된 이유:
+    #
+    #   1) 호흡성 동부정맥(RSA): 정상 안정 호흡(12~20회/분)에 의한 RR 변동이
+    #      30초 창에 집중 반영 → 건강인의 RMSSD가 80~120ms에 달할 수 있음
+    #   2) 짧은 창의 통계적 변동: 30초 75BPM ≈ 36개 RR 간격밖에 없어
+    #      자연 이탈값이 더 자주 나타남
+    #
+    # [30초 기준 범위의 근거 (ultra-short HRV 연구)]
+    #   Esco & Flatt (2014, Eur J Appl Physiol): 1분 RMSSD 95th pct ≈ 100ms
+    #   Munoz et al. (2015, PLoS ONE): 단기 측정에서 상한 100ms 권장
+    #   De La Cruz Torres et al. (2016, Eur J Sport Sci): 30초 SDNN 상한 100ms
+    #
+    # [실제 검증 사례: 2026-06-24, 정상인 30초 측정, SDNN=86ms / RMSSD=101ms]
+    #   5분 기준 적용 → SDNN_dev=43%, RMSSD_dev=124% → HRV_score=84점 (오판정)
+    #   30초 기준 적용 → SDNN_dev=0%,  RMSSD_dev=1%  → HRV_score=0.5점 (정상 ✓)
+    # ─────────────────────────────────────────────────────────────────────
     if measurement_duration >= 120:
+        # 5분 이상 측정: ESC/HRS 1996 임상 정상값
+        # SDNN 정상 범위: 30~60ms / RMSSD 정상 범위: 18~45ms
+        SDNN_dev  = max(0, (30 - hrv_sdnn)  / 30,  (hrv_sdnn  -  60) /  60) * 100
+        RMSSD_dev = max(0, (18 - hrv_rmssd) / 18,  (hrv_rmssd -  45) /  45) * 100
         LFHF_dev  = 50 if (hrv_lfhf < 0.5 or hrv_lfhf > 2.0) else 0
         HRV_score = min(100, (SDNN_dev + RMSSD_dev + LFHF_dev) / 3)
     else:
+        # 30초 단일 측정: ultra-short HRV 연구 기반 정상 범위
+        # SDNN 정상 범위: 20~100ms (하한 완화: 짧은 창, 상한 완화: RSA 반영)
+        # RMSSD 정상 범위: 15~100ms (하한 완화: 인터벌 수 부족, 상한 완화: RSA)
+        # LF/HF 제외: Welch 해상도 0.0625Hz → LF 하단(0.04~0.0625Hz) 측정 불가
+        SDNN_dev  = max(0, (20 - hrv_sdnn)  / 20,  (hrv_sdnn  - 100) / 100) * 100
+        RMSSD_dev = max(0, (15 - hrv_rmssd) / 15,  (hrv_rmssd - 100) / 100) * 100
         HRV_score = min(100, (SDNN_dev + RMSSD_dev) / 2)
 
     # ANOM_score (가중치 0.05, 기존 0.10에서 조정)
@@ -189,70 +255,62 @@ def calculate_risk(af_detected, af_prob, arr_class, arr_prob,
 
     clinical_factor = 1 + (clinical_points / 20)
 
+    # raw_score: 임상 보정까지 완료한 원점수 (0~100)
+    raw_score = min(100, round(ecg_score * clinical_factor))
+
     # ==================================================
-    # 3단계: 최종 점수 + 위험도 등급
+    # 3단계: percentile 정규화 → 0~100 재매핑
+    # --------------------------------------------------
+    # raw_score는 분포가 0~41점에 집중되어 직관적이지 않다
+    # (calc_percentile_v3.py 시뮬레이션 최댓값 41점).
+    # normalize_score()로 재정규화하면:
+    #   raw=0  → norm≈0   (최하위권)
+    #   raw=3  → norm=50  (분포 중앙값, MID 경계)
+    #   raw=15 → norm=90  (분포 90th pct, HIGH 경계)
+    #   raw=41 → norm≈99  (분포 최상위)
+    #
+    # [HIGH_THRESHOLD=14 / MID_THRESHOLD=3 정리]
+    # 이전에는 raw_score를 14/3과 직접 비교했다.
+    # 정규화 이후에는 _distribution 배열이 그 역할을 대신하므로
+    # 별도 상수로 비교하지 않는다.
+    # (p50=3 → norm=50, p90=15 → norm=90 이 배열에 인코딩되어 있음)
     # ==================================================
-    risk_score = min(100, round(ecg_score * clinical_factor))
+    norm_score = normalize_score(raw_score)
 
     # --------------------------------------------------
-    # [점수 임계값 산출 근거]
-    # 계산일   : 2026-06-23
-    # 계산 방법: 실제 사용자 데이터가 없으므로 아래 조건으로 2,000건을
-    #            가상 시뮬레이션한 뒤, 특수 케이스(절대 기준 해당 건)를
-    #            제외한 1,951건을 대상으로 percentile 산출
-    #
-    # 시뮬레이션 분포 설계 (ai-server/scripts/calc_percentile_v2.py 참고)
-    #   트랙1 클래스 비율 : N=89%, SVEB=4%, VEB=7%, F=1%, Q=0%
-    #     (MIT-BIH 데이터셋 기반 실제 트랙1 모델 출력 분포와 동일하게 맞춤)
-    #   arr_prob         : N~Normal(0.90,0.05), SVEB~Normal(0.72,0.14),
-    #                      VEB~Normal(0.55,0.13) clip 0.699, F~Normal(0.65,0.15)
-    #   heart_rate       : Normal(76,14), clip(45,138) / AF시 Normal(85,18) clip(50,99)
-    #   hrv_sdnn         : Normal(38,14), clip(8,90)
-    #   hrv_rmssd        : Normal(28,12), clip(5,70)
-    #   hrv_lfhf         : Normal(1.4,0.7), clip(0.2,3.5)
-    #   anomaly_detected : N=15%, 이상클래스=45% 확률
-    #   환자 프로파일     : age Normal(72,8), 여성 60%, 고혈압 55%, 당뇨 25%
-    #   AF 발생률        : 3% (트랙2 모델 별도, 전원 특수케이스 제외됨)
-    #
-    #   산출 결과
-    #   - 50th percentile (MID_THRESHOLD) = 3점
-    #   - 90th percentile (HIGH_THRESHOLD) = 14점
-    #
-    # ※ 이 임계값(14, 3)은 2026-06-23에 가상 시뮬레이션 데이터로
-    #   계산한 추정치이며, 실제 사용자 risk_score 분포와 다를 수 있음.
-    #   서비스 운영 후 실제 데이터가 쌓이면 반드시 재계산 필요.
-    # --------------------------------------------------
-    HIGH_THRESHOLD = 14  # 90th percentile (비특수케이스 상위 10% 기준)
-    MID_THRESHOLD  = 3   # 50th percentile
-
     # 위험도 등급 결정
-    # 1순위: 특수 케이스(임상적 절대 기준) — percentile과 무관하게 우선 적용
-    # AF는 심박수랑 같이 봐야 함 (간호사 임상 피드백)
+    #
+    # 1순위: 특수 케이스(임상적 절대 기준)
+    #   percentile 순위와 무관하게 임상적으로 명백히 위험한 경우 우선 처리.
+    #   AF는 심박수와 함께 봐야 함 (간호사 임상 피드백).
+    #   특수 케이스 norm_score 하한: high=90, mid=50
+    #   → "등급과 점수가 항상 같은 기준을 따른다" 원칙 유지
+    #     (risk_level='high'이면 반드시 norm_score >= 90)
+    #
+    # 2순위: percentile 기반 상대 기준
+    #   HIGH: norm_score >= 90  (분포 상위 10%)
+    #   MID:  norm_score >= 50  (분포 상위 50%)
+    # --------------------------------------------------
     if af_detected and heart_rate >= 100:
-        # AF + 빠른 심박수 → 당장 응급실
         risk_level = 'high'
-        risk_score = max(risk_score, 80)
+        norm_score = max(norm_score, 90)
     elif af_detected and heart_rate < 100:
-        # AF + 정상 심박수 → 근시일 내 병원 방문
         risk_level = 'mid'
-        risk_score = max(risk_score, 50)
+        norm_score = max(norm_score, 50)
     elif arr_class == 'VEB' and arr_prob >= 0.70:
-        # 심실성 부정맥 빈발 → 위험
         risk_level = 'high'
-        risk_score = max(risk_score, 80)
+        norm_score = max(norm_score, 90)
     elif heart_rate >= 140 or heart_rate <= 40:
-        # 심한 빈맥/서맥 → 부정맥 분류 결과와 무관하게 high
         risk_level = 'high'
-        risk_score = max(risk_score, 80)
-    # 2순위: 비특수케이스 — percentile 기반 상대 기준
-    elif risk_score >= HIGH_THRESHOLD:
+        norm_score = max(norm_score, 90)
+    elif norm_score >= 90:
         risk_level = 'high'
-    elif risk_score >= MID_THRESHOLD:
+    elif norm_score >= 50:
         risk_level = 'mid'
     else:
         risk_level = 'low'
 
-    return risk_score, risk_level
+    return norm_score, risk_level
 
 
 def predict(ecg_beat, ecg_window, hrv_features, heart_rate=75.0,
