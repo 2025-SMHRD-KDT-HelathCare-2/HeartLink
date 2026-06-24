@@ -74,12 +74,15 @@ export const acceptRelation = async (req, res, next) => {
 
     // 보호자에게 수락 FCM 알림
     const guardian = await User.findById(relation.guardianId).select('deviceToken');
+    console.log('[FCM] guardian.deviceToken:', guardian?.deviceToken);
     if (guardian?.deviceToken) {
       sendPushNotification(
         guardian.deviceToken,
         '보호자 등록 수락',
         '사용자가 보호자 등록 요청을 수락했습니다.'
-      ).catch(() => {});
+      ).catch((err) => console.error('[FCM] 수락 알림 실패:', err.message));
+    } else {
+      console.log('[FCM] guardian deviceToken 없음 - 알림 건너뜀');
     }
 
     res.json(relation);
