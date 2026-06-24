@@ -227,6 +227,7 @@ def preprocess_ecg(signal_raw, fs_original=250):
         'heart_rate':      heart_rate,
         'r_peaks':         r_peaks.tolist(),
         'filtered_signal': signal,
+        'duration_sec':    round(len(signal) / 250, 1),
     }
 
 

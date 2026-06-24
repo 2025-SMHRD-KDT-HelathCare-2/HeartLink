@@ -57,7 +57,8 @@ def softmax(x):
 def calculate_risk(af_detected, af_prob, arr_class, arr_prob,
                    hrv_sdnn, hrv_rmssd, hrv_lfhf, anomaly_detected,
                    heart_rate=75.0,
-                   age=70, gender='F', medical_history=None):
+                   age=70, gender='F', medical_history=None,
+                   measurement_duration=30):
     """
     위험도 산출 함수
     3단계로 계산: ECG 점수 → 임상 보정 → 최종 등급
@@ -134,19 +135,21 @@ def calculate_risk(af_detected, af_prob, arr_class, arr_prob,
     else:
         HR_score = 0        # 정상 범위 (60~100)
 
-    # HRV_score (가중치 0.15, 기존 0.20에서 조정)
+    # HRV_score (가중치 0.15)
     # 정상 범위 이탈 정도를 점수화
     # SDNN 30ms 미만: 자율신경 기능 저하
     # RMSSD 18ms 미만: 부교감신경 활동 저하
-    # LF/HF 0.5~2.0 범위 밖: 교감/부교감 불균형
     # [v2 추가] 위 지표가 너무 "높은" 경우도 위험 신호로 추가
     # (리듬이 불규칙하면 RR간격 변동성이 비정상적으로 커져서
-    #  HRV 수치 자체가 매우 높게 측정될 수 있음 - 변동성이 커서
-    #  건강한 것과 불규칙해서 위험한 것을 구분하기 위함)
+    #  HRV 수치 자체가 매우 높게 측정될 수 있음)
+    # 30초 미만 측정: LF 대역 Welch 주파수 해상도 부족으로 LF/HF 제외
     SDNN_dev  = max(0, (30 - hrv_sdnn) / 30, (hrv_sdnn - 60) / 60) * 100
     RMSSD_dev = max(0, (18 - hrv_rmssd) / 18, (hrv_rmssd - 45) / 45) * 100
-    LFHF_dev  = 50 if (hrv_lfhf < 0.5 or hrv_lfhf > 2.0) else 0
-    HRV_score = min(100, (SDNN_dev + RMSSD_dev + LFHF_dev) / 3)
+    if measurement_duration >= 120:
+        LFHF_dev  = 50 if (hrv_lfhf < 0.5 or hrv_lfhf > 2.0) else 0
+        HRV_score = min(100, (SDNN_dev + RMSSD_dev + LFHF_dev) / 3)
+    else:
+        HRV_score = min(100, (SDNN_dev + RMSSD_dev) / 2)
 
     # ANOM_score (가중치 0.05, 기존 0.10에서 조정)
     # Isolation Forest가 HRV 패턴 이상 감지 시 100점
@@ -228,15 +231,19 @@ def calculate_risk(af_detected, af_prob, arr_class, arr_prob,
     if af_detected and heart_rate >= 100:
         # AF + 빠른 심박수 → 당장 응급실
         risk_level = 'high'
+        risk_score = max(risk_score, 80)
     elif af_detected and heart_rate < 100:
         # AF + 정상 심박수 → 근시일 내 병원 방문
         risk_level = 'mid'
+        risk_score = max(risk_score, 50)
     elif arr_class == 'VEB' and arr_prob >= 0.70:
         # 심실성 부정맥 빈발 → 위험
         risk_level = 'high'
+        risk_score = max(risk_score, 80)
     elif heart_rate >= 140 or heart_rate <= 40:
         # 심한 빈맥/서맥 → 부정맥 분류 결과와 무관하게 high
         risk_level = 'high'
+        risk_score = max(risk_score, 80)
     # 2순위: 비특수케이스 — percentile 기반 상대 기준
     elif risk_score >= HIGH_THRESHOLD:
         risk_level = 'high'
@@ -249,7 +256,8 @@ def calculate_risk(af_detected, af_prob, arr_class, arr_prob,
 
 
 def predict(ecg_beat, ecg_window, hrv_features, heart_rate=75.0,
-            age=70, gender='F', medical_history=None, r_peaks=None):
+            age=70, gender='F', medical_history=None, r_peaks=None,
+            measurement_duration=30):
     """
     전체 예측 파이프라인
 
@@ -321,7 +329,8 @@ def predict(ecg_beat, ecg_window, hrv_features, heart_rate=75.0,
     risk_score, risk_level = calculate_risk(
         af_detected, af_prob, arr_class, arr_prob,
         hrv_sdnn, hrv_rmssd, hrv_lfhf, anomaly_detected,
-        heart_rate, age, gender, medical_history
+        heart_rate, age, gender, medical_history,
+        measurement_duration=measurement_duration
     )
 
     return {
