@@ -24,6 +24,37 @@ function computeMaxRiskLevel(analyses) {
   return 'low';
 }
 
+// 분석 결과 배열 → AI 서버에 보낼 기간 종합 요약값 계산
+function computePeriodSummary(analyses) {
+  const heartRates = analyses.map(a => a.heartRate ?? 0).filter(v => v > 0);
+  const avgHeartRate = heartRates.length
+    ? Math.round(heartRates.reduce((s, v) => s + v, 0) / heartRates.length)
+    : 0;
+
+  const afDates = new Set(
+    analyses.filter(a => a.afDetected).map(a => new Date(a.analyzedAt).toISOString().slice(0, 10))
+  );
+
+  const totalArrhythmiaCount = analyses.reduce((s, a) => s + (a.arrhythmiaCount ?? 0), 0);
+
+  const counts = { low: 0, mid: 0, high: 0 };
+  for (const a of analyses) counts[a.riskLevel ?? 'low']++;
+  const total = analyses.length || 1;
+  const riskDistribution = {
+    low:  Math.round(counts.low  / total * 100),
+    mid:  Math.round(counts.mid  / total * 100),
+    high: Math.round(counts.high / total * 100),
+  };
+
+  return {
+    avgHeartRate,
+    maxRiskLevel:         computeMaxRiskLevel(analyses),
+    afDetectedDays:       afDates.size,
+    totalArrhythmiaCount,
+    riskDistribution,
+  };
+}
+
 // 분석 결과 배열 → 일간 형식 응답 생성
 function buildDailyPayload(analyses, report, latestAnalysis, memberName) {
   const heartRates = analyses.map(a => a.heartRate ?? 0).filter(v => v > 0);
@@ -209,14 +240,26 @@ export const generateReport = async (req, res, next) => {
       return res.status(400).json({ message: '해당 기간에 분석 결과가 없습니다.' });
     }
 
+    const lastAnalysisAt = analyses[analyses.length - 1].analyzedAt;
+    const reportPeriod   = type === 'weekly' ? 'weekly' : 'daily';
+
+    // 동일 기간 기존 리포트가 있으면 재생성 없이 반환 (unique 인덱스 충돌 방지)
+    const existing = await Report.findOne({
+      userId:        req.user.id,
+      reportType:    'self',
+      reportPeriod,
+      lastAnalysisAt,
+    });
+    if (existing) return res.json(existing);
+
     const report = await Report.create({
       userId:          req.user.id,
       reportType:      'self',
       reportCategory:  'fullReport',
-      reportPeriod:    type === 'weekly' ? 'weekly' : 'daily',
+      reportPeriod,
       periodStart,
       periodEnd,
-      lastAnalysisAt:  analyses[analyses.length - 1].analyzedAt,
+      lastAnalysisAt,
       analysisIds:     analyses.map(a => a._id),
       analysisCount:   analyses.length,
       maxRiskLevel:    computeMaxRiskLevel(analyses),
@@ -228,25 +271,35 @@ export const generateReport = async (req, res, next) => {
 
     const user = await User.findById(req.user.id).select('age gender medicalHistory');
     const latest = analyses[analyses.length - 1];
+    const summary = computePeriodSummary(analyses);
 
     aiService.generateReport({
-      analysisId:      latest._id,
-      userId:          req.user.id,
-      age:             user?.age,
-      gender:          user?.gender,
-      medicalHistory:  user?.medicalHistory,
-      arrhythmiaClass: latest.arrhythmiaClass,
-      arrhythmiaProb:  latest.arrhythmiaProb,
-      afDetected:      latest.afDetected,
-      afProb:          latest.afProb,
-      hrvRmssd:        latest.hrvRmssd,
-      hrvSdnn:         latest.hrvSdnn,
-      hrvLfhf:         latest.hrvLfhf,
-      anomalyDetected: latest.anomalyDetected,
-      riskScore:       latest.riskScore,
-      riskLevel:       latest.riskLevel,
-      heartRate:       latest.heartRate,
-      target:          'both',
+      analysisId:           latest._id,
+      userId:               req.user.id,
+      age:                  user?.age,
+      gender:               user?.gender,
+      medicalHistory:       user?.medicalHistory,
+      reportPeriod:         type === 'weekly' ? 'weekly' : 'daily',
+      measurementCount:     analyses.length,
+      // 최신 측정값 (가장 최근 상태)
+      arrhythmiaClass:      latest.arrhythmiaClass,
+      arrhythmiaProb:       latest.arrhythmiaProb,
+      afDetected:           latest.afDetected,
+      afProb:               latest.afProb,
+      hrvRmssd:             latest.hrvRmssd,
+      hrvSdnn:              latest.hrvSdnn,
+      hrvLfhf:              latest.hrvLfhf,
+      anomalyDetected:      latest.anomalyDetected,
+      riskScore:            latest.riskScore,
+      riskLevel:            latest.riskLevel,
+      heartRate:            latest.heartRate,
+      // 기간 종합 요약값
+      avgHeartRate:         summary.avgHeartRate,
+      maxRiskLevel:         summary.maxRiskLevel,
+      afDetectedDays:       summary.afDetectedDays,
+      totalArrhythmiaCount: summary.totalArrhythmiaCount,
+      riskDistribution:     summary.riskDistribution,
+      target:               'both',
     }).then(async ({ data: reportData }) => {
       await Report.findByIdAndUpdate(report._id, {
         reportText:         reportData.report_text_user,
