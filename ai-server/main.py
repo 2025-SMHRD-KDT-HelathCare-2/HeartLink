@@ -195,14 +195,15 @@ async def analyze(
         medical_history_list = medical_history.split(',') if medical_history else []
 
         result = predict(
-            ecg_beat        = preprocessed['beat'],
-            ecg_window      = preprocessed['window'],
-            hrv_features    = preprocessed['hrv_features'],
-            heart_rate      = preprocessed['heart_rate'],
-            age             = age,
-            gender          = gender,
-            medical_history = medical_history_list,
-            r_peaks         = preprocessed['r_peaks'],
+            ecg_beat             = preprocessed['beat'],
+            ecg_window           = preprocessed['window'],
+            hrv_features         = preprocessed['hrv_features'],
+            heart_rate           = preprocessed['heart_rate'],
+            age                  = age,
+            gender               = gender,
+            medical_history      = medical_history_list,
+            r_peaks              = preprocessed['r_peaks'],
+            measurement_duration = preprocessed['duration_sec'],
         )
 
         waveforms = _build_waveforms(preprocessed['filtered_signal'])
