@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { ChevronLeft, UserPlus, User, Check, Clock, Users, AlertTriangle, LogOut } from "lucide-react";
-import { requestUser, getSentRequests } from "../api/guardianApi";
+import { ChevronLeft, UserPlus, User, Check, Clock, Users, AlertTriangle, LogOut, LinkIcon } from "lucide-react";
+import { requestUser, getSentRequests, disconnectRelation } from "../api/guardianApi";
+
 type RequestStatus = "pending" | "accepted" | "rejected";
 
 interface SentRequest {
@@ -102,9 +103,17 @@ export function GuardianMyPage() {
     }
   };
 
+  const handleDisconnect = async (id: string) => {
+    try {
+      await disconnectRelation(id);
+      setRequests(prev => prev.filter(r => r._id !== id));
+    } catch (err) {
+      console.error("연결 해제 실패", err);
+    }
+  };
+
   return (
     <div className="max-w-2xl mx-auto p-5">
-      {/* 헤더 */}
       <div className="flex items-center gap-3 mb-7">
         <button onClick={() => navigate(-1)} className="p-2 rounded-xl hover:bg-gray-100 transition-colors">
           <ChevronLeft className="w-6 h-6 text-gray-600" />
@@ -115,7 +124,6 @@ export function GuardianMyPage() {
         </div>
       </div>
 
-      {/* 안내 */}
       <div className="bg-blue-50 border-2 border-blue-200 rounded-2xl p-5 mb-6">
         <p className="text-blue-800 font-bold leading-relaxed" style={{ fontSize: "1.05rem" }}>
           💡 돌보실 사용자의 <strong>HeartLink 아이디(이메일)</strong>를 입력하면<br />
@@ -123,11 +131,9 @@ export function GuardianMyPage() {
         </p>
       </div>
 
-      {/* 사용자 등록 요청 보내기 */}
       <form onSubmit={handleSendRequest} className="mb-6">
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
           <h3 className="text-[#0A2647] font-black mb-5" style={{ fontSize: "1.3rem" }}>사용자 등록 요청</h3>
-
           <label className="block text-gray-700 mb-2 font-bold" style={{ fontSize: "1.1rem" }}>사용자 아이디 (이메일)</label>
           <div className="relative mb-4">
             <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -137,7 +143,6 @@ export function GuardianMyPage() {
               style={{ minHeight: 56, fontSize: "1.1rem" }} />
           </div>
           {error && <p className="text-red-500 mb-3 font-bold" style={{ fontSize: "1rem" }}>{error}</p>}
-
           <button type="submit" disabled={sending}
             className="w-full py-5 bg-[#0A2647] text-white rounded-xl hover:bg-[#144272] transition-colors flex items-center justify-center gap-2 font-black disabled:opacity-50"
             style={{ minHeight: 64, fontSize: "1.2rem" }}>
@@ -146,7 +151,6 @@ export function GuardianMyPage() {
         </div>
       </form>
 
-      {/* 보낸 요청 목록 */}
       <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
         <div className="flex items-center justify-between mb-5">
           <h3 className="text-[#0A2647] font-black" style={{ fontSize: "1.3rem" }}>등록한 사용자</h3>
@@ -181,9 +185,11 @@ export function GuardianMyPage() {
                       </div>
                     </div>
                     {req.relationStatus === "accepted" && (
-                      <div className="flex items-center gap-1.5 px-4 py-2.5 bg-green-100 text-green-600 rounded-xl font-bold shrink-0" style={{ fontSize: "0.95rem" }}>
-                        <Check className="w-4 h-4" />연결됨
-                      </div>
+                      <button onClick={() => handleDisconnect(req._id)}
+                        className="flex items-center gap-1.5 px-4 py-2.5 border-2 border-red-300 text-red-500 rounded-xl hover:bg-red-50 transition-colors font-bold shrink-0"
+                        style={{ fontSize: "0.95rem" }}>
+                        <LinkIcon className="w-4 h-4" />연결 해제
+                      </button>
                     )}
                   </div>
                 </div>
@@ -197,7 +203,6 @@ export function GuardianMyPage() {
         </p>
       </div>
 
-      {/* 회원 탈퇴 */}
       <div className="mt-10 pt-6 border-t border-gray-200">
         <button onClick={() => setShowWithdraw(true)}
           className="w-full flex items-center justify-center gap-2 py-4 text-gray-400 hover:text-red-500 transition-colors font-bold"

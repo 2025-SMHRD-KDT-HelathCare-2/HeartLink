@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { Save, Check, UserCheck, UserX, ChevronLeft, Heart, Clock, Bell, AlertTriangle, LogOut, Loader2 } from "lucide-react";
-import { getPendingRequests, acceptRequest, rejectRequest } from "../api/guardianApi";
+import { Save, Check, UserCheck, UserX, ChevronLeft, Heart, Clock, Bell, AlertTriangle, LogOut, Loader2, LinkIcon } from "lucide-react";
+import { getPendingRequests, acceptRequest, rejectRequest, disconnectRelation } from "../api/guardianApi";
 import api from "../api/authApi";
 
 type Tab = "profile" | "guardian";
@@ -57,16 +57,13 @@ export function MyPage() {
   const { user, logout } = useAuth();
   const [tab, setTab] = useState<Tab>("profile");
 
-  // 건강정보
   const [diseases, setDiseases] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  // 회원 탈퇴
   const [showWithdraw, setShowWithdraw] = useState(false);
   const [withdrawing, setWithdrawing] = useState(false);
 
-  // 보호자 요청
   const [requests, setRequests] = useState<GuardianRequest[]>([]);
   const [loadingRequests, setLoadingRequests] = useState(true);
 
@@ -134,9 +131,17 @@ export function MyPage() {
     }
   };
 
+  const handleDisconnect = async (id: string) => {
+    try {
+      await disconnectRelation(id);
+      setRequests(prev => prev.filter(r => r._id !== id));
+    } catch (err) {
+      console.error("연결 해제 실패", err);
+    }
+  };
+
   return (
     <div className="max-w-2xl mx-auto p-5">
-      {/* 헤더 */}
       <div className="flex items-center gap-3 mb-7">
         <button onClick={() => navigate(-1)} className="p-2 rounded-xl hover:bg-gray-100 transition-colors">
           <ChevronLeft className="w-6 h-6 text-gray-600" />
@@ -147,7 +152,6 @@ export function MyPage() {
         </div>
       </div>
 
-      {/* 탭 */}
       <div className="flex bg-gray-100 rounded-xl p-1 mb-6">
         <button onClick={() => setTab("profile")}
           className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg transition-all font-bold ${tab === "profile" ? "bg-white shadow text-[#0A2647]" : "text-gray-500"}`}
@@ -166,7 +170,6 @@ export function MyPage() {
         </button>
       </div>
 
-      {/* 건강 정보 수정 */}
       {tab === "profile" && (
         <form onSubmit={handleSaveProfile} className="space-y-6">
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
@@ -182,16 +185,14 @@ export function MyPage() {
               ))}
             </div>
           </div>
-
           <button type="submit" disabled={saving}
-            className="w-full py-5 bg-linear-to-r from-[#0A2647] to-[#0E8080] text-white rounded-xl hover:opacity-90 transition-all flex items-center justify-center gap-2 font-black disabled:opacity-50"
+            className="w-full py-5 bg-gradient-to-r from-[#0A2647] to-[#0E8080] text-white rounded-xl hover:opacity-90 transition-all flex items-center justify-center gap-2 font-black disabled:opacity-50"
             style={{ minHeight: 64, fontSize: "1.2rem" }}>
             {saved ? <><Check className="w-6 h-6" />저장 완료!</> : saving ? <><Loader2 className="w-6 h-6 animate-spin" />저장 중...</> : <><Save className="w-6 h-6" />저장하기</>}
           </button>
         </form>
       )}
 
-      {/* 보호자 등록 요청 처리 */}
       {tab === "guardian" && (
         <div className="space-y-6">
           <div className="bg-blue-50 border-2 border-blue-200 rounded-2xl p-5">
@@ -257,9 +258,11 @@ export function MyPage() {
                           </div>
                         )}
                         {req.relationStatus === "accepted" && (
-                          <div className="flex items-center gap-1.5 px-4 py-2.5 bg-green-100 text-green-600 rounded-xl font-bold shrink-0" style={{ fontSize: "0.95rem" }}>
-                            <Check className="w-4 h-4" />연결됨
-                          </div>
+                          <button onClick={() => handleDisconnect(req._id)}
+                            className="flex items-center gap-1.5 px-4 py-2.5 border-2 border-red-300 text-red-500 rounded-xl hover:bg-red-50 transition-colors font-bold shrink-0"
+                            style={{ fontSize: "0.95rem" }}>
+                            <LinkIcon className="w-4 h-4" />연결 해제
+                          </button>
                         )}
                       </div>
                     </div>
@@ -271,7 +274,6 @@ export function MyPage() {
         </div>
       )}
 
-      {/* 회원 탈퇴 */}
       <div className="mt-10 pt-6 border-t border-gray-200">
         <button onClick={() => setShowWithdraw(true)}
           className="w-full flex items-center justify-center gap-2 py-4 text-gray-400 hover:text-red-500 transition-colors font-bold"
