@@ -54,6 +54,7 @@ ENV/
 *.h5
 *.ckpt
 *.onnx
+*.onnx.data
 ai-server/weights/
 ai-server/data/raw/           # PhysioNet 원본 데이터셋
 *.dat

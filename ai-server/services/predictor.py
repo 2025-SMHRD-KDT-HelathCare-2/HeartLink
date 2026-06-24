@@ -31,7 +31,7 @@ from datetime import datetime, timezone
 BASE_DIR   = os.path.dirname(os.path.abspath(__file__))
 MODEL_DIR  = os.path.join(BASE_DIR, '..', 'models')
 
-TRACK1_MODEL = os.path.join(MODEL_DIR, 'track1_resnet1d.onnx')
+TRACK1_MODEL = os.path.join(MODEL_DIR, 'track1_resnet1d_v4.onnx')
 TRACK2_MODEL = os.path.join(MODEL_DIR, 'track2_resnet1d.onnx')
 HRV_MODEL    = os.path.join(MODEL_DIR, 'hrv_isolation_forest.onnx')
 
