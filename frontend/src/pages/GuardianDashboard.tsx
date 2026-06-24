@@ -30,7 +30,6 @@ export function GuardianDashboard({ patients, notifications, onSelectMember }: G
   const highRiskCount = patients.filter(p => p.risk_level === "high").length;
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
-  // 닉네임 기준으로 환자별 알림 매핑
   const notifsByNickname = new Map<string, AppNotification[]>();
   for (const n of notifications) {
     const name = n.memberName ?? "";
@@ -76,10 +75,10 @@ export function GuardianDashboard({ patients, notifications, onSelectMember }: G
             );
 
             return (
-              <button
+              // 카드 전체는 div로 (클릭 반응 없음)
+              <div
                 key={patient.user_id}
-                onClick={() => onSelectMember(patient.user_id)}
-                className="w-full text-left bg-white rounded-2xl shadow-sm overflow-hidden hover:shadow-md transition-shadow"
+                className="w-full text-left bg-white rounded-2xl shadow-sm overflow-hidden"
                 style={{ border: `2px solid ${cfg.border}` }}
               >
                 <div className="flex">
@@ -133,13 +132,24 @@ export function GuardianDashboard({ patients, notifications, onSelectMember }: G
                       </div>
                     )}
 
-                    <div className="mt-4 flex items-center justify-end gap-2 font-bold" style={{ color: cfg.color, fontSize: "1rem" }}>
-                      <span>상세 보기</span>
-                      <ArrowRight className="w-5 h-5" />
+                    {/* 상세 보기 버튼만 클릭 가능 */}
+                    <div className="mt-4 flex justify-end">
+                      <button
+                        onClick={() => onSelectMember(patient.user_id)}
+                        className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-black transition-all hover:opacity-80 active:scale-95"
+                        style={{
+                          backgroundColor: cfg.color,
+                          color: "#ffffff",
+                          fontSize: "1rem",
+                        }}
+                      >
+                        상세 보기
+                        <ArrowRight className="w-5 h-5" />
+                      </button>
                     </div>
                   </div>
                 </div>
-              </button>
+              </div>
             );
           })}
         </div>

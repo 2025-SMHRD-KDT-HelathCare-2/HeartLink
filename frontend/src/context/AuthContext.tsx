@@ -1,6 +1,8 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
 import { callLogout, exchangeToken } from "../api/authApi";
 import { setAccessToken } from "../api/tokenStore";
+import api from "../api/authApi";
+import { messaging, getToken, VAPID_KEY } from '../firebase';
 
 type Role = "user" | "guardian";
 
@@ -28,17 +30,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [role, setRole] = useState<Role | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // 부팅 시: 쿠키의 RefreshToken으로 세션 복구 (localStorage 토큰 사용 X)
+  // FCM 토큰 등록
+  async function registerFcmToken() {
+    try {
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') return;
+      const token = await getToken(messaging, { vapidKey: VAPID_KEY });
+      if (token) await api.patch('/auth/device-token', { deviceToken: token });
+    } catch (e) {
+      console.error('FCM 토큰 등록 실패', e);
+    }
+  }
+
+  // 부팅 시: 쿠키의 RefreshToken으로 세션 복구
   useEffect(() => {
     (async () => {
       try {
-        const data = await exchangeToken(); // 쿠키 RT 있으면 성공
+        const data = await exchangeToken();
         setAccessToken(data.token);
         setUser(data.user);
         setRole(data.user.role);
         localStorage.setItem("role", data.user.role);
+        registerFcmToken(); // 세션 복구 후 FCM 토큰 등록
       } catch {
-        // 쿠키 없음/만료 → 비로그인 상태 유지
         setAccessToken(null);
       } finally {
         setLoading(false);
@@ -46,12 +60,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })();
   }, []);
 
-  // 일반 로그인 직후: AccessToken은 메모리에, RT는 이미 쿠키에 있음
+  // 일반 로그인
   const login = (userData: UserData, userRole: Role, token: string) => {
     setAccessToken(token);
     setUser(userData);
     setRole(userRole);
-    localStorage.setItem("role", userRole); // 화면 표시용 (토큰 아님)
+    localStorage.setItem("role", userRole);
+    registerFcmToken(); // 로그인 후 FCM 토큰 등록
   };
 
   // 소셜 콜백 등에서 토큰을 이미 메모리에 넣은 뒤 user/role만 반영
@@ -62,7 +77,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = useCallback(() => {
-    callLogout(); // 서버가 쿠키 만료 + RT 무효화
+    callLogout();
     setAccessToken(null);
     localStorage.removeItem("role");
     localStorage.removeItem("user");

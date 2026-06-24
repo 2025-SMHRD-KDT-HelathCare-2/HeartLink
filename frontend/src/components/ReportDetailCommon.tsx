@@ -15,10 +15,9 @@ import {
 
 type ReportType = "daily" | "weekly";
 
-// ===== 백엔드 응답 구조 =====
 interface DailyReportData {
   type: "daily";
-  memberName?: string;        // 보호자용에만
+  memberName?: string;
   date: string;
   riskScore: number;
   riskLevel: "상" | "중" | "하";
@@ -63,7 +62,6 @@ const TTS_SPEEDS = [
   { label: "빠르게", idx: 2 },
 ];
 
-// ===== 임시 더미 데이터 =====
 const DUMMY_DAILY: DailyReportData = {
   type: "daily",
   date: new Date().toISOString().slice(0, 10),
@@ -126,9 +124,7 @@ const DUMMY_WEEKLY: WeeklyReportData = {
 };
 
 interface ReportDetailPageProps {
-  /** "user" | "guardian" */
   mode: "user" | "guardian";
-  /** 보호자 모드일 때 URL 파라미터의 memberId */
   memberId?: string;
 }
 
@@ -158,7 +154,6 @@ export function ReportDetailPage({ mode, memberId }: ReportDetailPageProps) {
         const r = res.data;
         if (!cancelled) {
           setReport({ ...r, riskLevel: LEVEL_MAP[r.riskLevel] ?? "하" });
-          // 리포트가 아직 생성 중이면 폴링으로 텍스트 업데이트
           if (r.reportStatus === "generating" && mode === "user" && reportId) {
             pollReportText(reportId, r);
           }
@@ -245,6 +240,9 @@ export function ReportDetailPage({ mode, memberId }: ReportDetailPageProps) {
     ? `${report.memberName} ${typeLabel} 리포트`
     : `${typeLabel} AI 리포트`;
 
+  // 게이지 높이 (px) — 마커 수직 정렬 기준
+  const GAUGE_H = 28;
+
   return (
     <div className="min-h-screen bg-[#F4F7FA]">
       <header className="bg-[#0A2647] text-white px-5 py-4 flex items-center gap-3 sticky top-0 z-20 shadow-lg">
@@ -300,22 +298,55 @@ export function ReportDetailPage({ mode, memberId }: ReportDetailPageProps) {
               <span className="text-gray-400 font-bold" style={{ fontSize: "1rem" }}>/ 100점</span>
             </div>
           </div>
-          <div className="relative mb-3">
-            <div className="flex h-7 rounded-full overflow-hidden">
-              <div className="flex-1 flex items-center justify-center text-white font-bold" style={{ backgroundColor: "#16A34A", fontSize: "0.85rem" }}>양호</div>
-              <div className="flex-1 flex items-center justify-center text-white font-bold" style={{ backgroundColor: "#D97706", fontSize: "0.85rem" }}>주의</div>
-              <div className="flex-1 flex items-center justify-center text-white font-bold" style={{ backgroundColor: "#DC2626", fontSize: "0.85rem" }}>위험</div>
+
+          {/* 게이지 + 마커 */}
+          <div className="relative" style={{ height: GAUGE_H }}>
+            {/* 색상 바 (글자 없음) */}
+            <div className="flex rounded-full overflow-hidden w-full" style={{ height: GAUGE_H }}>
+              <div className="flex-1" style={{ backgroundColor: "#16A34A" }} />
+              <div className="flex-1" style={{ backgroundColor: "#D97706" }} />
+              <div className="flex-1" style={{ backgroundColor: "#DC2626" }} />
             </div>
-            <div className="absolute -top-1" style={{ left: `calc(${report.riskScore}% - 10px)` }}>
-              <div className="w-5 h-5 bg-white border-4 rounded-full shadow-md" style={{ borderColor: config.color }} />
-            </div>
-            <div className="absolute -bottom-7 font-black whitespace-nowrap" style={{ left: `calc(${report.riskScore}% - 16px)`, color: config.color, fontSize: "0.9rem" }}>
-              ▲ {report.riskScore}점
+            {/* 마커: 게이지 높이에 딱 맞게 */}
+            <div
+              className="absolute top-0 flex items-center justify-center"
+              style={{
+                left: `calc(${report.riskScore}% - ${GAUGE_H / 2}px)`,
+                width: GAUGE_H,
+                height: GAUGE_H,
+              }}
+            >
+              <div
+                className="rounded-full bg-white shadow-lg"
+                style={{
+                  width: GAUGE_H - 6,
+                  height: GAUGE_H - 6,
+                  border: `4px solid ${config.color}`,
+                }}
+              />
             </div>
           </div>
-          <div className="flex justify-between text-gray-300 font-bold mt-8 px-1" style={{ fontSize: "0.8rem" }}>
+
+          {/* 점수 레이블 */}
+          <div className="relative mt-1" style={{ height: 24 }}>
+            <span
+              className="absolute font-black whitespace-nowrap"
+              style={{
+                left: `calc(${report.riskScore}% - 16px)`,
+                color: config.color,
+                fontSize: "0.9rem",
+                top: 2,
+              }}
+            >
+              ▲ {report.riskScore}점
+            </span>
+          </div>
+
+          {/* 눈금 */}
+          <div className="flex justify-between text-gray-300 font-bold mt-1 px-1" style={{ fontSize: "0.8rem" }}>
             <span>0</span><span>33</span><span>66</span><span>100</span>
           </div>
+
           <div className="mt-4 text-center">
             <span className="px-5 py-2 rounded-full text-white font-bold inline-block" style={{ backgroundColor: config.color, fontSize: "1.15rem" }}>
               위험도 {report.riskLevel} — {config.label}
@@ -331,7 +362,7 @@ export function ReportDetailPage({ mode, memberId }: ReportDetailPageProps) {
           </div>
         </div>
 
-        {/* ===== 일간 차트 ===== */}
+        {/* 일간 차트 */}
         {report.type === "daily" && (
           <>
             <div className="grid grid-cols-3 gap-3">
@@ -359,7 +390,7 @@ export function ReportDetailPage({ mode, memberId }: ReportDetailPageProps) {
           </>
         )}
 
-        {/* ===== 주간 차트 ===== */}
+        {/* 주간 차트 */}
         {report.type === "weekly" && (
           <>
             <div className="grid grid-cols-3 gap-3">
