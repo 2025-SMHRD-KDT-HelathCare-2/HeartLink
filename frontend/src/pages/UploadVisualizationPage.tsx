@@ -128,6 +128,7 @@ export function UploadVisualizationPage() {
     try {
       const formData = new FormData();
       formData.append("ecg_file", file);
+      formData.append("device_type", "apple_watch");
 
       const res = await api.post("/measurements", formData, {
         headers: { "Content-Type": undefined }, // boundary 포함한 Content-Type은 브라우저가 자동 설정
