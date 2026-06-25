@@ -156,7 +156,7 @@ export function ReportDetailPage({ mode, memberId }: ReportDetailPageProps) {
         const r = res.data;
         if (!cancelled) {
           setReport({ ...r, riskLevel: LEVEL_MAP[r.riskLevel] ?? "하" });
-          if (r.reportStatus === "generating" && reportId) {
+          if (r.reportStatus === "generating" && mode === "user" && reportId) {
             pollReportText(reportId, r);
           }
         }
@@ -170,13 +170,10 @@ export function ReportDetailPage({ mode, memberId }: ReportDetailPageProps) {
   }, [reportId, type, memberId, mode]);
 
   const pollReportText = async (id: string, base: ReportData) => {
-    const endpoint = mode === "guardian" && memberId
-      ? `/reports/patient/${memberId}/${id}`
-      : `/reports/${id}`;
     for (let i = 0; i < 20; i++) {
       await new Promise(r => setTimeout(r, 3000));
       try {
-        const res = await api.get(endpoint);
+        const res = await api.get(`/reports/${id}`);
         const r = res.data;
         if (r.reportStatus === "completed" || r.reportStatus === "failed") {
           setReport(prev => prev ? { ...prev, reportText: r.reportText ?? "" } : prev);
@@ -251,13 +248,7 @@ export function ReportDetailPage({ mode, memberId }: ReportDetailPageProps) {
   return (
     <div className="min-h-screen bg-[#F4F7FA]">
       <header className="bg-[#0A2647] text-white px-5 py-4 flex items-center gap-3 sticky top-0 z-20 shadow-lg">
-        <button onClick={() => {
-          if (mode === "guardian" && memberId) {
-            navigate(`/guardian-report-detail/${memberId}`, { replace: true });
-          } else {
-            navigate(-1);
-          }
-        }} className="p-2 rounded-xl hover:bg-white/10 transition-colors">
+        <button onClick={() => navigate(-1)} className="p-2 rounded-xl hover:bg-white/10 transition-colors">
           <ChevronLeft className="w-6 h-6" />
         </button>
         <div className="flex items-center gap-2">
