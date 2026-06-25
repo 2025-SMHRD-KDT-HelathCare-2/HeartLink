@@ -299,16 +299,106 @@ export const generateReport = async (req, res, next) => {
       afDetectedDays:       summary.afDetectedDays,
       totalArrhythmiaCount: summary.totalArrhythmiaCount,
       riskDistribution:     summary.riskDistribution,
-      target:               'both',
+      target:               'user',
     }).then(async ({ data: reportData }) => {
       await Report.findByIdAndUpdate(report._id, {
-        reportText:         reportData.report_text_user,
-        reportTextGuardian: reportData.report_text_guardian,
-        recommendedAction:  reportData.recommended_action,
-        status:             'completed',
+        reportText:        reportData.report_text_user,
+        recommendedAction: reportData.recommended_action,
+        status:            'completed',
       });
     }).catch(async (err) => {
       console.error('리포트 생성 실패:', err.message);
+      await Report.findByIdAndUpdate(report._id, { status: 'failed' });
+    });
+
+  } catch (err) {
+    next(err);
+  }
+};
+
+// 보호자가 환자의 일일 리포트 생성
+export const generateGuardianReport = async (req, res, next) => {
+  try {
+    const hasAccess = await verifyGuardianAccess(req.user.id, req.params.userId);
+    if (!hasAccess) return res.status(403).json({ message: '해당 환자의 데이터에 접근 권한이 없습니다.' });
+
+    const generating = await Report.findOne({ userId: req.params.userId, reportType: 'guardian', status: 'generating' });
+    if (generating) return res.json(generating);
+
+    const now = new Date();
+    const endOfDay = new Date(now); endOfDay.setHours(23, 59, 59, 999);
+    const startOfDay = new Date(now); startOfDay.setHours(0, 0, 0, 0);
+
+    const analyses = await AnalysisResult.find({
+      userId:     req.params.userId,
+      analyzedAt: { $gte: startOfDay, $lte: endOfDay },
+    }).sort({ analyzedAt: 1 });
+
+    if (analyses.length === 0) return res.status(400).json({ message: '오늘 분석 결과가 없습니다.' });
+
+    const lastAnalysisAt = analyses[analyses.length - 1].analyzedAt;
+
+    const existing = await Report.findOne({
+      userId:        req.params.userId,
+      reportType:    'guardian',
+      reportPeriod:  'daily',
+      lastAnalysisAt,
+    });
+    if (existing) return res.json(existing);
+
+    const report = await Report.create({
+      userId:         req.params.userId,
+      reportType:     'guardian',
+      reportCategory: 'fullReport',
+      reportPeriod:   'daily',
+      periodStart:    startOfDay,
+      periodEnd:      endOfDay,
+      lastAnalysisAt,
+      analysisIds:    analyses.map(a => a._id),
+      analysisCount:  analyses.length,
+      maxRiskLevel:   computeMaxRiskLevel(analyses),
+      status:         'generating',
+    });
+
+    res.status(202).json(report);
+
+    const patientUser = await User.findById(req.params.userId).select('age gender medicalHistory');
+    const latest  = analyses[analyses.length - 1];
+    const summary = computePeriodSummary(analyses);
+
+    aiService.generateReport({
+      analysisId:           latest._id,
+      userId:               req.params.userId,
+      age:                  patientUser?.age,
+      gender:               patientUser?.gender,
+      medicalHistory:       patientUser?.medicalHistory,
+      reportPeriod:         'daily',
+      measurementCount:     analyses.length,
+      arrhythmiaClass:      latest.arrhythmiaClass,
+      arrhythmiaProb:       latest.arrhythmiaProb,
+      afDetected:           latest.afDetected,
+      afProb:               latest.afProb,
+      hrvRmssd:             latest.hrvRmssd,
+      hrvSdnn:              latest.hrvSdnn,
+      hrvLfhf:              latest.hrvLfhf,
+      anomalyDetected:      latest.anomalyDetected,
+      riskScore:            latest.riskScore,
+      riskLevel:            latest.riskLevel,
+      heartRate:            latest.heartRate,
+      avgHeartRate:         summary.avgHeartRate,
+      maxRiskLevel:         summary.maxRiskLevel,
+      afDetectedDays:       summary.afDetectedDays,
+      totalArrhythmiaCount: summary.totalArrhythmiaCount,
+      riskDistribution:     summary.riskDistribution,
+      target:               'guardian',
+    }).then(async ({ data: reportData }) => {
+      await Report.findByIdAndUpdate(report._id, {
+        reportText:        reportData.report_text_guardian,
+        recommendedAction: reportData.recommended_action,
+        status:            'completed',
+      });
+    }).catch(async (err) => {
+      console.error('보호자 리포트 생성 실패:', err.message);
       await Report.findByIdAndUpdate(report._id, { status: 'failed' });
     });
 
@@ -382,7 +472,7 @@ export const getPatientReport = async (req, res, next) => {
       _id:         report._id,
       analysisIds: report.analysisIds,
       userId:      report.userId,
-      reportText:  report.reportTextGuardian ?? report.reportText,
+      reportText:  report.reportText,
       createdAt:   report.createdAt,
     });
   } catch (err) {
@@ -414,13 +504,13 @@ export const getGuardianReport = async (req, res, next) => {
       periodStart = startOfDay;
     }
 
-    const [analyses, user, latestReport] = await Promise.all([
+    const [analyses, user, latestGuardianReport] = await Promise.all([
       AnalysisResult.find({
         userId:     req.params.userId,
         analyzedAt: { $gte: periodStart, $lte: endOfDay },
       }).sort({ analyzedAt: 1 }),
       User.findById(req.params.userId).select('nickname'),
-      Report.findOne({ userId: req.params.userId }).sort({ createdAt: -1 }),
+      Report.findOne({ userId: req.params.userId, reportType: 'guardian' }).sort({ createdAt: -1 }),
     ]);
 
     const latestAnalysis = analyses[analyses.length - 1] ?? null;
@@ -433,8 +523,8 @@ export const getGuardianReport = async (req, res, next) => {
         type,
         riskScore:   0,
         riskLevel:   'low',
-        reportText:  latestReport?.reportTextGuardian ?? latestReport?.reportText ?? '',
-        reportStatus: 'completed',
+        reportText:  latestGuardianReport?.reportText ?? '',
+        reportStatus: latestGuardianReport?.status ?? 'completed',
       };
       if (type === 'weekly') {
         return res.json({ ...empty, startDate: periodStart.toISOString().slice(0, 10), endDate: endOfDay.toISOString().slice(0, 10), afDays: 0, totalArrhythmiaCount: 0, measurementDays: 0, dailyStats: [], hrvTrend: [] });
@@ -442,13 +532,12 @@ export const getGuardianReport = async (req, res, next) => {
       return res.json({ ...empty, date: startOfDay.toISOString().slice(0, 10), measurementCount: 0, maxHeartRate: 0, avgHeartRate: 0, minHeartRate: 0, afDetected: false, hourlyHeartRate: [], arrhythmiaByType: [] });
     }
 
-    // latestReport는 TTS용으로만 활용, 차트 데이터는 직접 집계
     const pseudoReport = {
       periodStart,
       periodEnd:    endOfDay,
       maxRiskLevel: computeMaxRiskLevel(analyses),
-      reportText:   latestReport?.reportTextGuardian ?? latestReport?.reportText ?? '',
-      status:       latestReport?.status ?? 'completed',
+      reportText:   latestGuardianReport?.reportText ?? '',
+      status:       latestGuardianReport?.status ?? 'completed',
     };
 
     if (type === 'weekly') {
