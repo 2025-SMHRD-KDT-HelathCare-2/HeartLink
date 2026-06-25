@@ -4,7 +4,7 @@
 // 이 스크립트가 하는 일 (한 번 실행하면 아래 작업을 순서대로 수행합니다)
 //   1) 기존 8개 컬렉션을 전부 삭제(drop)  → 데이터/인덱스/Atlas validator 까지 깨끗이 제거
 //   2) 모델(models) 정의를 기준으로 컬렉션을 다시 만들고 인덱스를 동기화
-//   3) 데모용 사용자(시니어 2명 + 보호자 5명)와 보호자 관계(N:M)를 생성
+//   3) 데모용 사용자(시니어 4명 + 보호자 10명)와 보호자 관계(N:M)를 생성
 //   4) 시니어마다 30일치 측정/분석 데이터를 생성 (하루 0~3회 랜덤)
 //      - 측정에는 "진짜 같은" 더미 심전도 파형(ecgWaveformLite)과
 //        R파 위치(rPeaks)를 80Hz × 10초 = 800 샘플 분량으로 채워 넣습니다.
@@ -34,19 +34,26 @@ const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/heartlink'
 // 데모 계정 공통 비밀번호 (실제 가입 시처럼 bcrypt로 해싱해서 저장합니다)
 const DEMO_PASSWORD = process.env.DEMO_PASSWORD || 'test1234';
 
-// 시니어(피보호자) 2명의 전화번호
+// 시니어(피보호자) 4명의 전화번호 (.env: DEMO_SENIOR1_PN ~ DEMO_SENIOR4_PN)
 const SENIOR_PHONES = [
   process.env.DEMO_SENIOR1_PN,
   process.env.DEMO_SENIOR2_PN,
+  process.env.DEMO_SENIOR3_PN,
+  process.env.DEMO_SENIOR4_PN,
 ];
 
-// 보호자 5명의 전화번호
+// 보호자 10명의 전화번호 (.env: DEMO_GUARDIAN1_PN ~ DEMO_GUARDIAN10_PN)
 const GUARDIAN_PHONES = [
   process.env.DEMO_GUARDIAN1_PN,
   process.env.DEMO_GUARDIAN2_PN,
   process.env.DEMO_GUARDIAN3_PN,
   process.env.DEMO_GUARDIAN4_PN,
   process.env.DEMO_GUARDIAN5_PN,
+  process.env.DEMO_GUARDIAN6_PN,
+  process.env.DEMO_GUARDIAN7_PN,
+  process.env.DEMO_GUARDIAN8_PN,
+  process.env.DEMO_GUARDIAN9_PN,
+  process.env.DEMO_GUARDIAN10_PN,
 ];
 
 // 전화번호 값이 하나라도 비어 있으면 즉시 에러 (오타/미설정 방지)
@@ -205,14 +212,14 @@ async function createCollectionsAndIndexes() {
 }
 
 // ───────── 3) 데모 사용자 + 보호자 관계(N:M) 생성 ─────────
-// 시니어(측정 본인=role:'user') 2명, 보호자(role:'guardian') 5명을 만들고
-// (시니어1 ↔ 보호자2명) / (시니어2 ↔ 보호자3명) 으로 연결합니다.
+// 시니어(측정 본인=role:'user') 4명, 보호자(role:'guardian') 10명을 만들고
+// 시니어마다 보호자 몇 명씩을 연결합니다.
 //  - 본인-보호자는 N:M 관계이며, 인원 수 제한은 없습니다(데모는 예시 수치).
 async function seedUsersAndRelations() {
   // 비밀번호는 실제 가입과 동일하게 bcrypt 해싱 (salt rounds = 10)
   const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 10);
 
-  // 시니어(측정 본인) 2명 생성
+  // 시니어(측정 본인) 4명 생성
   const seniors = [];
   for (let i = 0; i < SENIOR_PHONES.length; i++) {
     const senior = await User.create({
@@ -229,7 +236,7 @@ async function seedUsersAndRelations() {
     seniors.push(senior);
   }
 
-  // 보호자 5명 생성
+  // 보호자 10명 생성
   const guardians = [];
   for (let i = 0; i < GUARDIAN_PHONES.length; i++) {
     const guardian = await User.create({
@@ -246,13 +253,17 @@ async function seedUsersAndRelations() {
     guardians.push(guardian);
   }
 
-  // 보호자 관계(N:M) 연결
-  //  - 시니어1: 보호자 0,1번 (2명)
-  //  - 시니어2: 보호자 2,3,4번 (3명)
+  // 보호자 관계(N:M) 연결 — 시니어 4명에게 보호자 10명을 분배
+  //  - 시니어1: 보호자 0,1번        (2명)
+  //  - 시니어2: 보호자 2,3,4번      (3명)
+  //  - 시니어3: 보호자 5,6번        (2명)
+  //  - 시니어4: 보호자 7,8,9번      (3명)
   //  ※ 인원 제한 없음 — 아래 매핑은 데모용 예시일 뿐입니다.
   const relationMap = [
     { senior: seniors[0], guardians: [guardians[0], guardians[1]] },
     { senior: seniors[1], guardians: [guardians[2], guardians[3], guardians[4]] },
+    { senior: seniors[2], guardians: [guardians[5], guardians[6]] },
+    { senior: seniors[3], guardians: [guardians[7], guardians[8], guardians[9]] },
   ];
 
   for (const { senior, guardians: gs } of relationMap) {
@@ -459,7 +470,7 @@ async function main() {
   // 4) + 5) 시니어별로 측정/분석/리포트/알림 생성
   for (let idx = 0; idx < seniorInfos.length; idx++) {
     const { senior, guardianIds } = seniorInfos[idx];
-    // 시니어마다 추세를 다르게 하려고 offset 부여 (두 번째 시니어가 조금 더 위험하게)
+    // 시니어마다 추세를 다르게 하려고 offset 부여 (뒤 시니어일수록 조금 더 위험하게)
     const analyses = await seedMeasurementsForSenior(senior, idx * 8);
     await seedReportsAndNotifications(senior, guardianIds, analyses);
   }
