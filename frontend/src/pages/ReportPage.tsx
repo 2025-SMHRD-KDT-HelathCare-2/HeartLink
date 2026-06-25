@@ -124,7 +124,7 @@ export function ReportPage() {
   if (loading) {
     return (
       <div className="max-w-2xl mx-auto p-5 flex justify-center py-20">
-        <div className="w-8 h-8 border-4 border-[#0E8080] border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-4 border-[#0D9488] border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -137,7 +137,7 @@ export function ReportPage() {
   return (
     <div className="max-w-2xl mx-auto p-5">
       <div className="mb-7">
-        <h1 className="font-black text-[#0A2647]" style={{ fontSize: "2.2rem" }}>내 건강 결과</h1>
+        <h1 className="font-black text-[#0D9488]" style={{ fontSize: "2.2rem" }}>내 건강 결과</h1>
         <p className="text-gray-500 mt-1 font-bold" style={{ fontSize: "1.15rem" }}>인공지능이 분석한 오늘 심장 상태예요.</p>
       </div>
 
@@ -199,7 +199,7 @@ export function ReportPage() {
       <button
         onClick={handleDailyReport}
         disabled={!hasData || !item?.analysisId || generating}
-        className="w-full flex items-center justify-center gap-3 py-5 bg-gradient-to-r from-[#0A2647] to-[#0E8080] text-white rounded-2xl hover:opacity-90 transition-all font-black mb-3 shadow-lg disabled:opacity-50"
+        className="w-full flex items-center justify-center gap-3 py-5 bg-gradient-to-r from-[#0D9488] to-[#0D9488] text-white rounded-2xl hover:opacity-90 transition-all font-black mb-3 shadow-lg disabled:opacity-50"
         style={{ minHeight: 68, fontSize: "1.2rem" }}
       >
         <Sparkles className="w-6 h-6" />
@@ -209,7 +209,7 @@ export function ReportPage() {
       {/* 리포트 기록 보기 */}
       <button
         onClick={() => navigate("/report-history-list")}
-        className="w-full flex items-center justify-center gap-3 py-4 border-2 border-[#0A2647] text-[#0A2647] rounded-2xl hover:bg-[#0A2647]/5 transition-all font-bold mb-5"
+        className="w-full flex items-center justify-center gap-3 py-4 border-2 border-[#0D9488] text-[#0D9488] rounded-2xl hover:bg-[#0D9488]/5 transition-all font-bold mb-5"
         style={{ minHeight: 56, fontSize: "1.1rem" }}
       >
         <FileText className="w-5 h-5" />

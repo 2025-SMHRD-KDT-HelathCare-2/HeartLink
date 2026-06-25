@@ -21,13 +21,13 @@ export function ResetPasswordPage() {
   // 이메일/인증 정보 없이 직접 접근한 경우 방어
   if (!email || !code) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#0A2647] via-[#144272] to-[#0E8080] flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-[#0D9488] via-[#0F766E] to-[#0D9488] flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center">
           <p className="text-gray-600 font-bold mb-5" style={{ fontSize: "1.1rem" }}>
             잘못된 접근입니다. 비밀번호 찾기를 다시 시도해 주세요.
           </p>
           <button onClick={() => navigate("/forgot-password")}
-            className="w-full py-4 bg-[#0A2647] text-white rounded-xl font-bold"
+            className="w-full py-4 bg-[#0D9488] text-white rounded-xl font-bold"
             style={{ fontSize: "1.1rem" }}>
             비밀번호 찾기로 이동
           </button>
@@ -66,7 +66,7 @@ export function ResetPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0A2647] via-[#144272] to-[#0E8080] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-[#0D9488] via-[#0F766E] to-[#0D9488] flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-24 h-24 bg-white/20 rounded-full mb-4 backdrop-blur-sm">
@@ -82,7 +82,7 @@ export function ResetPasswordPage() {
             <ChevronLeft className="w-5 h-5" />로그인으로 돌아가기
           </button>
 
-          <h2 className="text-[#0A2647] font-black mb-2" style={{ fontSize: "1.6rem" }}>새 비밀번호 설정</h2>
+          <h2 className="text-[#0D9488] font-black mb-2" style={{ fontSize: "1.6rem" }}>새 비밀번호 설정</h2>
           <p className="text-gray-500 mb-6 font-bold" style={{ fontSize: "1.05rem" }}>
             새로 사용할 비밀번호를 입력해 주세요.
           </p>
@@ -94,7 +94,7 @@ export function ResetPasswordPage() {
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-400" />
                 <input type={showPassword ? "text" : "password"} placeholder="8글자 이상 입력" value={password}
                   onChange={e => { setPassword(e.target.value); setError(""); }}
-                  className="w-full pl-12 pr-14 py-4 border border-gray-200 rounded-xl focus:outline-none focus:border-[#0E8080] bg-gray-50 font-bold"
+                  className="w-full pl-12 pr-14 py-4 border border-gray-200 rounded-xl focus:outline-none focus:border-[#0D9488] bg-gray-50 font-bold"
                   style={{ minHeight: 56, fontSize: "1.1rem" }} />
                 <button type="button" onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
@@ -109,14 +109,14 @@ export function ResetPasswordPage() {
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-400" />
                 <input type={showPassword ? "text" : "password"} placeholder="비밀번호를 다시 입력" value={confirmPassword}
                   onChange={e => { setConfirmPassword(e.target.value); setError(""); }}
-                  className="w-full pl-12 pr-4 py-4 border border-gray-200 rounded-xl focus:outline-none focus:border-[#0E8080] bg-gray-50 font-bold"
+                  className="w-full pl-12 pr-4 py-4 border border-gray-200 rounded-xl focus:outline-none focus:border-[#0D9488] bg-gray-50 font-bold"
                   style={{ minHeight: 56, fontSize: "1.1rem" }} />
               </div>
               {error && <p className="text-red-500 mt-1 font-bold" style={{ fontSize: "1rem" }}>{error}</p>}
             </div>
 
             <button type="submit" disabled={submitting}
-              className="w-full py-5 bg-gradient-to-r from-[#0A2647] to-[#0E8080] text-white rounded-xl hover:opacity-90 active:scale-95 transition-all disabled:opacity-50 font-bold"
+              className="w-full py-5 bg-gradient-to-r from-[#0D9488] to-[#0D9488] text-white rounded-xl hover:opacity-90 active:scale-95 transition-all disabled:opacity-50 font-bold"
               style={{ minHeight: 60, fontSize: "1.2rem" }}>
               {submitting ? "변경 중..." : "비밀번호 변경하기"}
             </button>

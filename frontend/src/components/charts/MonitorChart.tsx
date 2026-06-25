@@ -17,7 +17,7 @@ export function MonitorChart({ data, revealPercent }: MonitorChartProps) {
   const maxX = data[data.length - 1]?.x ?? 0;
 
   return (
-    <div className="bg-[#0A1628] rounded-2xl p-6 shadow-lg border-2 border-[#0E8080]/30">
+    <div className="bg-[#0A1628] rounded-2xl p-6 shadow-lg border-2 border-[#0D9488]/30">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-[#3DE8C0] font-bold tracking-wide" style={{ fontSize: "1.2rem" }}>측정 중...</h3>
         <div className="flex items-center gap-2">

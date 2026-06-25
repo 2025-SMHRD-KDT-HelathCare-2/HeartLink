@@ -181,7 +181,7 @@ export function UploadVisualizationPage() {
   return (
     <div className="max-w-3xl mx-auto p-6">
       <div className="mb-8">
-        <h1 className="font-black text-[#0A2647]" style={{ fontSize: "2rem" }}>심전도 파일 올리기</h1>
+        <h1 className="font-black text-[#0D9488]" style={{ fontSize: "2rem" }}>심전도 파일 올리기</h1>
         <p className="text-gray-600 mt-2 font-bold" style={{ fontSize: "1.1rem" }}>
           스마트워치에서 받은 파일을 올리면 심전도 그래프를 확인할 수 있어요.
         </p>
@@ -207,7 +207,7 @@ export function UploadVisualizationPage() {
             onDragLeave={() => setDragging(false)}
             onDrop={handleDrop}
             onClick={() => fileRef.current?.click()}
-            className={`border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-all ${dragging ? "border-[#0E8080] bg-[#0E8080]/5" : "border-gray-300 hover:border-[#0E8080] hover:bg-gray-50"
+            className={`border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-all ${dragging ? "border-[#0D9488] bg-[#0D9488]/5" : "border-gray-300 hover:border-[#0D9488] hover:bg-gray-50"
               }`}
           >
             <input
@@ -239,13 +239,13 @@ export function UploadVisualizationPage() {
         {(phase === "uploading" || phase === "processing") && (
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-6 h-6 border-2 border-[#0E8080] border-t-transparent rounded-full animate-spin" />
+              <div className="w-6 h-6 border-2 border-[#0D9488] border-t-transparent rounded-full animate-spin" />
               <span className="text-gray-700 font-bold" style={{ fontSize: "1.15rem" }}>
                 {phase === "uploading" ? "업로드 중..." : "분석 중... 잠시만 기다려 주세요"} {Math.round(progress)}%
               </span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-4">
-              <div className="h-4 bg-gradient-to-r from-[#0E8080] to-[#0A2647] rounded-full transition-all" style={{ width: `${progress}%` }} />
+              <div className="h-4 bg-gradient-to-r from-[#0D9488] to-[#0D9488] rounded-full transition-all" style={{ width: `${progress}%` }} />
             </div>
             <p className="text-gray-500 mt-3 font-bold" style={{ fontSize: "1rem" }}>파일명: {fileName}</p>
           </div>
@@ -266,7 +266,7 @@ export function UploadVisualizationPage() {
         <button
           onClick={() => fileRef.current?.click()}
           disabled={phase === "uploading" || phase === "processing"}
-          className="w-full py-5 bg-gradient-to-r from-[#0A2647] to-[#0E8080] text-white rounded-xl hover:opacity-90 transition-all disabled:opacity-50 flex items-center justify-center gap-3 font-bold"
+          className="w-full py-5 bg-gradient-to-r from-[#0D9488] to-[#0D9488] text-white rounded-xl hover:opacity-90 transition-all disabled:opacity-50 flex items-center justify-center gap-3 font-bold"
           style={{ minHeight: 64, fontSize: "1.2rem" }}
         >
           <Upload className="w-6 h-6" />
@@ -288,7 +288,7 @@ export function UploadVisualizationPage() {
       {/* 결과 - 페이드 인 + 전체 그래프 */}
       {phase === "result" && result && (
         <div className="animate-fadein space-y-6">
-          <div className="text-[#0E8080] font-bold mb-2" style={{ fontSize: "1.1rem" }}>
+          <div className="text-[#0D9488] font-bold mb-2" style={{ fontSize: "1.1rem" }}>
             ✅ {(result.ecgPoints?.length ?? 0).toLocaleString()}개 샘플 · {sampleRate}Hz · 분석 완료
           </div>
 
@@ -314,7 +314,7 @@ export function UploadVisualizationPage() {
               setFileName(null);
               setProgress(0);
             }}
-            className="w-full py-4 border-2 border-[#0A2647] text-[#0A2647] rounded-xl hover:bg-[#0A2647]/5 transition-all font-bold"
+            className="w-full py-4 border-2 border-[#0D9488] text-[#0D9488] rounded-xl hover:bg-[#0D9488]/5 transition-all font-bold"
             style={{ minHeight: 56, fontSize: "1.1rem" }}
           >
             다른 파일 올리기

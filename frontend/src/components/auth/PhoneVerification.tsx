@@ -128,7 +128,7 @@ export function PhoneVerification({ phone, onPhoneChange, onVerifiedChange }: Pr
             value={phone}
             disabled={verified}
             onChange={(e) => handlePhoneInput(e.target.value)}
-            className="w-full pl-12 pr-4 py-4 border border-gray-200 rounded-xl focus:outline-none focus:border-[#0E8080] bg-gray-50 font-bold disabled:opacity-60"
+            className="w-full pl-12 pr-4 py-4 border border-gray-200 rounded-xl focus:outline-none focus:border-[#0D9488] bg-gray-50 font-bold disabled:opacity-60"
             style={{ minHeight: 56, fontSize: "1.1rem" }}
           />
         </div>
@@ -136,7 +136,7 @@ export function PhoneVerification({ phone, onPhoneChange, onVerifiedChange }: Pr
           type="button"
           onClick={handleSend}
           disabled={sending || verified}
-          className="px-4 rounded-xl border-2 border-[#0E8080] text-[#0E8080] font-bold whitespace-nowrap disabled:opacity-50"
+          className="px-4 rounded-xl border-2 border-[#0D9488] text-[#0D9488] font-bold whitespace-nowrap disabled:opacity-50"
           style={{ minHeight: 56, fontSize: "1rem" }}
         >
           {sending ? "발송 중..." : codeSent ? "재발송" : "인증번호 발송"}
@@ -154,7 +154,7 @@ export function PhoneVerification({ phone, onPhoneChange, onVerifiedChange }: Pr
                 placeholder="6자리 인증번호"
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
-                className="w-full pl-4 pr-16 py-4 border border-gray-200 rounded-xl focus:outline-none focus:border-[#0E8080] bg-gray-50 font-bold"
+                className="w-full pl-4 pr-16 py-4 border border-gray-200 rounded-xl focus:outline-none focus:border-[#0D9488] bg-gray-50 font-bold"
                 style={{ minHeight: 56, fontSize: "1.1rem" }}
               />
               {remaining > 0 && (
@@ -167,7 +167,7 @@ export function PhoneVerification({ phone, onPhoneChange, onVerifiedChange }: Pr
               type="button"
               onClick={handleVerify}
               disabled={verifying || remaining <= 0}
-              className="px-4 rounded-xl bg-[#0E8080] text-white font-bold whitespace-nowrap disabled:opacity-50"
+              className="px-4 rounded-xl bg-[#0D9488] text-white font-bold whitespace-nowrap disabled:opacity-50"
               style={{ minHeight: 56, fontSize: "1rem" }}
             >
               {verifying ? "확인 중..." : "확인"}
@@ -183,14 +183,14 @@ export function PhoneVerification({ phone, onPhoneChange, onVerifiedChange }: Pr
 
       {/* 인증 완료 표시 */}
       {verified && (
-        <div className="flex items-center gap-2 text-[#0E8080] font-bold mt-2" style={{ fontSize: "1.05rem" }}>
+        <div className="flex items-center gap-2 text-[#0D9488] font-bold mt-2" style={{ fontSize: "1.05rem" }}>
           <CheckCircle2 className="w-6 h-6" /> 휴대폰 인증 완료
         </div>
       )}
 
       {/* 안내/오류 메시지 */}
       {error && <p className="text-red-500 mt-2 font-bold" style={{ fontSize: "1rem" }}>{error}</p>}
-      {info && !error && <p className="text-[#0E8080] mt-2 font-bold" style={{ fontSize: "1rem" }}>{info}</p>}
+      {info && !error && <p className="text-[#0D9488] mt-2 font-bold" style={{ fontSize: "1rem" }}>{info}</p>}
     </div>
   );
 }

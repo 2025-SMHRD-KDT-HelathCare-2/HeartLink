@@ -115,7 +115,7 @@ export function ReportHistoryPage() {
   return (
     <div className="max-w-3xl mx-auto p-5">
       <div className="mb-7">
-        <h1 className="font-black text-[#0A2647]" style={{ fontSize: "2.1rem" }}>지난 기록</h1>
+        <h1 className="font-black text-[#0D9488]" style={{ fontSize: "2.1rem" }}>지난 기록</h1>
         <p className="text-gray-500 mt-2 font-bold" style={{ fontSize: "1.1rem" }}>최근 1년간의 건강 결과를 확인하고 저장할 수 있어요.</p>
       </div>
 
@@ -129,7 +129,7 @@ export function ReportHistoryPage() {
         <div className="flex flex-wrap gap-2 mb-5">
           {PERIOD_OPTIONS.map(p => (
             <button key={p} onClick={() => setPeriodFilter(p)}
-              className={`px-4 py-2.5 rounded-xl border-2 transition-all font-bold ${periodFilter === p ? "border-[#0A2647] bg-[#0A2647]/10 text-[#0A2647]" : "border-gray-200 text-gray-500"}`}
+              className={`px-4 py-2.5 rounded-xl border-2 transition-all font-bold ${periodFilter === p ? "border-[#0D9488] bg-[#0D9488]/10 text-[#0D9488]" : "border-gray-200 text-gray-500"}`}
               style={{ fontSize: "1rem" }}>
               {p}
             </button>
@@ -139,7 +139,7 @@ export function ReportHistoryPage() {
         <div className="flex flex-wrap gap-2">
           {["전체", "상", "중", "하"].map(l => (
             <button key={l} onClick={() => setLevelFilter(l)}
-              className={`px-4 py-2.5 rounded-xl border-2 transition-all font-bold ${levelFilter === l ? "border-[#0E8080] bg-[#0E8080]/10 text-[#0E8080]" : "border-gray-200 text-gray-500"}`}
+              className={`px-4 py-2.5 rounded-xl border-2 transition-all font-bold ${levelFilter === l ? "border-[#0D9488] bg-[#0D9488]/10 text-[#0D9488]" : "border-gray-200 text-gray-500"}`}
               style={{ fontSize: "1rem" }}>
               {l === "전체" ? "전체" : `${l} (${LEVEL_META[l as "상"|"중"|"하"].label})`}
             </button>
@@ -150,13 +150,13 @@ export function ReportHistoryPage() {
       {/* 측정 이력 결과 */}
       <div className="flex items-center justify-between mb-4">
         <p className="text-gray-600 font-bold" style={{ fontSize: "1.05rem" }}>
-          총 <span className="text-[#0A2647]">{filtered.length}</span>개의 기록
+          총 <span className="text-[#0D9488]">{filtered.length}</span>개의 기록
         </p>
       </div>
 
       {loading ? (
         <div className="flex items-center justify-center py-16">
-          <div className="w-8 h-8 border-4 border-[#0E8080] border-t-transparent rounded-full animate-spin" />
+          <div className="w-8 h-8 border-4 border-[#0D9488] border-t-transparent rounded-full animate-spin" />
         </div>
       ) : paged.length === 0 ? (
         <div className="bg-white rounded-2xl p-12 shadow-sm border border-gray-100 text-center">
@@ -170,7 +170,7 @@ export function ReportHistoryPage() {
             return (
               <button key={r.id}
                 onClick={() => navigate(`/measurement/${r.id}`)}
-                className="w-full bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center gap-4 hover:border-[#0E8080] hover:shadow-md transition-all text-left">
+                className="w-full bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center gap-4 hover:border-[#0D9488] hover:shadow-md transition-all text-left">
                 <div className="w-2 h-14 rounded-full flex-shrink-0" style={{ backgroundColor: meta.color }} />
                 <div className="flex-1">
                   <div className="flex items-center gap-3 flex-wrap">
@@ -211,14 +211,14 @@ export function ReportHistoryPage() {
       {/* ===== 주간 리포트 섹션 ===== */}
       <div className="mt-10">
         <div className="flex items-center gap-2 mb-4">
-          <BarChart2 className="w-6 h-6 text-[#0A2647]" />
-          <h2 className="font-black text-[#0A2647]" style={{ fontSize: "1.5rem" }}>주간 리포트</h2>
+          <BarChart2 className="w-6 h-6 text-[#0D9488]" />
+          <h2 className="font-black text-[#0D9488]" style={{ fontSize: "1.5rem" }}>주간 리포트</h2>
         </div>
         <p className="text-gray-500 font-bold mb-5" style={{ fontSize: "1rem" }}>스케줄러가 자동으로 생성한 주간 분석 리포트예요.</p>
 
         {weeklyLoading ? (
           <div className="flex items-center justify-center py-12">
-            <div className="w-8 h-8 border-4 border-[#0E8080] border-t-transparent rounded-full animate-spin" />
+            <div className="w-8 h-8 border-4 border-[#0D9488] border-t-transparent rounded-full animate-spin" />
           </div>
         ) : weeklyReports.length === 0 ? (
           <div className="bg-white rounded-2xl p-12 shadow-sm border border-gray-100 text-center">
@@ -238,9 +238,9 @@ export function ReportHistoryPage() {
                   onClick={() => isCompleted && navigate("/report-detail", { state: { reportId: r.id, type: "weekly" } })}
                   disabled={!isCompleted}
                   className={`w-full bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center gap-4 text-left transition-all
-                    ${isCompleted ? "hover:border-[#0E8080] hover:shadow-md cursor-pointer" : "cursor-default opacity-70"}`}>
+                    ${isCompleted ? "hover:border-[#0D9488] hover:shadow-md cursor-pointer" : "cursor-default opacity-70"}`}>
                   <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0"
-                    style={{ backgroundColor: isCompleted ? "#0A2647" : "#9CA3AF" }}>
+                    style={{ backgroundColor: isCompleted ? "#0D9488" : "#9CA3AF" }}>
                     {isGenerating
                       ? <Loader2 className="w-6 h-6 text-white animate-spin" />
                       : isFailed

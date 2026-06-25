@@ -6,40 +6,39 @@
    =========================================== */
 :root {
   /* 주요 색상 */
-  --color-primary:        #0A2647;   /* 진한 네이비 — 제목, 버튼 */
-  --color-primary-mid:    #144272;   /* 중간 네이비 — 사이드바 */
-  --color-accent:         #0E8080;   /* 틸 — 포인트, 링크 */
+  --color-primary:        #0D9488;   /* 민트 — 제목, 메인 버튼 */
+  --color-primary-mid:    #0F766E;   /* 진한 민트 — 호버, 강조 */
+  --color-accent:         #3B82F6;   /* 밝은 파랑 — 포인트, 링크 */
 
-  /* 위험도 색상 */
-  --color-danger:         #DC2626;   /* 위험도 상 */
+  /* 위험도 색상 — 유지 */
+  --color-danger:         #DC2626;
   --color-danger-bg:      #FEF2F2;
   --color-danger-border:  #FECACA;
 
-  --color-warning:        #D97706;   /* 위험도 중 */
+  --color-warning:        #D97706;
   --color-warning-bg:     #FFFBEB;
   --color-warning-border: #FDE68A;
 
-  --color-safe:           #16A34A;   /* 위험도 하 */
+  --color-safe:           #16A34A;
   --color-safe-bg:        #F0FDF4;
   --color-safe-border:    #BBF7D0;
 
   /* 텍스트 */
-  --color-text-primary:   #0A2647;
+  --color-text-primary:   #111827;   /* 거의 검정 — 제목 */
   --color-text-body:      #374151;
   --color-text-muted:     #6B7280;
 
-  /* 배경 */
-  --color-bg-page:        #F4F7FA;
+  /* 배경 — 흰 기조 */
+  --color-bg-page:        #F9FAFB;   /* 아주 연한 회색 */
   --color-bg-card:        #FFFFFF;
 
   /* 폰트 크기 */
-  --text-hero:    2.2rem;   /* 페이지 제목 */
-  --text-title:   1.6rem;   /* 섹션 제목 */
-  --text-sub:     1.3rem;   /* 소제목 */
-  --text-body:    1.15rem;  /* 본문 */
-  --text-small:   1rem;     /* 보조 텍스트 */
-  --text-tiny:    0.9rem;   /* 레이블 */
+  --text-hero:    2.2rem;
+  --text-title:   1.6rem;
+  --text-sub:     1.3rem;
+  --text-body:    1.15rem;
+  --text-small:   1rem;
+  --text-tiny:    0.9rem;
 
-  /* 반응형 기준 폰트 */
   font-size: 20px;
 }

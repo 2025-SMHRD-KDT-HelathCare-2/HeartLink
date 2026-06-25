@@ -31,7 +31,7 @@ function WithdrawModal({ onConfirm, onCancel, processing }:
         <div className="flex items-center justify-center w-16 h-16 bg-red-100 rounded-full mx-auto mb-5">
           <AlertTriangle className="w-9 h-9 text-red-500" />
         </div>
-        <h2 className="text-[#0A2647] font-black text-center mb-3" style={{ fontSize: "1.5rem" }}>정말 탈퇴하시겠어요?</h2>
+        <h2 className="text-[#0D9488] font-black text-center mb-3" style={{ fontSize: "1.5rem" }}>정말 탈퇴하시겠어요?</h2>
         <p className="text-gray-600 font-bold text-center mb-7 leading-relaxed" style={{ fontSize: "1.05rem" }}>
           탈퇴하시면 모든 건강 데이터와<br />측정 기록이 삭제되며<br />복구할 수 없습니다.
         </p>
@@ -147,19 +147,19 @@ export function MyPage() {
           <ChevronLeft className="w-6 h-6 text-gray-600" />
         </button>
         <div>
-          <h1 className="font-black text-[#0A2647]" style={{ fontSize: "2rem" }}>마이페이지</h1>
+          <h1 className="font-black text-[#0D9488]" style={{ fontSize: "2rem" }}>마이페이지</h1>
           <p className="text-gray-500 font-bold" style={{ fontSize: "1rem" }}>{nickname}</p>
         </div>
       </div>
 
       <div className="flex bg-gray-100 rounded-xl p-1 mb-6">
         <button onClick={() => setTab("profile")}
-          className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg transition-all font-bold ${tab === "profile" ? "bg-white shadow text-[#0A2647]" : "text-gray-500"}`}
+          className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg transition-all font-bold ${tab === "profile" ? "bg-white shadow text-[#0D9488]" : "text-gray-500"}`}
           style={{ minHeight: 52, fontSize: "1.05rem" }}>
           <Heart className="w-5 h-5" />건강 정보 수정
         </button>
         <button onClick={() => setTab("guardian")}
-          className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg transition-all font-bold relative ${tab === "guardian" ? "bg-white shadow text-[#0A2647]" : "text-gray-500"}`}
+          className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg transition-all font-bold relative ${tab === "guardian" ? "bg-white shadow text-[#0D9488]" : "text-gray-500"}`}
           style={{ minHeight: 52, fontSize: "1.05rem" }}>
           <Bell className="w-5 h-5" />보호자 요청
           {pendingCount > 0 && (
@@ -173,12 +173,12 @@ export function MyPage() {
       {tab === "profile" && (
         <form onSubmit={handleSaveProfile} className="space-y-6">
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-            <h3 className="text-[#0A2647] font-black mb-2" style={{ fontSize: "1.3rem" }}>기저질환</h3>
+            <h3 className="text-[#0D9488] font-black mb-2" style={{ fontSize: "1.3rem" }}>기저질환</h3>
             <p className="text-gray-500 mb-4 font-bold" style={{ fontSize: "1rem" }}>앓고 계신 질환을 모두 선택해 주세요.</p>
             <div className="flex flex-wrap gap-3">
               {DISEASES.map(d => (
                 <button key={d} type="button" onClick={() => toggleDisease(d)}
-                  className={`px-4 py-3 rounded-xl border-2 transition-all font-bold ${diseases.includes(d) ? "border-[#0E8080] bg-[#0E8080]/10 text-[#0E8080]" : "border-gray-200 text-gray-600 hover:border-gray-300"}`}
+                  className={`px-4 py-3 rounded-xl border-2 transition-all font-bold ${diseases.includes(d) ? "border-[#0D9488] bg-[#0D9488]/10 text-[#0D9488]" : "border-gray-200 text-gray-600 hover:border-gray-300"}`}
                   style={{ minHeight: 52, fontSize: "1rem" }}>
                   {diseases.includes(d) && <span className="mr-1">✓</span>}{d}
                 </button>
@@ -186,7 +186,7 @@ export function MyPage() {
             </div>
           </div>
           <button type="submit" disabled={saving}
-            className="w-full py-5 bg-gradient-to-r from-[#0A2647] to-[#0E8080] text-white rounded-xl hover:opacity-90 transition-all flex items-center justify-center gap-2 font-black disabled:opacity-50"
+            className="w-full py-5 bg-gradient-to-r from-[#0D9488] to-[#0D9488] text-white rounded-xl hover:opacity-90 transition-all flex items-center justify-center gap-2 font-black disabled:opacity-50"
             style={{ minHeight: 64, fontSize: "1.2rem" }}>
             {saved ? <><Check className="w-6 h-6" />저장 완료!</> : saving ? <><Loader2 className="w-6 h-6 animate-spin" />저장 중...</> : <><Save className="w-6 h-6" />저장하기</>}
           </button>
@@ -204,7 +204,7 @@ export function MyPage() {
 
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
             <div className="flex items-center justify-between mb-5">
-              <h3 className="text-[#0A2647] font-black" style={{ fontSize: "1.3rem" }}>받은 등록 요청</h3>
+              <h3 className="text-[#0D9488] font-black" style={{ fontSize: "1.3rem" }}>받은 등록 요청</h3>
               {pendingCount > 0 && (
                 <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-full px-3 py-1.5">
                   <Bell className="w-4 h-4 text-red-500" />
@@ -246,7 +246,7 @@ export function MyPage() {
                         {req.relationStatus === "pending" && (
                           <div className="flex gap-2 shrink-0">
                             <button onClick={() => handleAccept(req._id)}
-                              className="flex items-center gap-1.5 px-4 py-2.5 bg-[#0A2647] text-white rounded-xl hover:bg-[#144272] transition-colors font-bold"
+                              className="flex items-center gap-1.5 px-4 py-2.5 bg-[#0D9488] text-white rounded-xl hover:bg-[#0F766E] transition-colors font-bold"
                               style={{ fontSize: "0.95rem" }}>
                               <UserCheck className="w-4 h-4" />수락
                             </button>

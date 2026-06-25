@@ -39,7 +39,7 @@ export function GuardianDashboard({ patients, notifications, onSelectMember }: G
   return (
     <div className="max-w-2xl mx-auto p-6">
       <div className="mb-8">
-        <h1 className="font-bold text-[#0A2647]" style={{ fontSize: "1.9rem" }}>연결된 가족 현황</h1>
+        <h1 className="font-bold text-[#0D9488]" style={{ fontSize: "1.9rem" }}>연결된 가족 현황</h1>
         <p className="text-gray-600 mt-2 font-bold" style={{ fontSize: "1.1rem" }}>연결된 가족 구성원의 건강 상태를 확인합니다.</p>
       </div>
 
@@ -51,7 +51,7 @@ export function GuardianDashboard({ patients, notifications, onSelectMember }: G
           { label: "위험 단계",  value: `${highRiskCount}명`,   urgent: true,  count: highRiskCount },
         ].map(s => (
           <div key={s.label} className={`bg-white rounded-xl p-5 text-center shadow-sm border ${s.urgent && s.count > 0 ? "border-red-200 bg-red-50" : "border-gray-100"}`}>
-            <div className={`font-bold ${s.urgent && s.count > 0 ? "text-red-600" : "text-[#0A2647]"}`} style={{ fontSize: "1.8rem" }}>
+            <div className={`font-bold ${s.urgent && s.count > 0 ? "text-red-600" : "text-[#0D9488]"}`} style={{ fontSize: "1.8rem" }}>
               {s.value}
             </div>
             <div className="text-gray-500 mt-1 font-bold" style={{ fontSize: "1rem" }}>{s.label}</div>

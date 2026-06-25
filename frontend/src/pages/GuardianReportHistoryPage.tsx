@@ -64,7 +64,7 @@ export function GuardianReportHistoryPage() {
 
   return (
     <div className="min-h-screen bg-[#F4F7FA]">
-      <header className="bg-[#0A2647] text-white px-5 py-4 flex items-center gap-3 sticky top-0 z-20 shadow-lg">
+      <header className="bg-[#0D9488] text-white px-5 py-4 flex items-center gap-3 sticky top-0 z-20 shadow-lg">
         <button onClick={() => navigate(-1)} className="p-2 rounded-xl hover:bg-white/10 transition-colors">
           <ChevronLeft className="w-6 h-6" />
         </button>
@@ -83,7 +83,7 @@ export function GuardianReportHistoryPage() {
           {([["all", "전체"], ["daily", "일간"], ["weekly", "주간"]] as const).map(([val, label]) => (
             <button key={val} onClick={() => setFilter(val)}
               className={`flex-1 flex items-center justify-center gap-1.5 py-3 rounded-lg transition-all font-bold ${
-                filter === val ? "bg-[#0A2647] text-white shadow" : "text-gray-500 hover:bg-gray-50"
+                filter === val ? "bg-[#0D9488] text-white shadow" : "text-gray-500 hover:bg-gray-50"
               }`} style={{ fontSize: "1rem" }}>
               {val === "daily" && <CalendarDays className="w-4 h-4" />}
               {val === "weekly" && <BarChart2 className="w-4 h-4" />}
@@ -94,7 +94,7 @@ export function GuardianReportHistoryPage() {
 
         {loading ? (
           <div className="flex justify-center py-16">
-            <div className="w-8 h-8 border-4 border-[#0E8080] border-t-transparent rounded-full animate-spin" />
+            <div className="w-8 h-8 border-4 border-[#0D9488] border-t-transparent rounded-full animate-spin" />
           </div>
         ) : filtered.length === 0 ? (
           <div className="bg-white rounded-2xl p-12 shadow-sm border border-gray-100 text-center">
@@ -111,7 +111,7 @@ export function GuardianReportHistoryPage() {
                   onClick={() => navigate(`/guardian-report-detail/${userId}`, { state: { reportId: r.id, type: r.reportPeriod } })}
                   className="w-full bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center gap-4 text-left hover:bg-gray-50 transition-colors">
                   <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0"
-                    style={{ backgroundColor: isDaily ? "#0E8080" : "#0A2647" }}>
+                    style={{ backgroundColor: isDaily ? "#0D9488" : "#0D9488" }}>
                     {isDaily
                       ? <CalendarDays className="w-6 h-6 text-white" />
                       : <BarChart2 className="w-6 h-6 text-white" />}

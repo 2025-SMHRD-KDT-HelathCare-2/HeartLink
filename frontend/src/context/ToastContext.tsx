@@ -26,7 +26,7 @@ const LEVEL_META: Record<ToastLevel, { color: string; bg: string; icon: React.El
   상:       { color: "#DC2626", bg: "#FEF2F2", icon: AlertTriangle },
   중:       { color: "#D97706", bg: "#FFFBEB", icon: AlertCircle },
   하:       { color: "#16A34A", bg: "#F0FDF4", icon: Info },
-  info:     { color: "#0A2647", bg: "#EFF6FF", icon: Info },
+  info:     { color: "#0D9488", bg: "#EFF6FF", icon: Info },
   success:  { color: "#16A34A", bg: "#F0FDF4", icon: CheckCircle2 },
 };
 

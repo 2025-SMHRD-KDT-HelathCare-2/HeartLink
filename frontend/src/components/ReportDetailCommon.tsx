@@ -226,7 +226,7 @@ export function ReportDetailPage({ mode, memberId }: ReportDetailPageProps) {
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="flex flex-col items-center gap-4">
-        <div className="w-10 h-10 border-4 border-[#0E8080] border-t-transparent rounded-full animate-spin" />
+        <div className="w-10 h-10 border-4 border-[#0D9488] border-t-transparent rounded-full animate-spin" />
         <p className="text-gray-500 font-bold" style={{ fontSize: "1.1rem" }}>리포트를 불러오고 있어요...</p>
       </div>
     </div>
@@ -247,7 +247,7 @@ export function ReportDetailPage({ mode, memberId }: ReportDetailPageProps) {
 
   return (
     <div className="min-h-screen bg-[#F4F7FA]">
-      <header className="bg-[#0A2647] text-white px-5 py-4 flex items-center gap-3 sticky top-0 z-20 shadow-lg">
+      <header className="bg-[#0D9488] text-white px-5 py-4 flex items-center gap-3 sticky top-0 z-20 shadow-lg">
         <button onClick={() => navigate(-1)} className="p-2 rounded-xl hover:bg-white/10 transition-colors">
           <ChevronLeft className="w-6 h-6" />
         </button>
@@ -266,7 +266,7 @@ export function ReportDetailPage({ mode, memberId }: ReportDetailPageProps) {
         <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
           <button onClick={handleTTS} disabled={ttsLoading}
             className={`w-full flex items-center justify-center gap-3 py-5 rounded-xl border-2 transition-all font-black mb-4 disabled:opacity-50 ${
-              playing ? "bg-red-50 border-red-400 text-red-600" : "bg-white border-[#0A2647] text-[#0A2647] hover:bg-[#0A2647] hover:text-white"
+              playing ? "bg-red-50 border-red-400 text-red-600" : "bg-white border-[#0D9488] text-[#0D9488] hover:bg-[#0D9488] hover:text-white"
             }`} style={{ minHeight: 72, fontSize: "1.3rem" }}>
             {ttsLoading ? "준비 중..." : playing
               ? <><StopCircle className="w-8 h-8" />멈추기</>
@@ -275,7 +275,7 @@ export function ReportDetailPage({ mode, memberId }: ReportDetailPageProps) {
           <div>
             <div className="flex items-center justify-between mb-2">
               <span className="text-gray-500 font-bold" style={{ fontSize: "1rem" }}>읽는 속도</span>
-              <span className="text-[#0E8080] font-black" style={{ fontSize: "1.05rem" }}>{TTS_SPEEDS[speedIdx].label}</span>
+              <span className="text-[#0D9488] font-black" style={{ fontSize: "1.05rem" }}>{TTS_SPEEDS[speedIdx].label}</span>
             </div>
             <input type="range" min={0} max={2} step={1} value={speedIdx}
               onChange={e => handleSpeedChange(Number(e.target.value))}
@@ -283,7 +283,7 @@ export function ReportDetailPage({ mode, memberId }: ReportDetailPageProps) {
               style={{ background: "#e5e7eb" }} />
             <div className="flex justify-between mt-1 px-1">
               {TTS_SPEEDS.map((s, i) => (
-                <span key={s.label} className={`font-bold ${i === speedIdx ? "text-[#0E8080]" : "text-gray-400"}`} style={{ fontSize: "0.9rem" }}>
+                <span key={s.label} className={`font-bold ${i === speedIdx ? "text-[#0D9488]" : "text-gray-400"}`} style={{ fontSize: "0.9rem" }}>
                   {s.label}
                 </span>
               ))}
@@ -294,7 +294,7 @@ export function ReportDetailPage({ mode, memberId }: ReportDetailPageProps) {
         {/* 위험도 가로 바 */}
         <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-[#0A2647] font-bold" style={{ fontSize: "1.2rem" }}>위험도 평가</h3>
+            <h3 className="text-[#0D9488] font-bold" style={{ fontSize: "1.2rem" }}>위험도 평가</h3>
             <div className="flex items-baseline gap-2">
               <span style={{ color: config.color, fontSize: "2.2rem", fontWeight: 900, lineHeight: 1 }}>{report.riskScore}</span>
               <span className="text-gray-400 font-bold" style={{ fontSize: "1rem" }}>/ 100점</span>
@@ -370,7 +370,7 @@ export function ReportDetailPage({ mode, memberId }: ReportDetailPageProps) {
             <div className="grid grid-cols-3 gap-3">
               {[
                 { label: "최대 심박수", value: `${report.maxHeartRate}`, unit: "BPM", color: "#DC2626" },
-                { label: "평균 심박수", value: `${report.avgHeartRate}`, unit: "BPM", color: "#0A2647" },
+                { label: "평균 심박수", value: `${report.avgHeartRate}`, unit: "BPM", color: "#0D9488" },
                 { label: "최소 심박수", value: `${report.minHeartRate}`, unit: "BPM", color: "#16A34A" },
               ].map(s => (
                 <div key={s.label} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 text-center">
@@ -399,7 +399,7 @@ export function ReportDetailPage({ mode, memberId }: ReportDetailPageProps) {
               {[
                 { label: "AF 발생 일수", value: `${report.afDays}일`, color: "#DC2626" },
                 { label: "총 부정맥", value: `${report.totalArrhythmiaCount}건`, color: "#D97706" },
-                { label: "측정 일수", value: `${report.measurementDays}일`, color: "#0A2647" },
+                { label: "측정 일수", value: `${report.measurementDays}일`, color: "#0D9488" },
               ].map(s => (
                 <div key={s.label} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 text-center">
                   <div className="font-black" style={{ color: s.color, fontSize: "1.3rem" }}>{s.value}</div>
@@ -424,7 +424,7 @@ export function ReportDetailPage({ mode, memberId }: ReportDetailPageProps) {
 
         {/* PDF 저장 */}
         <button onClick={handleSavePdf} disabled={generatingPdf}
-          className="w-full flex items-center justify-center gap-2 py-5 bg-[#0A2647] text-white rounded-xl hover:bg-[#144272] transition-colors font-black disabled:opacity-50"
+          className="w-full flex items-center justify-center gap-2 py-5 bg-[#0D9488] text-white rounded-xl hover:bg-[#0F766E] transition-colors font-black disabled:opacity-50"
           style={{ minHeight: 64, fontSize: "1.2rem" }}>
           <Download className="w-6 h-6" />{generatingPdf ? "저장 중..." : "PDF 저장"}
         </button>
@@ -433,12 +433,12 @@ export function ReportDetailPage({ mode, memberId }: ReportDetailPageProps) {
       <style>{`
         .tts-slider::-webkit-slider-thumb {
           appearance: none; width: 28px; height: 28px; border-radius: 50%;
-          background: #0A2647; border: 3px solid white;
+          background: #0D9488; border: 3px solid white;
           box-shadow: 0 2px 6px rgba(0,0,0,0.2); cursor: pointer;
         }
         .tts-slider::-moz-range-thumb {
           width: 28px; height: 28px; border-radius: 50%;
-          background: #0A2647; border: 3px solid white;
+          background: #0D9488; border: 3px solid white;
           box-shadow: 0 2px 6px rgba(0,0,0,0.2); cursor: pointer;
         }
       `}</style>

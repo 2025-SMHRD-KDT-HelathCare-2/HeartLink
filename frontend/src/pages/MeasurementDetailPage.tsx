@@ -92,7 +92,7 @@ export function MeasurementDetailPage() {
   if (loading) {
     return (
       <div className="max-w-3xl mx-auto p-6 flex justify-center py-20">
-        <div className="w-8 h-8 border-4 border-[#0E8080] border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-4 border-[#0D9488] border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -122,7 +122,7 @@ export function MeasurementDetailPage() {
           style={{ fontSize: "1rem" }}>
           <ChevronLeft className="w-5 h-5" />지난 기록으로
         </button>
-        <h1 className="font-black text-[#0A2647]" style={{ fontSize: "1.9rem" }}>측정 상세</h1>
+        <h1 className="font-black text-[#0D9488]" style={{ fontSize: "1.9rem" }}>측정 상세</h1>
         <div className="flex items-center gap-2 text-gray-500 font-bold mt-1" style={{ fontSize: "1rem" }}>
           <Clock className="w-4 h-4" />{measuredDate}
         </div>
@@ -181,8 +181,8 @@ export function MeasurementDetailPage() {
       {analysis && (
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
           <div className="flex items-center gap-2 mb-5">
-            <Heart className="w-5 h-5 text-[#0E8080]" />
-            <h3 className="text-[#0A2647] font-bold" style={{ fontSize: "1.2rem" }}>분석 수치</h3>
+            <Heart className="w-5 h-5 text-[#0D9488]" />
+            <h3 className="text-[#0D9488] font-bold" style={{ fontSize: "1.2rem" }}>분석 수치</h3>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <StatCard label="심박수" value={`${analysis.heartRate ?? 0} bpm`} />
@@ -210,7 +210,7 @@ function StatCard({ label, value, small, highlight }: {
   return (
     <div className="bg-gray-50 rounded-xl p-4">
       <p className="text-gray-500 font-bold mb-1" style={{ fontSize: "0.9rem" }}>{label}</p>
-      <p className={`font-black ${highlight ? "text-red-600" : "text-[#0A2647]"}`}
+      <p className={`font-black ${highlight ? "text-red-600" : "text-[#0D9488]"}`}
         style={{ fontSize: small ? "0.9rem" : "1.15rem" }}>
         {value}
       </p>

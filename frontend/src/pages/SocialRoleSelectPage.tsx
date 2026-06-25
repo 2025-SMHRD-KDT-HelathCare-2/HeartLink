@@ -123,7 +123,7 @@ export function SocialRoleSelectPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0A2647] via-[#144272] to-[#0E8080] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-[#0D9488] via-[#0F766E] to-[#0D9488] flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-24 h-24 bg-white/20 rounded-full mb-4 backdrop-blur-sm">
@@ -138,9 +138,9 @@ export function SocialRoleSelectPage() {
         <div className="bg-white rounded-2xl shadow-2xl p-8">
           {/* 단계 표시 */}
           <div className="flex items-center justify-center gap-2 mb-6">
-            <span className={`px-3 py-1 rounded-full font-bold ${step === "role" ? "bg-[#0E8080] text-white" : "bg-gray-100 text-gray-400"}`} style={{ fontSize: "0.9rem" }}>1. 역할 선택</span>
+            <span className={`px-3 py-1 rounded-full font-bold ${step === "role" ? "bg-[#0D9488] text-white" : "bg-gray-100 text-gray-400"}`} style={{ fontSize: "0.9rem" }}>1. 역할 선택</span>
             <span className="text-gray-300">→</span>
-            <span className={`px-3 py-1 rounded-full font-bold ${step === "phone" ? "bg-[#0E8080] text-white" : "bg-gray-100 text-gray-400"}`} style={{ fontSize: "0.9rem" }}>2. 휴대폰 인증</span>
+            <span className={`px-3 py-1 rounded-full font-bold ${step === "phone" ? "bg-[#0D9488] text-white" : "bg-gray-100 text-gray-400"}`} style={{ fontSize: "0.9rem" }}>2. 휴대폰 인증</span>
           </div>
 
           {error && (
@@ -149,7 +149,7 @@ export function SocialRoleSelectPage() {
             </div>
           )}
           {info && !error && (
-            <div className="bg-[#0E8080]/10 border border-[#0E8080]/30 text-[#0E8080] rounded-lg p-4 font-bold mb-4" style={{ fontSize: "1rem" }}>
+            <div className="bg-[#0D9488]/10 border border-[#0D9488]/30 text-[#0D9488] rounded-lg p-4 font-bold mb-4" style={{ fontSize: "1rem" }}>
               {info}
             </div>
           )}
@@ -159,12 +159,12 @@ export function SocialRoleSelectPage() {
             <>
               <div className="flex gap-3 mb-3">
                 <button type="button" onClick={() => setRole("user")}
-                  className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all font-bold ${role === "user" ? "border-[#0E8080] bg-[#0E8080]/10 text-[#0E8080]" : "border-gray-200 text-gray-500"}`}
+                  className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all font-bold ${role === "user" ? "border-[#0D9488] bg-[#0D9488]/10 text-[#0D9488]" : "border-gray-200 text-gray-500"}`}
                   style={{ minHeight: 56, fontSize: "1.05rem" }}>
                   <User className="w-6 h-6" />사용자
                 </button>
                 <button type="button" onClick={() => setRole("guardian")}
-                  className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all font-bold ${role === "guardian" ? "border-[#0A2647] bg-[#0A2647]/10 text-[#0A2647]" : "border-gray-200 text-gray-500"}`}
+                  className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all font-bold ${role === "guardian" ? "border-[#0D9488] bg-[#0D9488]/10 text-[#0D9488]" : "border-gray-200 text-gray-500"}`}
                   style={{ minHeight: 56, fontSize: "1.05rem" }}>
                   <Shield className="w-6 h-6" />가족·보호자
                 </button>
@@ -173,8 +173,8 @@ export function SocialRoleSelectPage() {
               <div
                 className={`px-4 py-3 rounded-xl border font-bold mb-4 ${
                   role === "user"
-                    ? "bg-[#0E8080]/10 border-[#0E8080]/30 text-[#0E8080]"
-                    : "bg-[#0A2647]/10 border-[#0A2647]/30 text-[#0A2647]"
+                    ? "bg-[#0D9488]/10 border-[#0D9488]/30 text-[#0D9488]"
+                    : "bg-[#0D9488]/10 border-[#0D9488]/30 text-[#0D9488]"
                 }`}
                 style={{ fontSize: "0.95rem" }}
               >
@@ -186,7 +186,7 @@ export function SocialRoleSelectPage() {
               </div>
 
               <button type="button" onClick={() => { setError(""); setInfo(""); setStep("phone"); }}
-                className="w-full py-5 bg-gradient-to-r from-[#0A2647] to-[#0E8080] text-white rounded-xl hover:opacity-90 active:scale-95 transition-all font-bold"
+                className="w-full py-5 bg-gradient-to-r from-[#0D9488] to-[#0D9488] text-white rounded-xl hover:opacity-90 active:scale-95 transition-all font-bold"
                 style={{ minHeight: 60, fontSize: "1.2rem" }}>
                 다음 (휴대폰 인증)
               </button>
@@ -208,7 +208,7 @@ export function SocialRoleSelectPage() {
                       value={phone}
                       disabled={verified}
                       onChange={(e) => setPhone(e.target.value)}
-                      className="w-full pl-12 pr-4 py-4 border border-gray-200 rounded-xl focus:outline-none focus:border-[#0E8080] bg-gray-50 font-bold disabled:opacity-60"
+                      className="w-full pl-12 pr-4 py-4 border border-gray-200 rounded-xl focus:outline-none focus:border-[#0D9488] bg-gray-50 font-bold disabled:opacity-60"
                       style={{ minHeight: 56, fontSize: "1.1rem" }}
                     />
                   </div>
@@ -216,7 +216,7 @@ export function SocialRoleSelectPage() {
                     type="button"
                     onClick={handleSendCode}
                     disabled={sending || verified}
-                    className="px-4 rounded-xl border-2 border-[#0E8080] text-[#0E8080] font-bold whitespace-nowrap disabled:opacity-50"
+                    className="px-4 rounded-xl border-2 border-[#0D9488] text-[#0D9488] font-bold whitespace-nowrap disabled:opacity-50"
                     style={{ minHeight: 56, fontSize: "1rem" }}
                   >
                     {sending ? "발송 중..." : codeSent ? "재발송" : "인증번호 발송"}
@@ -235,7 +235,7 @@ export function SocialRoleSelectPage() {
                         placeholder="6자리 숫자"
                         value={code}
                         onChange={(e) => setCode(e.target.value)}
-                        className="w-full pl-4 pr-16 py-4 border border-gray-200 rounded-xl focus:outline-none focus:border-[#0E8080] bg-gray-50 font-bold"
+                        className="w-full pl-4 pr-16 py-4 border border-gray-200 rounded-xl focus:outline-none focus:border-[#0D9488] bg-gray-50 font-bold"
                         style={{ minHeight: 56, fontSize: "1.1rem" }}
                       />
                       {remaining > 0 && (
@@ -248,7 +248,7 @@ export function SocialRoleSelectPage() {
                       type="button"
                       onClick={handleVerifyCode}
                       disabled={verifying || remaining <= 0}
-                      className="px-4 rounded-xl bg-[#0E8080] text-white font-bold whitespace-nowrap disabled:opacity-50"
+                      className="px-4 rounded-xl bg-[#0D9488] text-white font-bold whitespace-nowrap disabled:opacity-50"
                       style={{ minHeight: 56, fontSize: "1rem" }}
                     >
                       {verifying ? "확인 중..." : "확인"}
@@ -263,7 +263,7 @@ export function SocialRoleSelectPage() {
               )}
 
               {verified && (
-                <div className="flex items-center gap-2 text-[#0E8080] font-bold mb-4" style={{ fontSize: "1.05rem" }}>
+                <div className="flex items-center gap-2 text-[#0D9488] font-bold mb-4" style={{ fontSize: "1.05rem" }}>
                   <CheckCircle2 className="w-6 h-6" /> 휴대폰 인증 완료
                 </div>
               )}
@@ -275,7 +275,7 @@ export function SocialRoleSelectPage() {
                   이전
                 </button>
                 <button type="button" onClick={handleComplete} disabled={!verified || submitting}
-                  className="flex-1 py-5 bg-gradient-to-r from-[#0A2647] to-[#0E8080] text-white rounded-xl hover:opacity-90 active:scale-95 transition-all disabled:opacity-50 font-bold"
+                  className="flex-1 py-5 bg-gradient-to-r from-[#0D9488] to-[#0D9488] text-white rounded-xl hover:opacity-90 active:scale-95 transition-all disabled:opacity-50 font-bold"
                   style={{ minHeight: 60, fontSize: "1.2rem" }}>
                   {submitting ? "가입 완료 중..." : "가입 완료"}
                 </button>

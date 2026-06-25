@@ -27,7 +27,7 @@ function WithdrawModal({ onConfirm, onCancel, processing }:
         <div className="flex items-center justify-center w-16 h-16 bg-red-100 rounded-full mx-auto mb-5">
           <AlertTriangle className="w-9 h-9 text-red-500" />
         </div>
-        <h2 className="text-[#0A2647] font-black text-center mb-3" style={{ fontSize: "1.5rem" }}>정말 탈퇴하시겠어요?</h2>
+        <h2 className="text-[#0D9488] font-black text-center mb-3" style={{ fontSize: "1.5rem" }}>정말 탈퇴하시겠어요?</h2>
         <p className="text-gray-600 font-bold text-center mb-7 leading-relaxed" style={{ fontSize: "1.05rem" }}>
           탈퇴하시면 등록한 사용자 정보와<br />모든 데이터가 삭제되며<br />복구할 수 없습니다.
         </p>
@@ -119,7 +119,7 @@ export function GuardianMyPage() {
           <ChevronLeft className="w-6 h-6 text-gray-600" />
         </button>
         <div>
-          <h1 className="font-black text-[#0A2647]" style={{ fontSize: "2rem" }}>마이페이지</h1>
+          <h1 className="font-black text-[#0D9488]" style={{ fontSize: "2rem" }}>마이페이지</h1>
           <p className="text-gray-500 font-bold" style={{ fontSize: "1rem" }}>{nickname} · 보호자</p>
         </div>
       </div>
@@ -133,18 +133,18 @@ export function GuardianMyPage() {
 
       <form onSubmit={handleSendRequest} className="mb-6">
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-          <h3 className="text-[#0A2647] font-black mb-5" style={{ fontSize: "1.3rem" }}>사용자 등록 요청</h3>
+          <h3 className="text-[#0D9488] font-black mb-5" style={{ fontSize: "1.3rem" }}>사용자 등록 요청</h3>
           <label className="block text-gray-700 mb-2 font-bold" style={{ fontSize: "1.1rem" }}>사용자 아이디 (이메일)</label>
           <div className="relative mb-4">
             <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input type="email" placeholder="사용자의 이메일 주소" value={userEmail}
               onChange={e => { setUserEmail(e.target.value); setError(""); }}
-              className="w-full pl-12 pr-4 py-4 border border-gray-200 rounded-xl focus:outline-none focus:border-[#0A2647] bg-gray-50 font-bold"
+              className="w-full pl-12 pr-4 py-4 border border-gray-200 rounded-xl focus:outline-none focus:border-[#0D9488] bg-gray-50 font-bold"
               style={{ minHeight: 56, fontSize: "1.1rem" }} />
           </div>
           {error && <p className="text-red-500 mb-3 font-bold" style={{ fontSize: "1rem" }}>{error}</p>}
           <button type="submit" disabled={sending}
-            className="w-full py-5 bg-[#0A2647] text-white rounded-xl hover:bg-[#144272] transition-colors flex items-center justify-center gap-2 font-black disabled:opacity-50"
+            className="w-full py-5 bg-[#0D9488] text-white rounded-xl hover:bg-[#0F766E] transition-colors flex items-center justify-center gap-2 font-black disabled:opacity-50"
             style={{ minHeight: 64, fontSize: "1.2rem" }}>
             <UserPlus className="w-6 h-6" />{sending ? "요청 중..." : "사용자 등록 요청 보내기"}
           </button>
@@ -153,7 +153,7 @@ export function GuardianMyPage() {
 
       <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
         <div className="flex items-center justify-between mb-5">
-          <h3 className="text-[#0A2647] font-black" style={{ fontSize: "1.3rem" }}>등록한 사용자</h3>
+          <h3 className="text-[#0D9488] font-black" style={{ fontSize: "1.3rem" }}>등록한 사용자</h3>
           <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-full px-3 py-1.5">
             <Users className="w-4 h-4 text-green-600" />
             <span className="text-green-600 font-bold" style={{ fontSize: "0.95rem" }}>{acceptedCount}명 연결</span>

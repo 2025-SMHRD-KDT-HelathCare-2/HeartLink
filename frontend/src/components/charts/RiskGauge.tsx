@@ -39,7 +39,7 @@ export function RiskGauge({ score, riskLevel }: RiskGaugeProps) {
 
   return (
     <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-      <h3 className="text-[#0A2647] font-bold mb-4" style={{ fontSize: "1.3rem" }}>
+      <h3 className="text-[#0D9488] font-bold mb-4" style={{ fontSize: "1.3rem" }}>
         위험도 점수 (0~100점, 높을수록 위험)
       </h3>
       <div className="flex flex-col items-center">
