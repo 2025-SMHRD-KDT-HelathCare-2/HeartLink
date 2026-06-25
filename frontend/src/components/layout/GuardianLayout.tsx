@@ -46,6 +46,13 @@ export function GuardianLayout({ onLogout }: GuardianLayoutProps) {
   const nickname = user?.nickname ?? user?.email?.split("@")[0] ?? "보호자";
   const initial = nickname[0] ?? "보";
 
+  // 알림 fetch 함수 분리
+  const fetchNotifications = () => {
+    api.get("/notifications/guardian")
+      .then(r => setNotifications(r.data))
+      .catch(err => console.error("알림 불러오기 실패", err));
+  };
+
   useEffect(() => {
     api.get("/guardians/patients")
       .then(r => {
@@ -54,9 +61,7 @@ export function GuardianLayout({ onLogout }: GuardianLayoutProps) {
       })
       .catch(err => console.error("환자 목록 불러오기 실패", err));
 
-    api.get("/notifications/guardian")
-      .then(r => setNotifications(r.data))
-      .catch(err => console.error("알림 불러오기 실패", err));
+    fetchNotifications();
   }, []);
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
@@ -98,7 +103,12 @@ export function GuardianLayout({ onLogout }: GuardianLayoutProps) {
     const active = screen === id;
     return (
       <button
-        onClick={() => { setScreen(id); setSidebarOpen(false); }}
+        onClick={() => {
+          // 알림함에서 나갈 때 재fetch → 배지 갱신
+          if (screen === "notifications" && id !== "notifications") fetchNotifications();
+          setScreen(id);
+          setSidebarOpen(false);
+        }}
         className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-left transition-all ${
           active ? "bg-white/20 text-white" : "text-white/60 hover:bg-white/10 hover:text-white"
         }`}
@@ -160,7 +170,7 @@ export function GuardianLayout({ onLogout }: GuardianLayoutProps) {
             onClick={() => navigate("/guardian-mypage")}
             className="flex items-center gap-3 mb-3 px-2 w-full hover:bg-white/10 rounded-xl py-1.5 transition-colors group"
           >
-            <div className="w-9 h-9 bg-[#0D9488] rounded-full flex items-center justify-center text-white text-sm font-bold">
+            <div className="w-9 h-9 bg-white/30 border-2 border-white/50 rounded-full flex items-center justify-center text-white text-sm font-bold">
               {initial}
             </div>
             <div className="text-left flex-1">
