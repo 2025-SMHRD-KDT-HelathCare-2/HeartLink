@@ -4,6 +4,7 @@ import {
   getReportList,
   getReport,
   generateReport,
+  generateGuardianReport,
   getTTS,
   getPatientReportList,
   getPatientReport,
@@ -15,6 +16,7 @@ const router = Router();
 
 router.get('/',                              auth, getReportList);
 router.post('/generate',                     auth, generateReport);
+router.post('/generate-for/:userId',         auth, generateGuardianReport);
 router.get('/patient/:userId',               auth, getPatientReportList);
 router.get('/patient/:userId/:reportId',     auth, getPatientReport);
 router.get('/guardian/:userId',              auth, getGuardianReport);
