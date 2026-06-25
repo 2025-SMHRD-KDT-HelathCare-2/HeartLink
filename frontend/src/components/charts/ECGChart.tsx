@@ -49,7 +49,7 @@ export function ECGChart({ data, rPeaks, zoom = 1, revealPercent, sampleRate = 2
   return (
     <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-[#0A2647] font-bold" style={{ fontSize: "1.3rem" }}>심장 뛰는 모양 그래프</h3>
+        <h3 className="text-[#0D9488] font-bold" style={{ fontSize: "1.3rem" }}>심장 뛰는 모양 그래프</h3>
         <span className="text-gray-400 font-bold" style={{ fontSize: "0.95rem" }}>
           {safePage + 1} / {totalPages} 페이지
         </span>
@@ -100,7 +100,7 @@ export function ECGChart({ data, rPeaks, zoom = 1, revealPercent, sampleRate = 2
               ))}
               <Line
                 type="monotone" dataKey="y"
-                stroke="#0E8080" strokeWidth={1.5}
+                stroke="#0D9488" strokeWidth={1.5}
                 dot={false} isAnimationActive={false}
               />
             </LineChart>
@@ -125,7 +125,7 @@ export function ECGChart({ data, rPeaks, zoom = 1, revealPercent, sampleRate = 2
               style={{
                 width: i === safePage ? 20 : 8,
                 height: 8,
-                backgroundColor: i === safePage ? "#0E8080" : "#d1d5db",
+                backgroundColor: i === safePage ? "#0D9488" : "#d1d5db",
               }}
             />
           ))}
@@ -142,7 +142,7 @@ export function ECGChart({ data, rPeaks, zoom = 1, revealPercent, sampleRate = 2
 
       <div className="flex items-center gap-5 mt-3 font-bold flex-wrap" style={{ fontSize: "0.95rem", color: "#6b7280" }}>
         <div className="flex items-center gap-2">
-          <div className="w-6 h-0.5 bg-[#0E8080]" />
+          <div className="w-6 h-0.5 bg-[#0D9488]" />
           <span>심전도 파형</span>
         </div>
         <div className="flex items-center gap-2">

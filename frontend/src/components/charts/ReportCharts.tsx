@@ -5,7 +5,7 @@ import {
   ReferenceLine
 } from "recharts";
 
-export const ARRHYTHMIA_COLORS = ["#0E8080", "#0A2647", "#DC2626", "#D97706", "#16A34A"];
+export const ARRHYTHMIA_COLORS = ["#0D9488", "#0D9488", "#DC2626", "#D97706", "#16A34A"];
 
 export const RISK_COLOR_MAP: Record<string, string> = {
   high: "#DC2626", mid: "#D97706", low: "#16A34A",
@@ -18,7 +18,7 @@ export const RISK_COLOR_MAP: Record<string, string> = {
 export function HourlyHeartRateChart({ data }: { data: Array<{ time: string; bpm: number }> }) {
   return (
     <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-      <h3 className="text-[#0A2647] font-bold mb-4" style={{ fontSize: "1.2rem" }}>시간대별 심박수</h3>
+      <h3 className="text-[#0D9488] font-bold mb-4" style={{ fontSize: "1.2rem" }}>시간대별 심박수</h3>
       <div style={{ height: 200 }}>
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
@@ -26,8 +26,8 @@ export function HourlyHeartRateChart({ data }: { data: Array<{ time: string; bpm
             <XAxis dataKey="time" tick={{ fontSize: 11, fontWeight: 700 }} />
             <YAxis tick={{ fontSize: 11, fontWeight: 700 }} />
             <Tooltip />
-            <Line type="monotone" dataKey="bpm" stroke="#0E8080" strokeWidth={2.5}
-              dot={{ r: 4, fill: "#0E8080" }} isAnimationActive={false} name="심박수 (BPM)" />
+            <Line type="monotone" dataKey="bpm" stroke="#0D9488" strokeWidth={2.5}
+              dot={{ r: 4, fill: "#0D9488" }} isAnimationActive={false} name="심박수 (BPM)" />
           </LineChart>
         </ResponsiveContainer>
       </div>
@@ -45,7 +45,7 @@ export function RiskTimelineChart({ data }: { data: Array<{ time: string; riskLe
 
   return (
     <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-      <h3 className="text-[#0A2647] font-bold mb-2" style={{ fontSize: "1.2rem" }}>시간대별 위험도</h3>
+      <h3 className="text-[#0D9488] font-bold mb-2" style={{ fontSize: "1.2rem" }}>시간대별 위험도</h3>
       <div className="flex gap-3 mb-3">
         {[["#16A34A", "양호"], ["#D97706", "주의"], ["#DC2626", "위험"]].map(([c, l]) => (
           <div key={l} className="flex items-center gap-1">
@@ -74,7 +74,7 @@ export function RiskTimelineChart({ data }: { data: Array<{ time: string; riskLe
 export function ArrhythmiaDonutChart({ data }: { data: Array<{ type: string; count: number }> }) {
   return (
     <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-      <h3 className="text-[#0A2647] font-bold mb-4" style={{ fontSize: "1.2rem" }}>부정맥 종류별 분포</h3>
+      <h3 className="text-[#0D9488] font-bold mb-4" style={{ fontSize: "1.2rem" }}>부정맥 종류별 분포</h3>
       <div className="flex items-center gap-4">
         <div style={{ width: 150, height: 150 }}>
           <ResponsiveContainer width="100%" height="100%">
@@ -106,7 +106,7 @@ export function ArrhythmiaDonutChart({ data }: { data: Array<{ type: string; cou
 export function WeeklyHeartRateChart({ data }: { data: Array<{ day: string; avgBpm: number; riskLevel: string }> }) {
   return (
     <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-      <h3 className="text-[#0A2647] font-bold mb-4" style={{ fontSize: "1.2rem" }}>요일별 평균 심박수</h3>
+      <h3 className="text-[#0D9488] font-bold mb-4" style={{ fontSize: "1.2rem" }}>요일별 평균 심박수</h3>
       <div style={{ height: 200 }}>
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
@@ -116,7 +116,7 @@ export function WeeklyHeartRateChart({ data }: { data: Array<{ day: string; avgB
             <Tooltip />
             <Bar dataKey="avgBpm" radius={[6, 6, 0, 0]} name="평균 심박수 (BPM)">
               {data.map((d, i) => (
-                <Cell key={i} fill={RISK_COLOR_MAP[d.riskLevel] ?? "#0E8080"} />
+                <Cell key={i} fill={RISK_COLOR_MAP[d.riskLevel] ?? "#0D9488"} />
               ))}
             </Bar>
           </BarChart>
@@ -138,7 +138,7 @@ export function WeeklyHeartRateChart({ data }: { data: Array<{ day: string; avgB
 export function WeeklyRiskDistributionChart({ data }: { data: Array<{ day: string; low: number; mid: number; high: number }> }) {
   return (
     <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-      <h3 className="text-[#0A2647] font-bold mb-4" style={{ fontSize: "1.2rem" }}>요일별 위험도 분포</h3>
+      <h3 className="text-[#0D9488] font-bold mb-4" style={{ fontSize: "1.2rem" }}>요일별 위험도 분포</h3>
       <div style={{ height: 200 }}>
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
@@ -161,7 +161,7 @@ export function WeeklyRiskDistributionChart({ data }: { data: Array<{ day: strin
 export function HRVTrendChart({ data }: { data: Array<{ day: string; rmssd: number; sdnn: number }> }) {
   return (
     <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-      <h3 className="text-[#0A2647] font-bold mb-2" style={{ fontSize: "1.2rem" }}>주간 HRV 추이</h3>
+      <h3 className="text-[#0D9488] font-bold mb-2" style={{ fontSize: "1.2rem" }}>주간 HRV 추이</h3>
       <p className="text-gray-400 font-bold mb-4" style={{ fontSize: "0.85rem" }}>HRV(심박 변이도)가 높을수록 심장이 안정적입니다.</p>
       <div style={{ height: 200 }}>
         <ResponsiveContainer width="100%" height="100%">
@@ -171,9 +171,9 @@ export function HRVTrendChart({ data }: { data: Array<{ day: string; rmssd: numb
             <YAxis tick={{ fontSize: 11, fontWeight: 700 }} />
             <Tooltip />
             <Legend />
-            <Line type="monotone" dataKey="rmssd" stroke="#0E8080" strokeWidth={2.5}
+            <Line type="monotone" dataKey="rmssd" stroke="#0D9488" strokeWidth={2.5}
               dot={{ r: 4 }} isAnimationActive={false} name="RMSSD" />
-            <Line type="monotone" dataKey="sdnn" stroke="#0A2647" strokeWidth={2.5}
+            <Line type="monotone" dataKey="sdnn" stroke="#0D9488" strokeWidth={2.5}
               dot={{ r: 4 }} isAnimationActive={false} name="SDNN" strokeDasharray="5 5" />
           </LineChart>
         </ResponsiveContainer>

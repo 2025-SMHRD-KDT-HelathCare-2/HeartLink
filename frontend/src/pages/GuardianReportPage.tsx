@@ -72,7 +72,7 @@ export function GuardianReportPage({ patients, selectedUserId, onSelectUser }: G
   if (patients.length === 0) {
     return (
       <div className="max-w-2xl mx-auto p-6">
-        <h1 className="font-bold text-[#0A2647] mb-6" style={{ fontSize: "1.9rem" }}>건강 결과 보고서</h1>
+        <h1 className="font-bold text-[#0D9488] mb-6" style={{ fontSize: "1.9rem" }}>건강 결과 보고서</h1>
         <div className="bg-white rounded-2xl p-12 shadow-sm border border-gray-100 text-center">
           <p className="text-gray-400 font-bold" style={{ fontSize: "1.1rem" }}>아직 연결된 사용자가 없어요. 마이페이지에서 사용자를 등록해 보세요.</p>
         </div>
@@ -100,7 +100,7 @@ export function GuardianReportPage({ patients, selectedUserId, onSelectUser }: G
   return (
     <div className="max-w-2xl mx-auto p-6">
       <div className="mb-6">
-        <h1 className="font-bold text-[#0A2647]" style={{ fontSize: "1.9rem" }}>건강 결과 보고서</h1>
+        <h1 className="font-bold text-[#0D9488]" style={{ fontSize: "1.9rem" }}>건강 결과 보고서</h1>
       </div>
 
       {/* 사용자 선택 탭 */}
@@ -117,7 +117,7 @@ export function GuardianReportPage({ patients, selectedUserId, onSelectUser }: G
               <button key={p.user_id}
                 onClick={() => setSelectedIdx(i)}
                 className={`flex-1 flex flex-col items-center gap-1 py-4 transition-all border-b-4 ${
-                  active ? "border-[#0A2647] bg-blue-50" : "border-transparent hover:bg-gray-50"
+                  active ? "border-[#0D9488] bg-blue-50" : "border-transparent hover:bg-gray-50"
                 } ${i !== 0 ? "border-l border-gray-100" : ""}`}
                 style={{ minHeight: 80 }}>
                 <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold"
@@ -160,7 +160,7 @@ export function GuardianReportPage({ patients, selectedUserId, onSelectUser }: G
         </div>
         {recordsLoading ? (
           <div className="flex justify-center py-8">
-            <div className="w-6 h-6 border-2 border-[#0E8080] border-t-transparent rounded-full animate-spin" />
+            <div className="w-6 h-6 border-2 border-[#0D9488] border-t-transparent rounded-full animate-spin" />
           </div>
         ) : records.length === 0 ? (
           <p className="text-gray-400 font-bold text-center py-8" style={{ fontSize: "0.95rem" }}>측정 기록이 없습니다.</p>
@@ -220,7 +220,7 @@ export function GuardianReportPage({ patients, selectedUserId, onSelectUser }: G
       <button
         onClick={handleGuardianReport}
         disabled={generating}
-        className="w-full flex items-center justify-center gap-3 py-5 bg-gradient-to-r from-[#0A2647] to-[#0E8080] text-white rounded-2xl hover:opacity-90 transition-all font-black mb-3 shadow-lg disabled:opacity-50"
+        className="w-full flex items-center justify-center gap-3 py-5 bg-gradient-to-r from-[#0D9488] to-[#0D9488] text-white rounded-2xl hover:opacity-90 transition-all font-black mb-3 shadow-lg disabled:opacity-50"
         style={{ minHeight: 68, fontSize: "1.2rem" }}
       >
         <Sparkles className="w-7 h-7" />
@@ -230,7 +230,7 @@ export function GuardianReportPage({ patients, selectedUserId, onSelectUser }: G
       {/* 리포트 기록 보기 */}
       <button
         onClick={() => navigate(`/guardian-report-history/${patient.user_id}`)}
-        className="w-full flex items-center justify-center gap-3 py-4 border-2 border-[#0A2647] text-[#0A2647] rounded-2xl hover:bg-[#0A2647]/5 transition-all font-bold mb-5"
+        className="w-full flex items-center justify-center gap-3 py-4 border-2 border-[#0D9488] text-[#0D9488] rounded-2xl hover:bg-[#0D9488]/5 transition-all font-bold mb-5"
         style={{ minHeight: 56, fontSize: "1.1rem" }}
       >
         <FileText className="w-5 h-5" />

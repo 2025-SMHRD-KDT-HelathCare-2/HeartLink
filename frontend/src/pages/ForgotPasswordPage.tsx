@@ -68,7 +68,7 @@ export function ForgotPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0A2647] via-[#144272] to-[#0E8080] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-[#0D9488] via-[#0F766E] to-[#0D9488] flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-24 h-24 bg-white/20 rounded-full mb-4 backdrop-blur-sm">
@@ -84,7 +84,7 @@ export function ForgotPasswordPage() {
             <ChevronLeft className="w-5 h-5" />로그인으로 돌아가기
           </button>
 
-          <h2 className="text-[#0A2647] font-black mb-2" style={{ fontSize: "1.6rem" }}>비밀번호를 잊으셨나요?</h2>
+          <h2 className="text-[#0D9488] font-black mb-2" style={{ fontSize: "1.6rem" }}>비밀번호를 잊으셨나요?</h2>
           <p className="text-gray-500 mb-6 font-bold" style={{ fontSize: "1.05rem" }}>
             {step === "email"
               ? <>가입하신 이메일 주소를 입력해 주세요.<br />비밀번호 재설정 메일을 보내드릴게요.</>
@@ -99,14 +99,14 @@ export function ForgotPasswordPage() {
                   <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-400" />
                   <input type="email" placeholder="example@email.com" value={email}
                     onChange={e => { setEmail(e.target.value); setError(""); }}
-                    className="w-full pl-12 pr-4 py-4 border border-gray-200 rounded-xl focus:outline-none focus:border-[#0E8080] bg-gray-50 font-bold"
+                    className="w-full pl-12 pr-4 py-4 border border-gray-200 rounded-xl focus:outline-none focus:border-[#0D9488] bg-gray-50 font-bold"
                     style={{ minHeight: 56, fontSize: "1.1rem" }} />
                 </div>
                 {error && <p className="text-red-500 mt-1 font-bold" style={{ fontSize: "1rem" }}>{error}</p>}
               </div>
 
               <button type="submit" disabled={submitting}
-                className="w-full py-5 bg-gradient-to-r from-[#0A2647] to-[#0E8080] text-white rounded-xl hover:opacity-90 active:scale-95 transition-all disabled:opacity-50 font-bold"
+                className="w-full py-5 bg-gradient-to-r from-[#0D9488] to-[#0D9488] text-white rounded-xl hover:opacity-90 active:scale-95 transition-all disabled:opacity-50 font-bold"
                 style={{ minHeight: 60, fontSize: "1.2rem" }}>
                 {submitting ? "확인 중..." : "재설정 메일 보내기"}
               </button>
@@ -123,14 +123,14 @@ export function ForgotPasswordPage() {
                   <ShieldCheck className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-400" />
                   <input type="text" placeholder="인증번호 6자리" value={code}
                     onChange={e => { setCode(e.target.value.replace(/[^0-9]/g, "")); setError(""); }}
-                    className="w-full pl-12 pr-4 py-4 border border-gray-200 rounded-xl focus:outline-none focus:border-[#0E8080] bg-gray-50 font-bold"
+                    className="w-full pl-12 pr-4 py-4 border border-gray-200 rounded-xl focus:outline-none focus:border-[#0D9488] bg-gray-50 font-bold"
                     style={{ minHeight: 56, fontSize: "1.1rem" }} />
                 </div>
                 {error && <p className="text-red-500 mt-1 font-bold" style={{ fontSize: "1rem" }}>{error}</p>}
               </div>
 
               <button type="submit" disabled={verifying}
-                className="w-full py-5 bg-gradient-to-r from-[#0A2647] to-[#0E8080] text-white rounded-xl hover:opacity-90 active:scale-95 transition-all disabled:opacity-50 font-bold"
+                className="w-full py-5 bg-gradient-to-r from-[#0D9488] to-[#0D9488] text-white rounded-xl hover:opacity-90 active:scale-95 transition-all disabled:opacity-50 font-bold"
                 style={{ minHeight: 60, fontSize: "1.2rem" }}>
                 {verifying ? "확인 중..." : "인증번호 확인"}
               </button>

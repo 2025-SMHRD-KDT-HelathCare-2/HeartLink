@@ -48,7 +48,7 @@ export function UserLayout({ onLogout }: { onLogout: () => void }) {
     <div className="min-h-screen bg-[#F4F7FA] flex flex-col">
 
       {/* 상단 헤더 */}
-      <header className="bg-[#0A2647] text-white px-5 py-4 flex items-center justify-between sticky top-0 z-30 shadow-lg">
+      <header className="bg-[#0D9488] text-white px-5 py-4 flex items-center justify-between sticky top-0 z-30 shadow-lg">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
             <Heart className="w-7 h-7 text-white fill-current" />
@@ -74,7 +74,8 @@ export function UserLayout({ onLogout }: { onLogout: () => void }) {
           </button>
           <button onClick={() => navigate("/mypage")}
             className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-white/10 transition-colors group">
-            <div className="w-10 h-10 bg-[#0E8080] rounded-full flex items-center justify-center text-white font-black" style={{ fontSize: "1.1rem" }}>
+            {/* 헤더 배경색과 구분되도록 white/30으로 변경 */}
+            <div className="w-10 h-10 bg-white/30 border-2 border-white/50 rounded-full flex items-center justify-center text-white font-black" style={{ fontSize: "1.1rem" }}>
               {nickname[0]}
             </div>
             <span className="text-white font-black" style={{ fontSize: "1.1rem" }}>{nickname}</span>
@@ -90,7 +91,7 @@ export function UserLayout({ onLogout }: { onLogout: () => void }) {
 
       {/* 모바일 드롭다운 */}
       {menuOpen && (
-        <div className="bg-[#0A2647] border-t border-white/10 px-4 pb-4 lg:hidden z-20">
+        <div className="bg-[#0D9488] border-t border-white/10 px-4 pb-4 lg:hidden z-20">
           <button onClick={() => { setMenuOpen(false); navigate("/notifications"); }}
             className="w-full flex items-center gap-3 py-4 border-b border-white/10 mb-3">
             <div className="relative">
@@ -102,7 +103,8 @@ export function UserLayout({ onLogout }: { onLogout: () => void }) {
           </button>
           <button onClick={() => { setMenuOpen(false); navigate("/mypage"); }}
             className="w-full flex items-center gap-3 py-4 border-b border-white/10 mb-3">
-            <div className="w-10 h-10 bg-[#0E8080] rounded-full flex items-center justify-center text-white font-black" style={{ fontSize: "1.1rem" }}>
+            {/* 모바일도 동일하게 */}
+            <div className="w-10 h-10 bg-white/30 border-2 border-white/50 rounded-full flex items-center justify-center text-white font-black" style={{ fontSize: "1.1rem" }}>
               {nickname[0]}
             </div>
             <span className="text-white font-black" style={{ fontSize: "1.1rem" }}>{nickname}</span>
@@ -139,8 +141,8 @@ export function UserLayout({ onLogout }: { onLogout: () => void }) {
           <button key={item.id} onClick={() => setScreen(item.id)}
             className={`flex flex-col items-center justify-center gap-3 py-6 rounded-2xl border-4 transition-all font-black shadow-sm ${
               screen === item.id
-                ? "bg-[#0A2647] border-[#0A2647] text-white shadow-lg"
-                : "bg-white border-gray-200 text-gray-800 hover:border-[#0A2647]/40"
+                ? "bg-[#0D9488] border-[#0D9488] text-white shadow-lg"
+                : "bg-white border-gray-200 text-gray-800 hover:border-[#0D9488]/40"
             } ${item.id === "ecg" ? "col-span-2" : ""}`}
             style={{ minHeight: item.id === "ecg" ? 100 : 130 }}>
             <span style={{ fontSize: item.id === "ecg" ? "2rem" : "2.5rem" }}>{item.emoji}</span>

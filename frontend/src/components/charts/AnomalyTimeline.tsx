@@ -20,7 +20,7 @@ export function AnomalyTimeline({ anomalies }: AnomalyTimelineProps) {
 
   return (
     <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-      <h3 className="text-[#0A2647] font-bold mb-5" style={{ fontSize: "1.3rem" }}>
+      <h3 className="text-[#0D9488] font-bold mb-5" style={{ fontSize: "1.3rem" }}>
         오늘 이상한 신호가 감지된 시간대
       </h3>
       <div className="relative">

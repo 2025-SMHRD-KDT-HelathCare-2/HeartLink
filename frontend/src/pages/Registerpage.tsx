@@ -47,8 +47,8 @@ function RoleToast({ role }: { role: Role }) {
     <div
       className={`flex items-start gap-3 px-4 py-3 rounded-xl border font-bold mb-4 transition-all duration-500 ${visible ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-1"
         } ${isUser
-          ? "bg-[#0E8080]/10 border-[#0E8080]/30 text-[#0E8080]"
-          : "bg-[#0A2647]/10 border-[#0A2647]/30 text-[#0A2647]"
+          ? "bg-[#0D9488]/10 border-[#0D9488]/30 text-[#0D9488]"
+          : "bg-[#0D9488]/10 border-[#0D9488]/30 text-[#0D9488]"
         }`}
       style={{ fontSize: "0.95rem" }}
     >
@@ -68,12 +68,12 @@ function SuccessModal({ onClose }: { onClose: () => void }) {
         <div className="flex items-center justify-center w-20 h-20 bg-green-100 rounded-full mx-auto mb-5">
           <CheckCircle className="w-12 h-12 text-green-500" />
         </div>
-        <h2 className="text-[#0A2647] font-black mb-3" style={{ fontSize: "1.6rem" }}>가입 완료!</h2>
+        <h2 className="text-[#0D9488] font-black mb-3" style={{ fontSize: "1.6rem" }}>가입 완료!</h2>
         <p className="text-gray-600 font-bold mb-7 leading-relaxed" style={{ fontSize: "1.1rem" }}>
           HeartLink 회원이 되셨습니다.<br />로그인 후 서비스를 이용하세요.
         </p>
         <button onClick={onClose}
-          className="w-full py-4 bg-linear-to-r from-[#0A2647] to-[#0E8080] text-white rounded-xl font-bold hover:opacity-90 transition-all"
+          className="w-full py-4 bg-linear-to-r from-[#0D9488] to-[#0D9488] text-white rounded-xl font-bold hover:opacity-90 transition-all"
           style={{ fontSize: "1.15rem" }}>
           로그인하러 가기
         </button>
@@ -151,7 +151,7 @@ export function RegisterPage() {
     }
   };
 
-  const inputClass = "w-full pl-12 pr-4 py-4 border border-gray-200 rounded-xl focus:outline-none focus:border-[#0E8080] bg-gray-50 font-bold";
+  const inputClass = "w-full pl-12 pr-4 py-4 border border-gray-200 rounded-xl focus:outline-none focus:border-[#0D9488] bg-gray-50 font-bold";
   const inputStyle = { minHeight: 56, fontSize: "1.1rem" } as const;
   const errStyle = { fontSize: "1rem" } as const;
 
@@ -159,7 +159,7 @@ export function RegisterPage() {
     <>
       {showSuccess && <SuccessModal onClose={() => navigate("/login")} />}
 
-      <div className="min-h-screen bg-linear-to-br from-[#0A2647] via-[#144272] to-[#0E8080] flex items-center justify-center p-4 py-10">
+      <div className="min-h-screen bg-linear-to-br from-[#0D9488] via-[#0F766E] to-[#0D9488] flex items-center justify-center p-4 py-10">
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-24 h-24 bg-white/20 rounded-full mb-4 backdrop-blur-sm">
@@ -179,12 +179,12 @@ export function RegisterPage() {
               <FieldLabel text="회원 유형" required />
               <div className="flex gap-3">
                 <button type="button" onClick={() => setRole("user")}
-                  className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all font-bold ${role === "user" ? "border-[#0E8080] bg-[#0E8080]/10 text-[#0E8080]" : "border-gray-200 text-gray-500"}`}
+                  className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all font-bold ${role === "user" ? "border-[#0D9488] bg-[#0D9488]/10 text-[#0D9488]" : "border-gray-200 text-gray-500"}`}
                   style={{ minHeight: 56, fontSize: "1.05rem" }}>
                   <User className="w-6 h-6" />사용자
                 </button>
                 <button type="button" onClick={() => setRole("guardian")}
-                  className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all font-bold ${role === "guardian" ? "border-[#0A2647] bg-[#0A2647]/10 text-[#0A2647]" : "border-gray-200 text-gray-500"}`}
+                  className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all font-bold ${role === "guardian" ? "border-[#0D9488] bg-[#0D9488]/10 text-[#0D9488]" : "border-gray-200 text-gray-500"}`}
                   style={{ minHeight: 56, fontSize: "1.05rem" }}>
                   <Shield className="w-6 h-6" />가족·보호자
                 </button>
@@ -201,7 +201,7 @@ export function RegisterPage() {
               )}
 
               <div className="pt-1">
-                <h2 className="text-[#0A2647] font-bold mb-4 pb-2 border-b-2 border-gray-100" style={{ fontSize: "1.2rem" }}>기본 정보</h2>
+                <h2 className="text-[#0D9488] font-bold mb-4 pb-2 border-b-2 border-gray-100" style={{ fontSize: "1.2rem" }}>기본 정보</h2>
 
                 {/* 전화번호 인증 (일반 가입) */}
                 <PhoneVerification
@@ -227,7 +227,7 @@ export function RegisterPage() {
                     <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-400" />
                     <input type={showPassword ? "text" : "password"} placeholder="8글자 이상 입력" value={form.password}
                       onChange={(e) => setField("password", e.target.value)}
-                      className="w-full pl-12 pr-14 py-4 border border-gray-200 rounded-xl focus:outline-none focus:border-[#0E8080] bg-gray-50 font-bold"
+                      className="w-full pl-12 pr-14 py-4 border border-gray-200 rounded-xl focus:outline-none focus:border-[#0D9488] bg-gray-50 font-bold"
                       style={inputStyle} />
                     <button type="button" onClick={() => setShowPassword(!showPassword)}
                       className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
@@ -260,7 +260,7 @@ export function RegisterPage() {
 
               {role === "user" && (
                 <div className="pt-3">
-                  <h2 className="text-[#0A2647] font-bold mb-1 pb-2 border-b-2 border-gray-100" style={{ fontSize: "1.2rem" }}>건강 정보</h2>
+                  <h2 className="text-[#0D9488] font-bold mb-1 pb-2 border-b-2 border-gray-100" style={{ fontSize: "1.2rem" }}>건강 정보</h2>
                   <p className="text-gray-400 mb-4 font-bold" style={{ fontSize: "0.95rem" }}>선택 입력이며, 나중에 프로필에서 추가할 수 있어요.</p>
 
                   <div className="mb-5">
@@ -277,10 +277,10 @@ export function RegisterPage() {
                     <FieldLabel text="성별" />
                     <div className="flex gap-3">
                       <button type="button" onClick={() => setField("gender", "M")}
-                        className={`flex-1 py-3 rounded-xl border-2 transition-all font-bold ${form.gender === "M" ? "border-[#0E8080] bg-[#0E8080]/10 text-[#0E8080]" : "border-gray-200 text-gray-500"}`}
+                        className={`flex-1 py-3 rounded-xl border-2 transition-all font-bold ${form.gender === "M" ? "border-[#0D9488] bg-[#0D9488]/10 text-[#0D9488]" : "border-gray-200 text-gray-500"}`}
                         style={{ minHeight: 56, fontSize: "1.05rem" }}>남성</button>
                       <button type="button" onClick={() => setField("gender", "F")}
-                        className={`flex-1 py-3 rounded-xl border-2 transition-all font-bold ${form.gender === "F" ? "border-[#0E8080] bg-[#0E8080]/10 text-[#0E8080]" : "border-gray-200 text-gray-500"}`}
+                        className={`flex-1 py-3 rounded-xl border-2 transition-all font-bold ${form.gender === "F" ? "border-[#0D9488] bg-[#0D9488]/10 text-[#0D9488]" : "border-gray-200 text-gray-500"}`}
                         style={{ minHeight: 56, fontSize: "1.05rem" }}>여성</button>
                     </div>
                   </div>
@@ -288,7 +288,7 @@ export function RegisterPage() {
               )}
 
               <button type="submit" disabled={submitting}
-                className="w-full py-5 bg-linear-to-r from-[#0A2647] to-[#0E8080] text-white rounded-xl hover:opacity-90 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-bold"
+                className="w-full py-5 bg-linear-to-r from-[#0D9488] to-[#0D9488] text-white rounded-xl hover:opacity-90 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-bold"
                 style={{ minHeight: 60, fontSize: "1.2rem" }}>
                 {submitting ? "가입 처리 중..." : "회원가입"}
               </button>
@@ -300,7 +300,7 @@ export function RegisterPage() {
 
             <div className="mt-6 pt-6 border-t border-gray-100 text-center">
               <span className="text-gray-500 font-bold" style={{ fontSize: "1rem" }}>이미 회원이신가요? </span>
-              <button onClick={() => navigate("/login")} className="text-[#0E8080] font-bold underline" style={{ fontSize: "1rem" }}>
+              <button onClick={() => navigate("/login")} className="text-[#0D9488] font-bold underline" style={{ fontSize: "1rem" }}>
                 로그인
               </button>
             </div>

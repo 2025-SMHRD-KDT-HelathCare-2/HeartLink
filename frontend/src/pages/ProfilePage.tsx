@@ -41,7 +41,7 @@ export function ProfilePage() {
   return (
     <div className="max-w-2xl mx-auto p-6">
       <div className="mb-8">
-        <h1 className="font-bold text-[#0A2647]" style={{ fontSize: "1.9rem" }}>건강 정보 등록</h1>
+        <h1 className="font-bold text-[#0D9488]" style={{ fontSize: "1.9rem" }}>건강 정보 등록</h1>
         <p className="text-gray-600 mt-2 font-bold" style={{ fontSize: "1.1rem" }}>
           입력하신 정보로 더 정확한 심장 건강 분석을 해드립니다.
         </p>
@@ -52,7 +52,7 @@ export function ProfilePage() {
       <form onSubmit={handleSave} className="space-y-6">
         {/* Basic info */}
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-          <h3 className="text-[#0A2647] font-bold mb-5" style={{ fontSize: "1.3rem" }}>기본 신체 정보</h3>
+          <h3 className="text-[#0D9488] font-bold mb-5" style={{ fontSize: "1.3rem" }}>기본 신체 정보</h3>
           <div className="grid grid-cols-2 gap-5">
             <div>
               <label className="block text-gray-700 mb-2 font-bold" style={{ fontSize: "1.1rem" }}>나이 (세)</label>
@@ -63,7 +63,7 @@ export function ProfilePage() {
                 placeholder="예: 72"
                 value={form.age}
                 onChange={e => setForm({ ...form, age: e.target.value })}
-                className="w-full px-4 py-4 border border-gray-200 rounded-xl focus:outline-none focus:border-[#0E8080] bg-gray-50 font-bold"
+                className="w-full px-4 py-4 border border-gray-200 rounded-xl focus:outline-none focus:border-[#0D9488] bg-gray-50 font-bold"
                 style={{ minHeight: 56, fontSize: "1.15rem" }}
               />
             </div>
@@ -76,7 +76,7 @@ export function ProfilePage() {
                     key={g}
                     type="button"
                     onClick={() => setForm({ ...form, gender: g })}
-                    className={`flex-1 py-4 rounded-xl border-2 transition-all font-bold ${form.gender === g ? "border-[#0E8080] bg-[#0E8080]/10 text-[#0E8080]" : "border-gray-200 text-gray-500"}`}
+                    className={`flex-1 py-4 rounded-xl border-2 transition-all font-bold ${form.gender === g ? "border-[#0D9488] bg-[#0D9488]/10 text-[#0D9488]" : "border-gray-200 text-gray-500"}`}
                     style={{ minHeight: 56, fontSize: "1rem" }}
                   >
                     {g}
@@ -92,7 +92,7 @@ export function ProfilePage() {
                 placeholder="예: 165"
                 value={form.height}
                 onChange={e => setForm({ ...form, height: e.target.value })}
-                className="w-full px-4 py-4 border border-gray-200 rounded-xl focus:outline-none focus:border-[#0E8080] bg-gray-50 font-bold"
+                className="w-full px-4 py-4 border border-gray-200 rounded-xl focus:outline-none focus:border-[#0D9488] bg-gray-50 font-bold"
                 style={{ minHeight: 56, fontSize: "1.15rem" }}
               />
             </div>
@@ -104,7 +104,7 @@ export function ProfilePage() {
                 placeholder="예: 60"
                 value={form.weight}
                 onChange={e => setForm({ ...form, weight: e.target.value })}
-                className="w-full px-4 py-4 border border-gray-200 rounded-xl focus:outline-none focus:border-[#0E8080] bg-gray-50 font-bold"
+                className="w-full px-4 py-4 border border-gray-200 rounded-xl focus:outline-none focus:border-[#0D9488] bg-gray-50 font-bold"
                 style={{ minHeight: 56, fontSize: "1.15rem" }}
               />
             </div>
@@ -113,7 +113,7 @@ export function ProfilePage() {
 
         {/* Diseases */}
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-          <h3 className="text-[#0A2647] font-bold mb-2" style={{ fontSize: "1.3rem" }}>현재 앓고 계신 질병</h3>
+          <h3 className="text-[#0D9488] font-bold mb-2" style={{ fontSize: "1.3rem" }}>현재 앓고 계신 질병</h3>
           <p className="text-gray-500 mb-4 font-bold" style={{ fontSize: "1rem" }}>현재 앓고 계신 병을 모두 선택해 주세요. 없으면 선택 안 하셔도 됩니다.</p>
           <div className="flex flex-wrap gap-3">
             {DISEASES.map(d => (
@@ -121,7 +121,7 @@ export function ProfilePage() {
                 key={d}
                 type="button"
                 onClick={() => toggleDisease(d)}
-                className={`px-4 py-3 rounded-xl border-2 transition-all font-bold ${form.diseases.includes(d) ? "border-[#0E8080] bg-[#0E8080]/10 text-[#0E8080]" : "border-gray-200 text-gray-600 hover:border-gray-300"}`}
+                className={`px-4 py-3 rounded-xl border-2 transition-all font-bold ${form.diseases.includes(d) ? "border-[#0D9488] bg-[#0D9488]/10 text-[#0D9488]" : "border-gray-200 text-gray-600 hover:border-gray-300"}`}
                 style={{ minHeight: 52, fontSize: "1rem" }}
               >
                 {form.diseases.includes(d) && <span className="mr-1">✓</span>}
@@ -133,7 +133,7 @@ export function ProfilePage() {
 
         {/* Medications */}
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-          <h3 className="text-[#0A2647] font-bold mb-2" style={{ fontSize: "1.3rem" }}>현재 드시는 약</h3>
+          <h3 className="text-[#0D9488] font-bold mb-2" style={{ fontSize: "1.3rem" }}>현재 드시는 약</h3>
           <p className="text-gray-500 mb-4 font-bold" style={{ fontSize: "1rem" }}>약 봉투나 약 상자에 적힌 약 이름을 입력하면 목록에서 선택할 수 있어요. 잘 모르시면 병원 진료 기록을 참고해 주세요.</p>
           <div className="relative">
             <input
@@ -141,7 +141,7 @@ export function ProfilePage() {
               placeholder="약 이름 검색"
               value={form.medSearch}
               onChange={e => setForm({ ...form, medSearch: e.target.value })}
-              className="w-full px-4 py-4 border border-gray-200 rounded-xl focus:outline-none focus:border-[#0E8080] bg-gray-50 font-bold"
+              className="w-full px-4 py-4 border border-gray-200 rounded-xl focus:outline-none focus:border-[#0D9488] bg-gray-50 font-bold"
               style={{ minHeight: 56, fontSize: "1.1rem" }}
             />
             {form.medSearch && filteredMeds.length > 0 && (
@@ -185,7 +185,7 @@ export function ProfilePage() {
               type="checkbox"
               checked={form.agreeMedical}
               onChange={e => setForm({ ...form, agreeMedical: e.target.checked })}
-              className="mt-1 w-6 h-6 accent-[#0E8080]"
+              className="mt-1 w-6 h-6 accent-[#0D9488]"
             />
             <span className="text-amber-800 leading-relaxed font-bold" style={{ fontSize: "1.05rem" }}>
               건강 정보 수집·이용에 동의합니다. (필수)<br />
@@ -198,7 +198,7 @@ export function ProfilePage() {
 
         <button
           type="submit"
-          className="w-full py-5 bg-gradient-to-r from-[#0A2647] to-[#0E8080] text-white rounded-xl hover:opacity-90 transition-all flex items-center justify-center gap-2 font-bold"
+          className="w-full py-5 bg-gradient-to-r from-[#0D9488] to-[#0D9488] text-white rounded-xl hover:opacity-90 transition-all flex items-center justify-center gap-2 font-bold"
           style={{ minHeight: 60, fontSize: "1.2rem" }}
         >
           {saved ? (

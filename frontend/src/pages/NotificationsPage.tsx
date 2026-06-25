@@ -52,8 +52,8 @@ export function NotificationsPage({ onViewReport }: NotificationsPageProps) {
     <div className="max-w-2xl mx-auto p-6">
       <div className="mb-6">
         <div className="flex items-center gap-2">
-          <Bell className="w-7 h-7 text-[#0A2647]" />
-          <h1 className="font-black text-[#0A2647]" style={{ fontSize: "1.9rem" }}>주간 위험도 알림함</h1>
+          <Bell className="w-7 h-7 text-[#0D9488]" />
+          <h1 className="font-black text-[#0D9488]" style={{ fontSize: "1.9rem" }}>주간 위험도 알림함</h1>
         </div>
         <p className="text-gray-500 mt-2 font-bold" style={{ fontSize: "1.05rem" }}>최근 7일간 연결된 사용자들의 위험도 알림이에요.</p>
       </div>
@@ -68,7 +68,7 @@ export function NotificationsPage({ onViewReport }: NotificationsPageProps) {
         <div className="flex flex-wrap gap-2 mb-4">
           {members.map(m => (
             <button key={m} onClick={() => setMemberFilter(m)}
-              className={`px-4 py-2 rounded-xl border-2 transition-all font-bold ${memberFilter === m ? "border-[#0A2647] bg-[#0A2647]/10 text-[#0A2647]" : "border-gray-200 text-gray-500"}`}
+              className={`px-4 py-2 rounded-xl border-2 transition-all font-bold ${memberFilter === m ? "border-[#0D9488] bg-[#0D9488]/10 text-[#0D9488]" : "border-gray-200 text-gray-500"}`}
               style={{ fontSize: "0.95rem" }}>
               {m}
             </button>
@@ -78,7 +78,7 @@ export function NotificationsPage({ onViewReport }: NotificationsPageProps) {
         <div className="flex flex-wrap gap-2">
           {(["전체", "상", "중", "하"] as const).map(l => (
             <button key={l} onClick={() => setLevelFilter(l)}
-              className={`px-4 py-2 rounded-xl border-2 transition-all font-bold ${levelFilter === l ? "border-[#0E8080] bg-[#0E8080]/10 text-[#0E8080]" : "border-gray-200 text-gray-500"}`}
+              className={`px-4 py-2 rounded-xl border-2 transition-all font-bold ${levelFilter === l ? "border-[#0D9488] bg-[#0D9488]/10 text-[#0D9488]" : "border-gray-200 text-gray-500"}`}
               style={{ fontSize: "0.95rem" }}>
               {l}
             </button>
@@ -88,7 +88,7 @@ export function NotificationsPage({ onViewReport }: NotificationsPageProps) {
 
       {loading ? (
         <div className="flex justify-center py-16">
-          <div className="w-8 h-8 border-4 border-[#0E8080] border-t-transparent rounded-full animate-spin" />
+          <div className="w-8 h-8 border-4 border-[#0D9488] border-t-transparent rounded-full animate-spin" />
         </div>
       ) : filtered.length === 0 ? (
         <div className="bg-white rounded-2xl p-12 shadow-sm border border-gray-100 text-center">
@@ -121,7 +121,7 @@ export function NotificationsPage({ onViewReport }: NotificationsPageProps) {
                     <p className="text-gray-700 font-bold leading-relaxed mb-2" style={{ fontSize: "1.05rem" }}>{n.message}</p>
                     {n.level === "상" && onViewReport && (
                       <button onClick={(e) => { e.stopPropagation(); onViewReport(); }}
-                        className="flex items-center gap-1.5 text-[#0A2647] font-bold hover:underline" style={{ fontSize: "0.95rem" }}>
+                        className="flex items-center gap-1.5 text-[#0D9488] font-bold hover:underline" style={{ fontSize: "0.95rem" }}>
                         <FileText className="w-4 h-4" />리포트 보기
                       </button>
                     )}

@@ -32,8 +32,8 @@ function RoleToast({ role }: { role: Role }) {
         visible ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-1"
       } ${
         isUser
-          ? "bg-[#0E8080]/10 border-[#0E8080]/30 text-[#0E8080]"
-          : "bg-[#0A2647]/10 border-[#0A2647]/30 text-[#0A2647]"
+          ? "bg-[#0D9488]/10 border-[#0D9488]/30 text-[#0D9488]"
+          : "bg-[#0D9488]/10 border-[#0D9488]/30 text-[#0D9488]"
       }`}
       style={{ fontSize: "0.95rem", minHeight: "3.5rem" }}
     >
@@ -92,7 +92,7 @@ export function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0A2647] via-[#144272] to-[#0E8080] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-[#0D9488] via-[#0F766E] to-[#0D9488] flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-24 h-24 bg-white/20 rounded-full mb-4 backdrop-blur-sm">
@@ -105,12 +105,12 @@ export function LoginPage() {
         <div className="bg-white rounded-2xl shadow-2xl p-8">
           <div className="flex gap-3 mb-3">
             <button type="button" onClick={() => setRole("user")}
-              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all font-bold ${role === "user" ? "border-[#0E8080] bg-[#0E8080]/10 text-[#0E8080]" : "border-gray-200 text-gray-500"}`}
+              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all font-bold ${role === "user" ? "border-[#0D9488] bg-[#0D9488]/10 text-[#0D9488]" : "border-gray-200 text-gray-500"}`}
               style={{ minHeight: 56, fontSize: "1.05rem" }}>
               <User className="w-6 h-6" />사용자
             </button>
             <button type="button" onClick={() => setRole("guardian")}
-              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all font-bold ${role === "guardian" ? "border-[#0A2647] bg-[#0A2647]/10 text-[#0A2647]" : "border-gray-200 text-gray-500"}`}
+              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all font-bold ${role === "guardian" ? "border-[#0D9488] bg-[#0D9488]/10 text-[#0D9488]" : "border-gray-200 text-gray-500"}`}
               style={{ minHeight: 56, fontSize: "1.05rem" }}>
               <Shield className="w-6 h-6" />가족·보호자
             </button>
@@ -131,7 +131,7 @@ export function LoginPage() {
                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-400" />
                 <input type="email" placeholder="example@email.com" value={form.email}
                   onChange={e => setForm({ ...form, email: e.target.value })}
-                  className="w-full pl-12 pr-4 py-4 border border-gray-200 rounded-xl focus:outline-none focus:border-[#0E8080] bg-gray-50 font-bold"
+                  className="w-full pl-12 pr-4 py-4 border border-gray-200 rounded-xl focus:outline-none focus:border-[#0D9488] bg-gray-50 font-bold"
                   style={{ minHeight: 56, fontSize: "1.1rem" }} />
               </div>
               {errors.email && <p className="text-red-500 mt-1 font-bold" style={{ fontSize: "1rem" }}>{errors.email}</p>}
@@ -143,7 +143,7 @@ export function LoginPage() {
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-400" />
                 <input type={showPassword ? "text" : "password"} placeholder="8글자 이상 입력" value={form.password}
                   onChange={e => setForm({ ...form, password: e.target.value })}
-                  className="w-full pl-12 pr-14 py-4 border border-gray-200 rounded-xl focus:outline-none focus:border-[#0E8080] bg-gray-50 font-bold"
+                  className="w-full pl-12 pr-14 py-4 border border-gray-200 rounded-xl focus:outline-none focus:border-[#0D9488] bg-gray-50 font-bold"
                   style={{ minHeight: 56, fontSize: "1.1rem" }} />
                 <button type="button" onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
@@ -154,19 +154,19 @@ export function LoginPage() {
             </div>
 
             <button type="submit" disabled={submitting}
-              className="w-full py-5 bg-gradient-to-r from-[#0A2647] to-[#0E8080] text-white rounded-xl hover:opacity-90 active:scale-95 transition-all disabled:opacity-50 font-bold"
+              className="w-full py-5 bg-gradient-to-r from-[#0D9488] to-[#0D9488] text-white rounded-xl hover:opacity-90 active:scale-95 transition-all disabled:opacity-50 font-bold"
               style={{ minHeight: 60, fontSize: "1.2rem" }}>
               {submitting ? "로그인 중..." : "로그인"}
             </button>
 
             <div className="flex items-center justify-center gap-3">
               <button type="button" onClick={() => navigate("/find-id")}
-                className="text-gray-400 hover:text-[#0E8080] underline font-bold" style={{ fontSize: "1rem" }}>
+                className="text-gray-400 hover:text-[#0D9488] underline font-bold" style={{ fontSize: "1rem" }}>
                 아이디 찾기
               </button>
               <span className="text-gray-300">|</span>
               <button type="button" onClick={() => navigate("/forgot-password")}
-                className="text-gray-400 hover:text-[#0E8080] underline font-bold" style={{ fontSize: "1rem" }}>
+                className="text-gray-400 hover:text-[#0D9488] underline font-bold" style={{ fontSize: "1rem" }}>
                 비밀번호 찾기
               </button>
             </div>
@@ -178,7 +178,7 @@ export function LoginPage() {
 
           <div className="mt-6 pt-6 border-t border-gray-100 text-center">
             <span className="text-gray-500 font-bold" style={{ fontSize: "1rem" }}>아직 회원이 아니신가요? </span>
-            <button onClick={() => navigate("/signup")} className="text-[#0E8080] font-bold underline" style={{ fontSize: "1rem" }}>
+            <button onClick={() => navigate("/signup")} className="text-[#0D9488] font-bold underline" style={{ fontSize: "1rem" }}>
               회원가입
             </button>
           </div>
