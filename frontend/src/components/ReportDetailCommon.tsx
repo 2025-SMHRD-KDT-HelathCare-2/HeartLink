@@ -156,7 +156,7 @@ export function ReportDetailPage({ mode, memberId }: ReportDetailPageProps) {
         const r = res.data;
         if (!cancelled) {
           setReport({ ...r, riskLevel: LEVEL_MAP[r.riskLevel] ?? "하" });
-          if (r.reportStatus === "generating" && mode === "user" && reportId) {
+          if (r.reportStatus === "generating" && reportId) {
             pollReportText(reportId, r);
           }
         }
@@ -170,10 +170,13 @@ export function ReportDetailPage({ mode, memberId }: ReportDetailPageProps) {
   }, [reportId, type, memberId, mode]);
 
   const pollReportText = async (id: string, base: ReportData) => {
+    const endpoint = mode === "guardian" && memberId
+      ? `/reports/patient/${memberId}/${id}`
+      : `/reports/${id}`;
     for (let i = 0; i < 20; i++) {
       await new Promise(r => setTimeout(r, 3000));
       try {
-        const res = await api.get(`/reports/${id}`);
+        const res = await api.get(endpoint);
         const r = res.data;
         if (r.reportStatus === "completed" || r.reportStatus === "failed") {
           setReport(prev => prev ? { ...prev, reportText: r.reportText ?? "" } : prev);

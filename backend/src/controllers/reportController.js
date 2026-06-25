@@ -483,12 +483,15 @@ export const getPatientReport = async (req, res, next) => {
     ]);
     if (!report) return res.status(404).json({ message: '리포트가 없습니다.' });
 
-    res.json({
-      _id:        report._id,
-      memberName: patient?.nickname ?? '',
-      reportText: report.reportText,
-      createdAt:  report.createdAt,
-    });
+    const analyses = await AnalysisResult.find({ _id: { $in: report.analysisIds ?? [] } })
+      .sort({ analyzedAt: 1 });
+    const latestAnalysis = analyses[analyses.length - 1] ?? null;
+    const memberName = patient?.nickname ?? '';
+
+    if (report.reportPeriod === 'weekly') {
+      return res.json(buildWeeklyPayload(analyses, report, latestAnalysis, memberName));
+    }
+    return res.json(buildDailyPayload(analyses, report, latestAnalysis, memberName));
   } catch (err) {
     next(err);
   }
