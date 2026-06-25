@@ -158,9 +158,7 @@ export function startWeeklyReportJob() {
 
     console.log(`[주간 리포트] 대상 사용자 ${users.length}명`);
 
-    for (const user of users) {
-      await generateWeeklyForUser(user, periodStart, periodEnd);
-    }
+    await Promise.allSettled(users.map(user => generateWeeklyForUser(user, periodStart, periodEnd)));
 
     console.log('[주간 리포트] 자동 생성 완료');
   }, {
