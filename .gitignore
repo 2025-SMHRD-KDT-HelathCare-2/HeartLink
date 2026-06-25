@@ -20,6 +20,7 @@ yarn-error.log*
 pnpm-debug.log*
 package-lock.json.bak
 backend/src/config/firebase-adminsdk.json
+backend_study_guide.md
 
 # ----- React + Vite 빌드 결과물 -----
 dist/

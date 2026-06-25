@@ -12,17 +12,24 @@ function getNextMorning() {
   return next;
 }
 
-export const sendPushNotification = async (fcmToken, title, body) => {
-  try {
-    const response = await admin.messaging().send({
-      token: fcmToken,
-      notification: { title, body },
-    });
-    console.log('✅ 푸시 알림 발송 성공:', response);
-    return response;
-  } catch (err) {
-    console.error('❌ 푸시 알림 발송 실패:', err.message);
-    throw err;
+export const sendPushNotification = async (fcmToken, title, body, retries = 3) => {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const response = await admin.messaging().send({
+        token: fcmToken,
+        notification: { title, body },
+      });
+      console.log('✅ 푸시 알림 발송 성공:', response);
+      return response;
+    } catch (err) {
+      if (attempt < retries) {
+        console.warn(`⚠️ 푸시 알림 발송 실패 (${attempt}/${retries}회), ${attempt}초 후 재시도:`, err.message);
+        await new Promise(r => setTimeout(r, attempt * 1000));
+      } else {
+        console.error('❌ 푸시 알림 최종 실패:', err.message);
+        throw err;
+      }
+    }
   }
 };
 
