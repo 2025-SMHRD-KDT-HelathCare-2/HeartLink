@@ -465,15 +465,17 @@ export const getPatientReport = async (req, res, next) => {
     const hasAccess = await verifyGuardianAccess(req.user.id, req.params.userId);
     if (!hasAccess) return res.status(403).json({ message: '해당 환자의 데이터에 접근 권한이 없습니다.' });
 
-    const report = await Report.findOne({ _id: req.params.reportId, userId: req.params.userId });
+    const [report, patient] = await Promise.all([
+      Report.findOne({ _id: req.params.reportId, userId: req.params.userId }),
+      User.findById(req.params.userId).select('nickname'),
+    ]);
     if (!report) return res.status(404).json({ message: '리포트가 없습니다.' });
 
     res.json({
-      _id:         report._id,
-      analysisIds: report.analysisIds,
-      userId:      report.userId,
-      reportText:  report.reportText,
-      createdAt:   report.createdAt,
+      _id:        report._id,
+      memberName: patient?.nickname ?? '',
+      reportText: report.reportText,
+      createdAt:  report.createdAt,
     });
   } catch (err) {
     next(err);
