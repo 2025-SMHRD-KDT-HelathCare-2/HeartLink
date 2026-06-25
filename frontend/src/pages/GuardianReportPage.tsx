@@ -35,6 +35,7 @@ export function GuardianReportPage({ patients, selectedUserId, onSelectUser }: G
   const [selectedIdx, setSelectedIdx] = useState(initialIdx);
   const [records, setRecords] = useState<MeasurementRecord[]>([]);
   const [recordsLoading, setRecordsLoading] = useState(false);
+  const [generating, setGenerating] = useState(false);
 
   useEffect(() => {
     if (!selectedUserId) return;
@@ -81,6 +82,19 @@ export function GuardianReportPage({ patients, selectedUserId, onSelectUser }: G
 
   const patient = patients[Math.min(selectedIdx, patients.length - 1)];
   const patientRiskLevel = LEVEL_MAP[patient.risk_level ?? "low"] ?? "하";
+
+  const handleGuardianReport = async () => {
+    try {
+      setGenerating(true);
+      const res = await api.post(`/reports/generate-for/${patient.user_id}`);
+      const reportId = res.data?._id;
+      navigate(`/guardian-report-detail/${patient.user_id}`, { state: { type: "daily", reportId } });
+    } catch (err) {
+      console.error("보호자 리포트 생성 실패", err);
+    } finally {
+      setGenerating(false);
+    }
+  };
   const config = RISK_CONFIG[patientRiskLevel];
 
   return (
@@ -204,12 +218,13 @@ export function GuardianReportPage({ patients, selectedUserId, onSelectUser }: G
 
       {/* 일일 AI 리포트 보기 */}
       <button
-        onClick={() => navigate(`/guardian-report-detail/${patient.user_id}`, { state: { type: "daily" } })}
-        className="w-full flex items-center justify-center gap-3 py-5 bg-gradient-to-r from-[#0A2647] to-[#0E8080] text-white rounded-2xl hover:opacity-90 transition-all font-black mb-3 shadow-lg"
+        onClick={handleGuardianReport}
+        disabled={generating}
+        className="w-full flex items-center justify-center gap-3 py-5 bg-gradient-to-r from-[#0A2647] to-[#0E8080] text-white rounded-2xl hover:opacity-90 transition-all font-black mb-3 shadow-lg disabled:opacity-50"
         style={{ minHeight: 68, fontSize: "1.2rem" }}
       >
         <Sparkles className="w-7 h-7" />
-        일일 AI 리포트 보기
+        {generating ? "리포트 생성 중..." : "일일 AI 리포트 보기"}
       </button>
 
       {/* 리포트 기록 보기 */}
