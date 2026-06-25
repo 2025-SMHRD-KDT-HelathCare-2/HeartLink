@@ -148,7 +148,9 @@ export function ReportDetailPage({ mode, memberId }: ReportDetailPageProps) {
     (async () => {
       try {
         const endpoint = mode === "guardian"
-          ? `/reports/guardian/${memberId}?type=${type}`
+          ? (reportId
+              ? `/reports/patient/${memberId}/${reportId}`
+              : `/reports/guardian/${memberId}?type=${type}`)
           : `/reports/${reportId}`;
         const res = await api.get(endpoint);
         const r = res.data;
@@ -246,7 +248,13 @@ export function ReportDetailPage({ mode, memberId }: ReportDetailPageProps) {
   return (
     <div className="min-h-screen bg-[#F4F7FA]">
       <header className="bg-[#0A2647] text-white px-5 py-4 flex items-center gap-3 sticky top-0 z-20 shadow-lg">
-        <button onClick={() => navigate(-1)} className="p-2 rounded-xl hover:bg-white/10 transition-colors">
+        <button onClick={() => {
+          if (mode === "guardian" && memberId) {
+            navigate(`/guardian-report-detail/${memberId}`, { replace: true });
+          } else {
+            navigate(-1);
+          }
+        }} className="p-2 rounded-xl hover:bg-white/10 transition-colors">
           <ChevronLeft className="w-6 h-6" />
         </button>
         <div className="flex items-center gap-2">

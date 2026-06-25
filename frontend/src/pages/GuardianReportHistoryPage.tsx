@@ -7,10 +7,12 @@ type ReportPeriod = "daily" | "weekly";
 
 interface ReportItem {
   id: string;
+  memberName: string;
   reportPeriod: ReportPeriod;
   riskLevel: "상" | "중" | "하";
   riskScore: number;
   createdAt: string;
+  status: string;
 }
 
 const LEVEL_MAP: Record<string, "상" | "중" | "하"> = { high: "상", mid: "중", low: "하" };
@@ -20,14 +22,6 @@ const RISK_META = {
   중: { color: "#D97706", label: "주의" },
   하: { color: "#16A34A", label: "양호" },
 };
-
-// ===== 임시 더미 (백엔드 완성 시 제거) =====
-const DUMMY: ReportItem[] = [
-  { id: "r1", reportPeriod: "daily", riskLevel: "상", riskScore: 78, createdAt: "2026-06-24T09:32:00" },
-  { id: "r2", reportPeriod: "weekly", riskLevel: "중", riskScore: 52, createdAt: "2026-06-23T10:00:00" },
-  { id: "r3", reportPeriod: "daily", riskLevel: "하", riskScore: 22, createdAt: "2026-06-22T08:15:00" },
-  { id: "r4", reportPeriod: "weekly", riskLevel: "하", riskScore: 18, createdAt: "2026-06-16T10:00:00" },
-];
 
 function formatDate(iso: string) {
   if (!iso) return "";
@@ -45,18 +39,19 @@ export function GuardianReportHistoryPage() {
   useEffect(() => {
     (async () => {
       try {
-        // 백엔드 완성 시 주석 해제
-        // const res = await api.get(`/reports/guardian/${userId}`);
-        // const mapped = (res.data || []).map((r: any) => ({
-        //   id: r._id,
-        //   reportPeriod: r.reportPeriod as ReportPeriod,
-        //   riskLevel: LEVEL_MAP[r.riskLevel] ?? "하",
-        //   riskScore: r.riskScore ?? 0,
-        //   createdAt: r.createdAt,
-        // }));
-        // setReports(mapped);
-        await new Promise(r => setTimeout(r, 400));
-        setReports(DUMMY);
+        const res = await api.get(`/reports/patient/${userId}`);
+        const mapped: ReportItem[] = (res.data || [])
+          .filter((r: any) => r.status === "completed")
+          .map((r: any) => ({
+            id: r._id,
+            memberName: r.memberName ?? "",
+            reportPeriod: r.reportPeriod as ReportPeriod,
+            riskLevel: LEVEL_MAP[r.maxRiskLevel] ?? "하",
+            riskScore: 0, // 목록엔 riskScore 없음, 상세에서 확인
+            createdAt: r.createdAt,
+            status: r.status,
+          }));
+        setReports(mapped);
       } catch (err) {
         console.error("리포트 목록 조회 실패", err);
       } finally {
@@ -124,7 +119,7 @@ export function GuardianReportHistoryPage() {
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <span className="font-black text-gray-800" style={{ fontSize: "1.1rem" }}>
-                        {isDaily ? "일간" : "주간"} 리포트
+                        {r.memberName} {isDaily ? "일간" : "주간"} 리포트
                       </span>
                       <span className="px-3 py-1 rounded-full text-white font-bold"
                         style={{ backgroundColor: meta.color, fontSize: "0.85rem" }}>
