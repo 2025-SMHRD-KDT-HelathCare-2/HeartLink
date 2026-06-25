@@ -430,7 +430,7 @@ export const getGuardianTTS = async (req, res, next) => {
     const hasAccess = await verifyGuardianAccess(req.user.id, req.params.userId);
     if (!hasAccess) return res.status(403).json({ message: '해당 환자의 데이터에 접근 권한이 없습니다.' });
 
-    const report = await Report.findOne({ userId: req.params.userId }).sort({ createdAt: -1 });
+    const report = await Report.findOne({ userId: req.params.userId, reportType: 'guardian' }).sort({ createdAt: -1 });
     if (!report) return res.status(404).json({ message: '리포트가 없습니다.' });
 
     const text = report.reportText;
@@ -452,8 +452,20 @@ export const getPatientReportList = async (req, res, next) => {
     const hasAccess = await verifyGuardianAccess(req.user.id, req.params.userId);
     if (!hasAccess) return res.status(403).json({ message: '해당 환자의 데이터에 접근 권한이 없습니다.' });
 
-    const reports = await Report.find({ userId: req.params.userId }).sort({ createdAt: -1 });
-    res.json(reports);
+    const [reports, patient] = await Promise.all([
+      Report.find({ userId: req.params.userId, reportType: 'guardian' }).sort({ createdAt: -1 }),
+      User.findById(req.params.userId).select('nickname'),
+    ]);
+
+    const memberName = patient?.nickname ?? '';
+    res.json(reports.map(r => ({
+      _id:          r._id,
+      memberName,
+      reportPeriod: r.reportPeriod,
+      maxRiskLevel: r.maxRiskLevel,
+      status:       r.status,
+      createdAt:    r.createdAt,
+    })));
   } catch (err) {
     next(err);
   }
