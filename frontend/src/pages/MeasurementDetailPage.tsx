@@ -68,7 +68,8 @@ export function MeasurementDetailPage() {
     })();
   }, [id, patientUserId]);
 
-  const sampleRate = data?.samplingRate || 80;
+  // 1번: 기본값 250으로 수정
+  const sampleRate = data?.samplingRate || 250;
 
   const chartData = useMemo(() => {
     if (!data?.ecgWaveformLite?.length) return [];
@@ -156,13 +157,13 @@ export function MeasurementDetailPage() {
         </div>
       )}
 
-      {/* ECG 파형 */}
+      {/* ECG 파형 — 2번: sampleRate prop 추가 */}
       {chartData.length > 0 ? (
         <div>
           <div className="text-gray-500 font-bold mb-2" style={{ fontSize: "0.95rem" }}>
             {chartData.length.toLocaleString()}개 샘플 · {sampleRate}Hz
           </div>
-          <ECGChart data={chartData} rPeaks={rPeakTimes} zoom={1} />
+          <ECGChart data={chartData} rPeaks={rPeakTimes} zoom={1} sampleRate={sampleRate} />
         </div>
       ) : (
         <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 text-center">
@@ -176,7 +177,7 @@ export function MeasurementDetailPage() {
         <RiskGauge score={analysis.riskScore} riskLevel={riskLevel} />
       )}
 
-      {/* 분석 수치 */}
+      {/* 분석 수치 — HRV RMSSD, HRV SDNN 제거 */}
       {analysis && (
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
           <div className="flex items-center gap-2 mb-5">
@@ -192,8 +193,6 @@ export function MeasurementDetailPage() {
               value={analysis.afDetected ? `감지됨 (${(analysis.afProb * 100).toFixed(1)}%)` : "미감지"}
               highlight={analysis.afDetected}
             />
-            <StatCard label="HRV RMSSD" value={`${analysis.hrvRmssd?.toFixed(1) ?? "—"} ms`} />
-            <StatCard label="HRV SDNN" value={`${analysis.hrvSdnn?.toFixed(1) ?? "—"} ms`} />
           </div>
         </div>
       )}
