@@ -1,3 +1,4 @@
+// frontend/src/api/authApi.ts
 import axios from "axios";
 import { getAccessToken, setAccessToken } from "./tokenStore";
 
@@ -111,16 +112,18 @@ export async function verifyFindEmailCode(phone: string, code: string) {
 }
 
 // ───────────────── 일반 회원가입 / 로그인 ─────────────────
+// 회원가입 시 서버로 보내는 데이터의 "형태(타입)" 정의
+//   - 'birthDate'(생년월일, "YYYY-MM-DD")만 받고, 만 나이는 서버가 자동 계산합니다.
+//   - 'medications'(복용 약)은 더 이상 사용하지 않습니다.
 export interface RegisterPayload {
   email: string;
   password: string;
   nickname: string;
   role: "user" | "guardian";
   phone: string;
-  age?: number;
+  birthDate?: string;        // 생년월일 "YYYY-MM-DD" (선택)
   gender?: "M" | "F";
   medical_history?: string[];
-  medications?: string[];
 }
 
 export async function register(payload: RegisterPayload) {
@@ -144,6 +147,51 @@ export async function callLogout() {
     console.error("로그아웃 요청 실패", err);
     return null;
   }
+}
+
+// ───────────────── 내 정보(프로필) 조회 / 수정 ─────────────────
+// -----------------------------------------------------------------------
+// [추가] 프로필 화면에서 사용할 두 가지 함수입니다.
+//   - getMe()   : 로그인한 사용자의 현재 정보를 서버에서 불러옵니다.
+//   - updateMe(): 사용자가 수정한 정보를 서버에 저장합니다.
+//
+//   백엔드(authController.js)의 getMe / updateMe 와 짝을 이룹니다.
+//   현재 백엔드 updateMe 는 'medicalHistory'(질병 목록)와 'phone'만 수정하며,
+//   필요 시 birthDate / gender 도 받을 수 있도록 아래 타입에 포함해 두었습니다.
+//   (서버에서 무시되는 값은 그냥 저장되지 않을 뿐 에러가 나지 않습니다.)
+// -----------------------------------------------------------------------
+
+// 서버에서 내려주는 '내 정보'의 형태
+export interface MeResponse {
+  _id: string;
+  email: string;
+  nickname: string;
+  role: "user" | "guardian";
+  phone?: string;
+  birthDate?: string;          // "YYYY-MM-DD..." (ISO 날짜 문자열)
+  age?: number;                // 서버가 birthDate로 자동 계산한 만 나이(virtual)
+  gender?: "M" | "F";
+  medicalHistory?: string[];   // 질병 목록
+}
+
+// 프로필 수정 시 서버로 보내는 값의 형태 (모두 선택)
+export interface UpdateMePayload {
+  medical_history?: string[];  // 질병 목록 (서버 필드명: medicalHistory)
+  phone?: string;
+  birthDate?: string;          // "YYYY-MM-DD"
+  gender?: "M" | "F";
+}
+
+// 내 정보 불러오기 (프로필 화면 첫 진입 시 사용)
+export async function getMe() {
+  const { data } = await api.get<MeResponse>("/auth/me");
+  return data;
+}
+
+// 내 정보 저장하기 (프로필 화면 저장 버튼에서 사용)
+export async function updateMe(payload: UpdateMePayload) {
+  const { data } = await api.patch<MeResponse>("/auth/me", payload);
+  return data;
 }
 
 // ───────────────── 소셜 로그인 ─────────────────

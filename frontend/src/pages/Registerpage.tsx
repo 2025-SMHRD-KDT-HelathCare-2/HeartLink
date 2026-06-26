@@ -1,8 +1,11 @@
+// frontend/src/pages/Registerpage.tsx
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Heart, Eye, EyeOff, Lock, Mail, User, Shield,
-  UserCircle, CheckCircle
+  Calendar, CheckCircle
+  // ↑ [변경] 나이 입력 칸에 쓰던 'UserCircle' 아이콘을 삭제하고,
+  //   생년월일(날짜) 입력에 어울리는 'Calendar'(달력) 아이콘으로 교체했습니다.
 } from "lucide-react";
 import { register, type RegisterPayload } from "../api/authApi";
 import { SocialLoginButtons } from "../components/auth/SocialLoginButtons";
@@ -90,10 +93,17 @@ export function RegisterPage() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // -----------------------------------------------------------------------
+  // [변경 포인트 1] 회원가입 입력값을 담아두는 상태(form)
+  //   - 기존에 있던 'age'(나이) 항목을 'birthDate'(생년월일)로 바꿨습니다.
+  //   - 기존에 있던 'medications'(복용 약) 항목은 완전히 삭제했습니다.
+  //   - birthDate 는 화면의 날짜 선택기에서 "YYYY-MM-DD" 형태의 문자열로 저장됩니다.
+  //     (예: "1955-03-12")
+  // -----------------------------------------------------------------------
   const [form, setForm] = useState({
     email: "", password: "", passwordConfirm: "", nickname: "",
-    age: "", gender: "" as "" | "M" | "F",
-    medical_history: "", medications: "",
+    birthDate: "", gender: "" as "" | "M" | "F",
+    medical_history: "",
     phone: "",
   });
 
@@ -113,11 +123,32 @@ export function RegisterPage() {
     if (form.password !== form.passwordConfirm)
       errs.passwordConfirm = "비밀번호가 일치하지 않습니다.";
     if (!form.nickname.trim()) errs.nickname = "닉네임을 입력해 주세요.";
-    if (form.age) {
-      const ageNum = Number(form.age);
-      if (!Number.isInteger(ageNum) || ageNum < 0 || ageNum > 150)
-        errs.age = "올바른 나이를 입력해 주세요.";
+
+    // ---------------------------------------------------------------------
+    // [변경 포인트 2] 생년월일(birthDate) 검증
+    //   - 생년월일은 '선택' 항목이라, 입력했을 때만 검사합니다.
+    //   - (1) 미래 날짜(아직 오지 않은 날)는 생년월일이 될 수 없으므로 막습니다.
+    //   - (2) 너무 옛날(예: 150년 초과)이면 잘못 입력한 것으로 보고 막습니다.
+    // ---------------------------------------------------------------------
+    if (form.birthDate) {
+      const birth = new Date(form.birthDate);   // 입력한 날짜 문자열을 날짜 객체로 변환
+      const today = new Date();                 // 오늘 날짜
+
+      // 만 나이를 대략 계산 (생년월일이 올바른 범위인지 확인하는 용도)
+      const ageNum = today.getFullYear() - birth.getFullYear();
+
+      if (Number.isNaN(birth.getTime())) {
+        // 날짜로 해석이 안 되는 이상한 값일 때
+        errs.birthDate = "올바른 생년월일을 선택해 주세요.";
+      } else if (birth > today) {
+        // 미래 날짜를 골랐을 때
+        errs.birthDate = "생년월일은 오늘 이후 날짜가 될 수 없습니다.";
+      } else if (ageNum > 150) {
+        // 150살이 넘는 비현실적인 값일 때
+        errs.birthDate = "생년월일을 다시 확인해 주세요.";
+      }
     }
+
     return errs;
   };
 
@@ -130,14 +161,18 @@ export function RegisterPage() {
     setErrors(errs);
     if (Object.keys(errs).length > 0) return;
 
+    // ---------------------------------------------------------------------
+    // [변경 포인트 3] 서버로 보낼 데이터(payload) 만들기
+    //   - 'age' 대신 'birthDate'를 보냅니다. (값이 있을 때만 포함)
+    //   - 'medications'는 더 이상 보내지 않습니다. (관련 줄 삭제)
+    // ---------------------------------------------------------------------
     const payload: RegisterPayload = {
       email: form.email, password: form.password,
       nickname: form.nickname, role, phone: form.phone.replace(/[^0-9]/g, ""),
     };
-    if (form.age) payload.age = Number(form.age);
+    if (form.birthDate) payload.birthDate = form.birthDate; // 예: "1955-03-12"
     if (form.gender) payload.gender = form.gender;
     payload.medical_history = toArray(form.medical_history);
-    payload.medications = toArray(form.medications);
 
     try {
       setSubmitting(true);
@@ -263,14 +298,30 @@ export function RegisterPage() {
                   <h2 className="text-[#0D9488] font-bold mb-1 pb-2 border-b-2 border-gray-100" style={{ fontSize: "1.2rem" }}>건강 정보</h2>
                   <p className="text-gray-400 mb-4 font-bold" style={{ fontSize: "0.95rem" }}>선택 입력이며, 나중에 프로필에서 추가할 수 있어요.</p>
 
+                  {/* ----------------------------------------------------------
+                      [변경 포인트 4] '나이' 입력칸을 '생년월일' 날짜 선택으로 교체
+                        - 예전에는 사용자가 직접 나이(숫자)를 적었지만,
+                          나이는 해마다 바뀌어 매번 고쳐야 하는 불편함이 있습니다.
+                        - 그래서 절대 바뀌지 않는 '생년월일'을 받고,
+                          실제 나이는 서버(DB)에서 자동으로 계산하도록 바꿨습니다.
+                        - 입력기는 브라우저 기본 날짜 선택기(type="date")를 사용합니다.
+                          값은 "YYYY-MM-DD" 형태(예: 1955-03-12)로 저장됩니다.
+                     ---------------------------------------------------------- */}
                   <div className="mb-5">
-                    <FieldLabel text="나이" />
+                    <FieldLabel text="생년월일" />
                     <div className="relative">
-                      <UserCircle className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-400" />
-                      <input type="number" min={0} max={150} placeholder="예: 68" value={form.age}
-                        onChange={(e) => setField("age", e.target.value)} className={inputClass} style={inputStyle} />
+                      <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-400" />
+                      <input
+                        type="date"
+                        value={form.birthDate}
+                        // max(오늘 날짜)을 지정해서 '미래 날짜'는 아예 못 고르게 막습니다.
+                        max={new Date().toISOString().split("T")[0]}
+                        onChange={(e) => setField("birthDate", e.target.value)}
+                        className={inputClass}
+                        style={inputStyle}
+                      />
                     </div>
-                    {errors.age && <p className="text-red-500 mt-1 font-bold" style={errStyle}>{errors.age}</p>}
+                    {errors.birthDate && <p className="text-red-500 mt-1 font-bold" style={errStyle}>{errors.birthDate}</p>}
                   </div>
 
                   <div className="mb-5">
