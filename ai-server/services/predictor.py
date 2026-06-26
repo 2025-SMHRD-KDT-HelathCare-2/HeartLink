@@ -40,10 +40,17 @@ sess_track2 = ort.InferenceSession(TRACK2_MODEL)
 sess_hrv    = ort.InferenceSession(HRV_MODEL)
 
 # ==================================================
-# 위험도 정규화용 시뮬레이션 분포 로드
+# 위험도 정규화용 실제 데이터 분포 로드
 # --------------------------------------------------
-# calc_percentile_v3.py 실행 결과 파일 (2026-06-24 계산)
+# MIT-BIH+INCART 30초 윈도우 7,380개 기준 분포 (2026-06-26 교체)
 # normalize_score()가 이 배열을 참조해 raw_score를 percentile 순위로 변환.
+#
+# [가상 시뮬레이션 → 실제 데이터로 교체한 이유]
+# 멘토 피드백으로 MIT-BIH+INCART 7,380개 윈도우에 실제 서비스 파이프라인을
+# 적용해 검증한 결과, 가상 시뮬레이션 분포(p50=3, p90=15)가 실제 데이터
+# 분포(p50=16, p90=50)와 큰 차이를 보임 → 실제 데이터 기준으로 교체.
+# 분포는 별도 Colab 노트북에서 생성 (calc_percentile_v3.py 아님).
+#
 # 파일이 없으면 None → normalize_score()가 fallback 모드로 동작.
 # ==================================================
 DATA_DIR   = os.path.join(BASE_DIR, '..', 'data')
@@ -70,25 +77,25 @@ def softmax(x):
 
 def normalize_score(raw_score: float) -> int:
     """
-    raw_score를 시뮬레이션 분포 기준 percentile 순위(0~100)로 변환.
+    raw_score를 실제 데이터 분포 기준 percentile 순위(0~100)로 변환.
 
     [변환 방식]
-    _distribution(2000건 시뮬레이션 risk_score 배열)에서
+    _distribution(MIT-BIH+INCART 7,380건 실제 데이터 risk_score 배열)에서
     raw_score보다 작은 값의 비율 × 100을 정수로 반환한다.
     raw_score가 분포의 X번째 percentile에 해당하면 X점을 반환.
 
-    예시 (calc_percentile_v3.py 결과 기준, 2026-06-24):
-      raw_score = 0  → 0점 미만인 값 없음 (~0%)  → 반환:  0
-      raw_score = 3  → 분포의 50%가 3점 미만     → 반환: 50  (MID 경계)
-      raw_score = 15 → 분포의 90%가 15점 미만    → 반환: 90  (HIGH 경계)
-      raw_score = 41 → 분포의 99%+가 41점 미만   → 반환: ~99
+    예시 (MIT-BIH+INCART 실제 데이터 기준, 2026-06-26):
+      raw_score = 0   → 0점 미만인 값 없음 (~0%)  → 반환:  0
+      raw_score = 16  → 분포의 50%가 16점 미만    → 반환: 50  (MID 경계)
+      raw_score = 50  → 분포의 90%가 50점 미만    → 반환: 90  (HIGH 경계)
+      raw_score = 100 → 분포의 99%+가 100점 미만  → 반환: ~99
 
     [fallback]
     data/risk_score_distribution.npy가 없으면 raw_score를 그대로 반환.
     서버 최초 배포·파일 삭제 시 서버가 중단되지 않도록 함.
-    단, fallback 상태에서는 raw_score 최댓값이 ~41점이라 HIGH(≥90)/
+    단, fallback 상태에서는 raw_score가 직접 반환되어 HIGH(≥90)/
     MID(≥50) 기준에 거의 걸리지 않아 등급이 낮게 나올 수 있음.
-    반드시 calc_percentile_v3.py를 실행해 파일을 생성할 것.
+    반드시 분포 파일(data/risk_score_distribution.npy)을 배포할 것.
     """
     if _distribution is None:
         return int(min(100, max(0, round(raw_score))))
@@ -267,19 +274,16 @@ def calculate_risk(af_detected, af_prob, arr_class, arr_prob,
     # ==================================================
     # 3단계: percentile 정규화 → 0~100 재매핑
     # --------------------------------------------------
-    # raw_score는 분포가 0~41점에 집중되어 직관적이지 않다
-    # (calc_percentile_v3.py 시뮬레이션 최댓값 41점).
-    # normalize_score()로 재정규화하면:
-    #   raw=0  → norm≈0   (최하위권)
-    #   raw=3  → norm=50  (분포 중앙값, MID 경계)
-    #   raw=15 → norm=90  (분포 90th pct, HIGH 경계)
-    #   raw=41 → norm≈99  (분포 최상위)
+    # normalize_score()로 재정규화 (MIT-BIH+INCART 실제 데이터 기준):
+    #   raw=0   → norm≈0   (최하위권)
+    #   raw=16  → norm=50  (분포 중앙값, MID 경계)
+    #   raw=50  → norm=90  (분포 90th pct, HIGH 경계)
+    #   raw=100 → norm≈99  (분포 최상위)
     #
-    # [HIGH_THRESHOLD=14 / MID_THRESHOLD=3 정리]
-    # 이전에는 raw_score를 14/3과 직접 비교했다.
-    # 정규화 이후에는 _distribution 배열이 그 역할을 대신하므로
-    # 별도 상수로 비교하지 않는다.
-    # (p50=3 → norm=50, p90=15 → norm=90 이 배열에 인코딩되어 있음)
+    # [기준 분포 변경 이력]
+    # 가상 시뮬레이션(2026-06-24): p50=3,  p90=15
+    # 실제 데이터    (2026-06-26): p50=16, p90=50
+    # → _distribution 배열에 인코딩되어 있으므로 별도 상수로 비교하지 않는다.
     # ==================================================
     norm_score = normalize_score(raw_score)
 
