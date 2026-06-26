@@ -167,6 +167,16 @@ function maxRisk(a, b) {
   return RISK_RANK[a] >= RISK_RANK[b] ? a : b;
 }
 
+// 만 나이(age)를 받아 그 나이에 해당하는 "생년월일(birthDate)"을 만들어 주는 헬퍼
+//  - User 스키마가 age 대신 birthDate(Date)를 저장하도록 변경되었기 때문에 사용합니다.
+//  - 데모이므로 생일은 1월 1일로 고정합니다. (만 나이를 정확히 맞추기 위해 오늘이 1/1 이후라고 가정)
+//  - 예) 오늘이 2026년이고 age=70 이면  ->  1956-01-01 생성
+function birthDateFromAge(age) {
+  const today = new Date();
+  // 올해 연도에서 나이를 빼서 출생 연도를 구함 (생일을 1/1로 두므로 만 나이와 일치)
+  return new Date(today.getFullYear() - age, 0, 1); // 월은 0=1월, 일=1
+}
+
 // 주(week) 시작(월요일 00:00) 계산
 function startOfWeek(date) {
   const d = new Date(date);
@@ -230,7 +240,7 @@ async function seedUsersAndRelations() {
       role: 'user',               // 측정 본인
       phone: SENIOR_PHONES[i],    // 필드명은 phone
       phoneVerified: true,        // 데모이므로 인증 완료 상태
-      age: 70 + i,                // 데모용 나이
+      birthDate: birthDateFromAge(70 + i), // 데모용 나이(70,71,72,73세)에 해당하는 생년월일
       gender: i % 2 === 0 ? 'M' : 'F',
     });
     seniors.push(senior);
@@ -247,7 +257,7 @@ async function seedUsersAndRelations() {
       role: 'guardian',           // 보호자
       phone: GUARDIAN_PHONES[i],
       phoneVerified: true,
-      age: 40 + i,
+      birthDate: birthDateFromAge(40 + i), // 데모용 나이(40~49세)에 해당하는 생년월일
       gender: i % 2 === 0 ? 'F' : 'M',
     });
     guardians.push(guardian);
