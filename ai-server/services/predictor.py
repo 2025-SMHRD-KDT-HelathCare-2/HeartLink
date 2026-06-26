@@ -114,9 +114,15 @@ def calculate_risk(af_detected, af_prob, arr_class, arr_prob,
        실제로는 리듬이 불규칙하면 RR간격 변동이 커져서 HRV가
        비정상적으로 "높게" 측정될 수 있는데, 이 경우를 놓치고 있었음
     → HR_score 항목을 신규 추가하고, HRV_score를 양방향(낮음/높음
-      모두 위험)으로 수정. 추가로, 심박수가 임상적으로 명백히
-      위험한 수준(140 이상 또는 40 이하)이면 가중합산 점수와 무관하게
-      바로 'high'로 분류하는 예외 규칙을 추가함.
+      모두 위험)으로 수정.
+
+    [현재 수정]
+    예외 규칙 4개 → 3개로 정리:
+    - HR ≥ 140 / ≤ 40 예외 제거: HR_score 구간 재조정으로 흡수
+      (≥140 → 100점, ≤40 → 100점; 기존은 >150 / <40)
+    - AF 관련 2개는 임상 피드백 근거로 유지 (심박수랑 같이 봐야 함)
+    - VEB ≥ 70% 예외: 실제 데이터(MIT-BIH+INCART) 검증 + 간호사 임상 자문으로 유지
+      (점수 체계로 흡수 가능 판단 후 제거했으나 검증에서 흡수 실패 확인 → 복원)
 
     Parameters
     ----------
@@ -163,14 +169,14 @@ def calculate_risk(af_detected, af_prob, arr_class, arr_prob,
     # 벗어난 정도가 클수록 단계적으로 높은 점수 부여
     # (AI의 부정맥 클래스 분류는 대표 박동 1개의 '모양'만 보기 때문에,
     #  리듬 전체의 빠르기/느리기 자체는 별도로 봐야 놓치지 않음)
-    if heart_rate > 150:
-        HR_score = 100      # 심한 빈맥 (심실빈맥 의심 수준)
+    if heart_rate >= 140:
+        HR_score = 100      # 심한 빈맥 (140+ = 즉각 위험; 0.20×100=20 → norm≈93 → high)
     elif heart_rate > 130:
         HR_score = 70       # 중등도 빈맥
     elif heart_rate > 100:
         HR_score = 40       # 경미한 빈맥
-    elif heart_rate < 40:
-        HR_score = 100      # 심한 서맥
+    elif heart_rate <= 40:
+        HR_score = 100      # 심한 서맥 (40 포함; 0.20×100=20 → norm≈93 → high)
     elif heart_rate < 60:
         HR_score = 40       # 경미한 서맥
     else:
@@ -280,12 +286,30 @@ def calculate_risk(af_detected, af_prob, arr_class, arr_prob,
     # --------------------------------------------------
     # 위험도 등급 결정
     #
-    # 1순위: 특수 케이스(임상적 절대 기준)
-    #   percentile 순위와 무관하게 임상적으로 명백히 위험한 경우 우선 처리.
-    #   AF는 심박수와 함께 봐야 함 (간호사 임상 피드백).
-    #   특수 케이스 norm_score 하한: high=90, mid=50
-    #   → "등급과 점수가 항상 같은 기준을 따른다" 원칙 유지
-    #     (risk_level='high'이면 반드시 norm_score >= 90)
+    # 1순위: 절대 예외 규칙 (임상적 절대 기준)
+    #   percentile 점수와 무관하게 등급을 직접 결정하는 3가지 규칙.
+    #   norm_score 범위: high=[90, 100], mid=[50, 89]
+    #   → risk_level과 norm_score 항상 동일 기준 (등급 ↔ 점수 불일치 없음)
+    #
+    #   ① AF + 빠른 심박수(≥100) → high
+    #      심방세동 + 빠른 심실반응(RVR) → 즉각적 위험 (간호사 임상 피드백)
+    #
+    #   ② AF + 느린 심박수(<100) → mid
+    #      AF 단독은 별로 안 위험 (간호사 임상 피드백)
+    #
+    #   ③ VEB 확률 ≥ 70% → high
+    #      [근거 1 - 실제 데이터 검증]
+    #        MIT-BIH+INCART 30초 윈도우 7,380개 검증 결과:
+    #        VEB로 분류된 1,193개 중 42%(504개)가 모델 평균 확신도 93.5%임에도
+    #        점수 체계(ecg_score)만으로는 norm_score 90 미달 → 예외 규칙 필요
+    #      [근거 2 - 간호사 임상 자문]
+    #        "VEB는 심박수와 무관하게 단독으로도 병원 방문(상 등급)이 필요하다"
+    #      [제거 후 재추가 이유]
+    #        이전에 점수 체계로 흡수 가능하다 판단해 제거했으나,
+    #        실제 데이터 기반 검증에서 흡수 실패 확인 → 복원
+    #
+    #   [흡수된 예외들 - 예외규칙 → 점수 체계로 대체]
+    #   HR ≥ 140 또는 ≤ 40: HR_score 구간 재조정(≥140→100, ≤40→100)으로 흡수
     #
     # 2순위: percentile 기반 상대 기준
     #   HIGH: norm_score >= 90  (분포 상위 10%)
@@ -296,11 +320,8 @@ def calculate_risk(af_detected, af_prob, arr_class, arr_prob,
         norm_score = max(norm_score, 90)
     elif af_detected and heart_rate < 100:
         risk_level = 'mid'
-        norm_score = max(norm_score, 50)
+        norm_score = min(max(norm_score, 50), 89)
     elif arr_class == 'VEB' and arr_prob >= 0.70:
-        risk_level = 'high'
-        norm_score = max(norm_score, 90)
-    elif heart_rate >= 140 or heart_rate <= 40:
         risk_level = 'high'
         norm_score = max(norm_score, 90)
     elif norm_score >= 90:
