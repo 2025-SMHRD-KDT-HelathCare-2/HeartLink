@@ -4,6 +4,15 @@ calc_percentile_v3.py
 =====================
 위험도 점수 정규화를 위한 risk_score 분포 시뮬레이션 스크립트
 
+[주의: 현재 서비스에서 사용하는 분포의 출처가 아님]
+  2026-06-26부로 risk_score_distribution.npy는 이 스크립트가 아니라
+  MIT-BIH+INCART 실제 데이터(30초 윈도우 7,380개)를 이용한
+  별도 Colab 노트북에서 생성된다.
+  이 스크립트는 가상 시뮬레이션 기반 이전 분포를 생성하며,
+  참고/비교 목적으로만 보존한다.
+  실행하면 현재 사용 중인 .npy 파일을 가상 시뮬레이션 분포로
+  덮어쓰므로 주의할 것.
+
 계산일: 2026-06-24
 기준 로직: predictor.py의 calculate_risk() 최신 버전
     - LF/HF 제외 (30초 측정: Welch PSD 주파수 해상도 부족)
@@ -20,7 +29,7 @@ calc_percentile_v3.py
     python scripts/calc_percentile_v3.py
 
 출력:
-    ai-server/data/risk_score_distribution.npy
+    ai-server/data/risk_score_distribution.npy  ← 현재 서비스 분포를 덮어씀 (주의)
     콘솔에 분포 통계 및 50th/90th percentile
 """
 
