@@ -76,12 +76,13 @@ def _compute_risk_score(af_detected, af_prob, arr_class, arr_prob,
     ARR_score = arr_base.get(arr_class, 0) * arr_prob
 
     # HR_score: 심박수가 정상 범위(60~100 BPM)를 벗어난 정도를 단계적으로 점수화
-    if   heart_rate > 150: HR_score = 100
-    elif heart_rate > 130: HR_score = 70
-    elif heart_rate > 100: HR_score = 40
-    elif heart_rate < 40:  HR_score = 100
-    elif heart_rate < 60:  HR_score = 40
-    else:                  HR_score = 0
+    # ≥140 → 100 (기존 >150), ≤40 → 100 (기존 <40): 극단 심박수 예외규칙 흡수
+    if   heart_rate >= 140: HR_score = 100
+    elif heart_rate > 130:  HR_score = 70
+    elif heart_rate > 100:  HR_score = 40
+    elif heart_rate <= 40:  HR_score = 100
+    elif heart_rate < 60:   HR_score = 40
+    else:                   HR_score = 0
 
     # ─── HRV_score: 측정 시간별 정상 범위 분기 ───────────────────────────
     #
@@ -188,16 +189,21 @@ def _is_special_case(af_detected, heart_rate, arr_class, arr_prob):
     """
     percentile 계산에서 제외할 특수 케이스 판정.
 
-    특수 케이스는 보정된 절대 기준(risk_level 직접 결정)이 적용되므로
-    percentile 분포에서 제외한다. 아래 3가지 조건 중 하나라도 해당하면 True.
+    절대 예외 규칙(risk_level 직접 결정)이 적용되는 케이스는
+    percentile 분포에서 제외한다. 현재 예외 규칙 3개:
 
-      1) AF 감지: 심방세동 전체 제외 (심박수에 따라 mid/high 직접 분류)
-      2) VEB 고확률(≥0.70): 심실성 부정맥 빈발 → 직접 high 분류
-      3) 극단 심박수(≥140 또는 ≤40): 빠른 빈맥/심한 서맥 → 직접 high 분류
+      1) AF 감지 전체 제외
+           - AF + HR≥100 → high
+           - AF + HR<100 → mid
+      2) VEB 확률 ≥ 70% → high
+           MIT-BIH+INCART 검증: 점수 체계 단독으로 high 미달 확인
+           간호사 임상 자문: VEB는 단독으로도 병원 방문 필요
+
+      [분포에 포함된 항목 - 예외규칙 점수 체계로 흡수됨]
+        HR ≥140/≤40: HR_score 재조정(≥140→100, ≤40→100)으로 자연 high
     """
     if af_detected:                              return True
     if arr_class == 'VEB' and arr_prob >= 0.70: return True
-    if heart_rate >= 140 or heart_rate <= 40:   return True
     return False
 
 
