@@ -99,10 +99,14 @@ export const verifyPhoneCode = async (req, res, next) => {
 
 export const register = async (req, res, next) => {
   try {
-    const { email, password, nickname, role, age, gender, medical_history, medications, phone } = req.body;
+    // [변경] req.body에서 꺼내는 항목 정리
+    //   - 예전의 'age'(나이)를 빼고 'birthDate'(생년월일)를 받습니다.
+    //   - 'medications'(복용 약)은 더 이상 사용하지 않으므로 꺼내지 않습니다.
+    const { email, password, nickname, role, birthDate, gender, medical_history, phone } = req.body;
 
     if (!phone) return res.status(400).json({ message: '전화번호 인증이 필요합니다.' });
 
+    // 전화번호 인증이 정상적으로 완료된 기록이 있는지 확인합니다.
     const verifiedRecord = await PhoneVerification.findOne({
       phone,
       purpose: 'signup',
@@ -113,8 +117,10 @@ export const register = async (req, res, next) => {
       return res.status(400).json({ message: '전화번호 인증을 먼저 완료해 주세요.' });
     }
 
+    // 비밀번호는 그대로 저장하지 않고 bcrypt로 안전하게 암호화(해시)합니다.
     const hashed = await bcrypt.hash(password, 12);
 
+    // 새 사용자 문서를 만듭니다.
     await User.create({
       email,
       password: hashed,
@@ -122,19 +128,25 @@ export const register = async (req, res, next) => {
       role,
       phone,
       phoneVerified: true,
-      ...(age    !== undefined && { age }),
+      // [변경] 생년월일은 값이 들어왔을 때만 저장합니다.
+      //   - 만 나이는 User 모델의 virtual('age')가 birthDate로 자동 계산하므로
+      //     나이를 따로 저장할 필요가 없습니다.
+      ...(birthDate !== undefined && { birthDate }),
+      // 성별도 값이 있을 때만 저장합니다.
       ...(gender !== undefined && { gender }),
+      // 질병(병력) 목록. 값이 없으면 빈 배열로 저장합니다.
       medicalHistory: medical_history ?? [],
-      medications:    medications     ?? [],
+      // [삭제] medications(복용 약) 저장 줄 제거
     });
 
-    // 사용한 인증 레코드 삭제
+    // 회원가입에 사용한 전화번호 인증 기록은 더 이상 필요 없으니 삭제합니다.
     await PhoneVerification.findByIdAndDelete(verifiedRecord._id);
 
     return res.status(201).json({
       message: '회원가입이 완료되었습니다! 로그인 화면에서 로그인해 주세요.',
     });
   } catch (err) {
+    // 이메일이 이미 존재할 때(중복 키 오류, 코드 11000) 친절한 메시지로 안내합니다.
     if (err.code === 11000) {
       return res.status(409).json({
         message: '이미 가입된 이메일 주소입니다. 다른 이메일을 사용해 주세요.',
@@ -143,6 +155,7 @@ export const register = async (req, res, next) => {
     next(err);
   }
 };
+
 
 export const login = async (req, res, next) => {
   try {
@@ -294,18 +307,34 @@ export const getMe = async (req, res, next) => {
 
 export const updateMe = async (req, res, next) => {
   try {
-    const { medical_history, medications, phone } = req.body;
+    // [변경] 프로필 화면에서 보내올 수 있는 값들을 꺼냅니다.
+    //   - 'medications'(복용 약)은 더 이상 받지 않으므로 제거했습니다.
+    //   - 'birthDate'(생년월일), 'gender'(성별)를 추가로 받습니다.
+    //     (프로필 화면에서 생년월일·성별을 수정할 수 있기 때문입니다.)
+    const { medical_history, phone, birthDate, gender } = req.body;
+
+    // 실제로 바꿀 값만 골라 담는 객체입니다.
+    //   - 값이 들어온 항목만 update에 넣어, 보내지 않은 항목은 기존 값을 유지합니다.
     const update = {};
-    if (medical_history !== undefined) update.medicalHistory = medical_history;
-    if (medications     !== undefined) update.medications    = medications;
-    if (phone           !== undefined) update.phone          = phone;
+    if (medical_history !== undefined) update.medicalHistory = medical_history; // 질병 목록
+    if (phone           !== undefined) update.phone          = phone;           // 전화번호
+    if (birthDate       !== undefined) update.birthDate      = birthDate;       // 생년월일
+    if (gender          !== undefined) update.gender         = gender;          // 성별(M/F)
+    // [삭제] medications 처리 줄 제거
+
+    // 사용자 정보를 수정하고, 수정된 최신 문서를 돌려받습니다.
+    //   - { new: true }: 수정 "후"의 문서를 반환 (기본값은 수정 전 문서)
+    //   - select('-password -refreshToken'): 민감 정보는 응답에서 제외
+    //   - virtual('age')는 birthDate를 기준으로 자동 계산되어 함께 응답됩니다.
     const user = await User.findByIdAndUpdate(req.user.id, update, { new: true })
       .select('-password -refreshToken');
+
     res.json(user);
   } catch (err) {
     next(err);
   }
 };
+
 
 export const deleteMe = async (req, res, next) => {
   try {
