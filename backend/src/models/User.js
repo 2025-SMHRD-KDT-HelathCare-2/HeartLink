@@ -1,3 +1,4 @@
+// User.js
 // mongoose: MongoDB를 JavaScript에서 다루기 위한 ODM 라이브러리
 import mongoose from 'mongoose';
 // mongoose에서 Schema(스키마 정의 기능)만 추출
@@ -42,8 +43,12 @@ const userSchema = new Schema(
     phoneVerified: { type: Boolean, default: false, required: true },
 
     // ───────── 건강/프로필 정보 ─────────
-    // age: 나이
-    age: { type: Number },
+    // birthDate: 생년월일(년·월·일까지만 저장)
+    //  - 나이는 시간이 지나면 변하지만 생년월일은 변하지 않는 "사실 값"이므로
+    //    나이를 직접 저장하지 않고 birthDate만 저장합니다.
+    //  - 실제 나이는 아래 virtual('age')에서 조회 시점에 계산합니다.
+    //    (별도의 나이 갱신 배치/스케줄러가 필요 없음)
+    birthDate: { type: Date },
     // gender: 성별 (M=남, F=여)
     gender: { type: String, enum: ['M', 'F'] },
     // medicalHistory: 병력(과거 질환) 목록. 문자열 배열, 기본값 빈 배열
@@ -56,8 +61,30 @@ const userSchema = new Schema(
     refreshToken: { type: String },
   },
   // timestamps: createdAt(생성시각), updatedAt(수정시각)을 자동 생성
-  { timestamps: true }
+  {
+    timestamps: true,
+    // virtuals(가상 필드)를 JSON/객체로 변환할 때도 포함시킵니다.
+    //  - 이렇게 해야 프론트엔드/AI 서버 응답(JSON)에 계산된 age가 함께 담깁니다.
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
+  }
 );
+
+// ───────── 가상 필드(virtual): 만 나이 계산 ─────────
+// DB에는 저장하지 않고, 문서를 조회할 때 birthDate를 기준으로 "현재 만 나이"를 계산합니다.
+//  - 사용 예: user.age  →  생년월일로부터 계산된 만 나이(숫자)
+//  - birthDate가 없으면 null을 반환합니다.
+userSchema.virtual('age').get(function () {
+  if (!this.birthDate) return null;
+  const today = new Date();
+  let age = today.getFullYear() - this.birthDate.getFullYear();
+  // 올해 생일이 아직 지나지 않았다면 1살을 뺍니다.
+  const monthDiff = today.getMonth() - this.birthDate.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < this.birthDate.getDate())) {
+    age--;
+  }
+  return age;
+});
 
 // ───────── 인덱스(빠른 검색을 위한 색인) ─────────
 // role 기준 빠른 조회용 인덱스 (예: 보호자만 모아 조회)
