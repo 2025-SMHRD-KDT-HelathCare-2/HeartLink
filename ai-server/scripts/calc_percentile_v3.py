@@ -199,7 +199,7 @@ def _is_special_case(af_detected, heart_rate, arr_class, arr_prob):
     percentile 계산에서 제외할 특수 케이스 판정.
 
     절대 예외 규칙(risk_level 직접 결정)이 적용되는 케이스는
-    percentile 분포에서 제외한다. 현재 예외 규칙 3개:
+    percentile 분포에서 제외한다. 현재 예외 규칙 4개:
 
       1) AF 감지 전체 제외
            - AF + HR≥100 → high
@@ -207,12 +207,14 @@ def _is_special_case(af_detected, heart_rate, arr_class, arr_prob):
       2) VEB 확률 ≥ 70% → high
            MIT-BIH+INCART 검증: 점수 체계 단독으로 high 미달 확인
            간호사 임상 자문: VEB는 단독으로도 병원 방문 필요
-
-      [분포에 포함된 항목 - 예외규칙 점수 체계로 흡수됨]
-        HR ≥140/≤40: HR_score 재조정(≥140→100, ≤40→100)으로 자연 high
+      3) 극단 심박수(≥140 또는 ≤40) → high
+           가상 시뮬레이션 분포(p90=15)에서는 HR_score 재조정만으로 흡수됐으나,
+           실제 데이터 분포(p90=50)로 교체 후 고위험 케이스가 mid로 떨어짐 → 복원
+           분포가 바뀌어도 절대적으로 보장되어야 하는 응급 신호.
     """
     if af_detected:                              return True
     if arr_class == 'VEB' and arr_prob >= 0.70: return True
+    if heart_rate >= 140 or heart_rate <= 40:   return True
     return False
 
 
