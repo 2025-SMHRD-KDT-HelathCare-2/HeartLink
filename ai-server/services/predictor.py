@@ -286,8 +286,18 @@ def calculate_risk(af_detected, af_prob, arr_class, arr_prob,
     # --------------------------------------------------
     # 위험도 등급 결정
     #
-    # 1순위: 절대 예외 규칙 (임상적 절대 기준)
-    #   percentile 점수와 무관하게 등급을 직접 결정하는 3가지 규칙.
+    # [설계 원칙]
+    # 명백한 응급 신호(AF+빈맥, VEB 고확률, 극단 심박수)는
+    # percentile 분포가 바뀌어도 항상 'high'가 보장되어야 한다.
+    # 분포 기반 점수(norm_score)는 상대적 기준이라 기준 분포가
+    # 가상 시뮬레이션(p90=15)에서 실제 데이터(p90=50)로 바뀌는 것만으로
+    # high→mid로 등급이 떨어질 수 있음이 실제 테스트에서 확인됐다.
+    # (애플워치 심실빈맥 파일 HR=142 → ecg_score≈26 → 새 분포 p90=50 미달)
+    # 이런 케이스는 점수 체계로 흡수하려는 시도보다 명시적 예외 규칙이
+    # 더 안전하고 유지보수가 쉽다는 결론에 도달함.
+    #
+    # 1순위: 절대 예외 규칙 (4개, 임상적 절대 기준)
+    #   percentile 점수와 무관하게 등급을 직접 결정.
     #   norm_score 범위: high=[90, 100], mid=[50, 89]
     #   → risk_level과 norm_score 항상 동일 기준 (등급 ↔ 점수 불일치 없음)
     #
@@ -298,18 +308,13 @@ def calculate_risk(af_detected, af_prob, arr_class, arr_prob,
     #      AF 단독은 별로 안 위험 (간호사 임상 피드백)
     #
     #   ③ VEB 확률 ≥ 70% → high
-    #      [근거 1 - 실제 데이터 검증]
-    #        MIT-BIH+INCART 30초 윈도우 7,380개 검증 결과:
-    #        VEB로 분류된 1,193개 중 42%(504개)가 모델 평균 확신도 93.5%임에도
-    #        점수 체계(ecg_score)만으로는 norm_score 90 미달 → 예외 규칙 필요
-    #      [근거 2 - 간호사 임상 자문]
-    #        "VEB는 심박수와 무관하게 단독으로도 병원 방문(상 등급)이 필요하다"
-    #      [제거 후 재추가 이유]
-    #        이전에 점수 체계로 흡수 가능하다 판단해 제거했으나,
-    #        실제 데이터 기반 검증에서 흡수 실패 확인 → 복원
+    #      MIT-BIH+INCART 검증: VEB 1,193개 중 42%가 점수 체계로 흡수 실패
+    #      간호사 임상 자문: "VEB는 단독으로도 병원 방문(상 등급) 필요"
     #
-    #   [흡수된 예외들 - 예외규칙 → 점수 체계로 대체]
-    #   HR ≥ 140 또는 ≤ 40: HR_score 구간 재조정(≥140→100, ≤40→100)으로 흡수
+    #   ④ 극단 심박수(≥140 또는 ≤40) → high
+    #      가상 시뮬레이션 분포(p90=15)에서는 HR_score 재조정만으로 흡수됐으나,
+    #      실제 데이터 분포(p90=50)로 교체 후 ecg_score≈26이 p90 미달 → 복원
+    #      임상 근거: 심한 빈맥(140+)·심한 서맥(40 이하)은 즉각적 응급 신호
     #
     # 2순위: percentile 기반 상대 기준
     #   HIGH: norm_score >= 90  (분포 상위 10%)
@@ -322,6 +327,9 @@ def calculate_risk(af_detected, af_prob, arr_class, arr_prob,
         risk_level = 'mid'
         norm_score = min(max(norm_score, 50), 89)
     elif arr_class == 'VEB' and arr_prob >= 0.70:
+        risk_level = 'high'
+        norm_score = max(norm_score, 90)
+    elif heart_rate >= 140 or heart_rate <= 40:
         risk_level = 'high'
         norm_score = max(norm_score, 90)
     elif norm_score >= 90:
