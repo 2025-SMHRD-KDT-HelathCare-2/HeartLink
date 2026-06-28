@@ -1,3 +1,8 @@
+// ============================================================================
+// 소셜 로그인 콜백 처리 페이지 (토큰 교환 / 신규는 역할 선택으로 분기)
+// - 리팩터링 포인트: 로딩 문구 인라인 fontSize → 토큰 클래스
+//   (이 페이지는 색 하드코딩이 없고 로직만 있어 변경 최소)
+// ============================================================================
 import { useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -40,7 +45,7 @@ export function OAuthCallbackPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <p className="text-gray-600 font-bold" style={{ fontSize: "1.1rem" }}>
+      <p className="text-gray-600 font-bold text-[1.1rem]">
         로그인 처리 중입니다...
       </p>
     </div>

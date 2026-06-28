@@ -1,7 +1,12 @@
+// ============================================================================
+// 보호자 리포트 기록 목록 (특정 사용자 일간/주간 모아보기)
+// - ReportHistoryListPage 와 동일 패턴: 위험도 색 토큰화 + 헤더/배경 토큰
+// ============================================================================
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ChevronLeft, FileText, CalendarDays, BarChart2, Clock } from "lucide-react";
 import api from "../api/authApi";
+import { COLORS } from "../styles/tokens";
 
 type ReportPeriod = "daily" | "weekly";
 
@@ -17,10 +22,11 @@ interface ReportItem {
 
 const LEVEL_MAP: Record<string, "상" | "중" | "하"> = { high: "상", mid: "중", low: "하" };
 
+// 위험도 색상 → tokens.ts(COLORS)로 일원화
 const RISK_META = {
-  상: { color: "#DC2626", label: "위험" },
-  중: { color: "#D97706", label: "주의" },
-  하: { color: "#16A34A", label: "양호" },
+  상: { color: COLORS.danger,  label: "위험" },
+  중: { color: COLORS.warning, label: "주의" },
+  하: { color: COLORS.safe,    label: "양호" },
 };
 
 function formatDate(iso: string) {
@@ -63,43 +69,49 @@ export function GuardianReportHistoryPage() {
   const filtered = filter === "all" ? reports : reports.filter(r => r.reportPeriod === filter);
 
   return (
-    <div className="min-h-screen bg-[#F4F7FA]">
-      <header className="bg-[#0D9488] text-white px-5 py-4 flex items-center gap-3 sticky top-0 z-20 shadow-lg">
+    <div className="min-h-screen" style={{ backgroundColor: COLORS.appBg }}>
+      <header className="text-white px-5 py-4 flex items-center gap-3 sticky top-0 z-20 shadow-lg"
+        style={{ backgroundColor: COLORS.primary }}>
         <button onClick={() => navigate(-1)} className="p-2 rounded-xl hover:bg-white/10 transition-colors">
           <ChevronLeft className="w-6 h-6" />
         </button>
         <div className="flex items-center gap-2">
           <FileText className="w-5 h-5" />
           <div>
-            <div className="font-black" style={{ fontSize: "1.3rem" }}>리포트 기록</div>
-            <div className="text-white/60 font-bold" style={{ fontSize: "0.9rem" }}>일간 · 주간 리포트 모아보기</div>
+            <div className="font-black text-sub">리포트 기록</div>
+            <div className="text-white/60 font-bold text-tiny">일간 · 주간 리포트 모아보기</div>
           </div>
         </div>
       </header>
 
       <div className="max-w-2xl mx-auto p-5">
-        {/* 필터 탭 */}
+        {/* 필터 탭 — 선택 시 primary 배경(동적이므로 인라인) */}
         <div className="flex bg-white rounded-xl p-1 mb-5 shadow-sm border border-gray-100">
-          {([["all", "전체"], ["daily", "일간"], ["weekly", "주간"]] as const).map(([val, label]) => (
-            <button key={val} onClick={() => setFilter(val)}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-3 rounded-lg transition-all font-bold ${
-                filter === val ? "bg-[#0D9488] text-white shadow" : "text-gray-500 hover:bg-gray-50"
-              }`} style={{ fontSize: "1rem" }}>
-              {val === "daily" && <CalendarDays className="w-4 h-4" />}
-              {val === "weekly" && <BarChart2 className="w-4 h-4" />}
-              {label}
-            </button>
-          ))}
+          {([["all", "전체"], ["daily", "일간"], ["weekly", "주간"]] as const).map(([val, label]) => {
+            const active = filter === val;
+            return (
+              <button key={val} onClick={() => setFilter(val)}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-3 rounded-lg transition-all font-bold text-small ${
+                  active ? "text-white shadow" : "text-gray-500 hover:bg-gray-50"
+                }`}
+                style={active ? { backgroundColor: COLORS.primary } : undefined}>
+                {val === "daily" && <CalendarDays className="w-4 h-4" />}
+                {val === "weekly" && <BarChart2 className="w-4 h-4" />}
+                {label}
+              </button>
+            );
+          })}
         </div>
 
         {loading ? (
           <div className="flex justify-center py-16">
-            <div className="w-8 h-8 border-4 border-[#0D9488] border-t-transparent rounded-full animate-spin" />
+            <div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin"
+              style={{ borderColor: COLORS.primary, borderTopColor: "transparent" }} />
           </div>
         ) : filtered.length === 0 ? (
           <div className="bg-white rounded-2xl p-12 shadow-sm border border-gray-100 text-center">
             <FileText className="w-12 h-12 mx-auto text-gray-300 mb-3" />
-            <p className="text-gray-400 font-bold" style={{ fontSize: "1.1rem" }}>리포트가 없습니다.</p>
+            <p className="text-gray-400 font-bold text-[1.1rem]">리포트가 없습니다.</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -110,23 +122,24 @@ export function GuardianReportHistoryPage() {
                 <button key={r.id}
                   onClick={() => navigate(`/guardian-report-detail/${userId}`, { state: { reportId: r.id, type: r.reportPeriod } })}
                   className="w-full bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center gap-4 text-left hover:bg-gray-50 transition-colors">
+                  {/* 일간/주간 아이콘 — 둘 다 primary 배경 */}
                   <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0"
-                    style={{ backgroundColor: isDaily ? "#0D9488" : "#0D9488" }}>
+                    style={{ backgroundColor: COLORS.primary }}>
                     {isDaily
                       ? <CalendarDays className="w-6 h-6 text-white" />
                       : <BarChart2 className="w-6 h-6 text-white" />}
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <span className="font-black text-gray-800" style={{ fontSize: "1.1rem" }}>
+                      <span className="font-black text-gray-800 text-[1.1rem]">
                         {r.memberName} {isDaily ? "일간" : "주간"} 리포트
                       </span>
-                      <span className="px-3 py-1 rounded-full text-white font-bold"
-                        style={{ backgroundColor: meta.color, fontSize: "0.85rem" }}>
+                      <span className="px-3 py-1 rounded-full text-white font-bold text-tiny"
+                        style={{ backgroundColor: meta.color }}>
                         {meta.label} {r.riskScore}점
                       </span>
                     </div>
-                    <div className="flex items-center gap-1 text-gray-400 font-bold" style={{ fontSize: "0.9rem" }}>
+                    <div className="flex items-center gap-1 text-gray-400 font-bold text-tiny">
                       <Clock className="w-3.5 h-3.5" />{formatDate(r.createdAt)}
                     </div>
                   </div>

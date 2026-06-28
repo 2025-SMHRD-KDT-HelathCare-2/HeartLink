@@ -1,9 +1,15 @@
+// ============================================================================
+// 보호자 건강 결과 보고서 페이지 (사용자 선택 → 최근 측정 + 위험도 배너)
+// - 위험도 색상 토큰화(COLORS). 일일 리포트/기록 보기는 공통 Button 사용
+// ============================================================================
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { AlertTriangle, Info, ChevronLeft, ChevronRight, Clock, FileText, Sparkles } from "lucide-react";
 import api from "../api/authApi";
 import type { Patient } from "../components/layout/GuardianLayout";
 import { toKSTDatetime } from "../utils/formatKST";
+import { Button } from "../components/ui";
+import { COLORS } from "../styles/tokens";
 
 interface MeasurementRecord {
   id: string;
@@ -14,10 +20,11 @@ interface MeasurementRecord {
 
 const LEVEL_MAP: Record<string, "상" | "중" | "하"> = { high: "상", mid: "중", low: "하" };
 
+// 위험도 색상 → tokens.ts(COLORS)로 일원화
 const RISK_CONFIG = {
-  상: { color: "#DC2626", bg: "#FEF2F2", border: "#FECACA", label: "위험" },
-  중: { color: "#D97706", bg: "#FFFBEB", border: "#FDE68A", label: "주의" },
-  하: { color: "#16A34A", bg: "#F0FDF4", border: "#BBF7D0", label: "양호" },
+  상: { color: COLORS.danger,  bg: COLORS.dangerBg,  border: COLORS.dangerBorder,  label: "위험" },
+  중: { color: COLORS.warning, bg: COLORS.warningBg, border: COLORS.warningBorder, label: "주의" },
+  하: { color: COLORS.safe,    bg: COLORS.safeBg,    border: COLORS.safeBorder,    label: "양호" },
 };
 
 interface GuardianReportPageProps {
@@ -43,6 +50,7 @@ export function GuardianReportPage({ patients, selectedUserId, onSelectUser }: G
     if (idx >= 0) setSelectedIdx(idx);
   }, [selectedUserId, patients]);
 
+  // 선택된 사용자의 최근 측정 3건 조회
   useEffect(() => {
     if (patients.length === 0) return;
     const userId = patients[Math.min(selectedIdx, patients.length - 1)].user_id;
@@ -72,9 +80,9 @@ export function GuardianReportPage({ patients, selectedUserId, onSelectUser }: G
   if (patients.length === 0) {
     return (
       <div className="max-w-2xl mx-auto p-6">
-        <h1 className="font-bold text-[#0D9488] mb-6" style={{ fontSize: "1.9rem" }}>건강 결과 보고서</h1>
+        <h1 className="font-bold text-primary mb-6" style={{ fontSize: "1.9rem" }}>건강 결과 보고서</h1>
         <div className="bg-white rounded-2xl p-12 shadow-sm border border-gray-100 text-center">
-          <p className="text-gray-400 font-bold" style={{ fontSize: "1.1rem" }}>아직 연결된 사용자가 없어요. 마이페이지에서 사용자를 등록해 보세요.</p>
+          <p className="text-gray-400 font-bold text-[1.1rem]">아직 연결된 사용자가 없어요. 마이페이지에서 사용자를 등록해 보세요.</p>
         </div>
       </div>
     );
@@ -100,13 +108,13 @@ export function GuardianReportPage({ patients, selectedUserId, onSelectUser }: G
   return (
     <div className="max-w-2xl mx-auto p-6">
       <div className="mb-6">
-        <h1 className="font-bold text-[#0D9488]" style={{ fontSize: "1.9rem" }}>건강 결과 보고서</h1>
+        <h1 className="font-bold text-primary" style={{ fontSize: "1.9rem" }}>건강 결과 보고서</h1>
       </div>
 
       {/* 사용자 선택 탭 */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 mb-6 overflow-hidden">
         <div className="p-4 border-b border-gray-100">
-          <p className="text-gray-500 font-bold" style={{ fontSize: "1rem" }}>리포트를 볼 사용자를 선택하세요</p>
+          <p className="text-gray-500 font-bold text-small">리포트를 볼 사용자를 선택하세요</p>
         </div>
         <div className="flex">
           {patients.map((p, i) => {
@@ -117,14 +125,14 @@ export function GuardianReportPage({ patients, selectedUserId, onSelectUser }: G
               <button key={p.user_id}
                 onClick={() => setSelectedIdx(i)}
                 className={`flex-1 flex flex-col items-center gap-1 py-4 transition-all border-b-4 ${
-                  active ? "border-[#0D9488] bg-blue-50" : "border-transparent hover:bg-gray-50"
+                  active ? "bg-blue-50" : "border-transparent hover:bg-gray-50"
                 } ${i !== 0 ? "border-l border-gray-100" : ""}`}
-                style={{ minHeight: 80 }}>
-                <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold"
-                  style={{ backgroundColor: c.color, fontSize: "1rem" }}>
+                style={{ minHeight: 80, ...(active ? { borderBottomColor: COLORS.primary } : {}) }}>
+                <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-small"
+                  style={{ backgroundColor: c.color }}>
                   {p.nickname[0]}
                 </div>
-                <span className="font-bold text-gray-800" style={{ fontSize: "1rem" }}>{p.nickname}</span>
+                <span className="font-bold text-gray-800 text-small">{p.nickname}</span>
                 <span className="px-2 py-0.5 rounded-full text-white font-bold"
                   style={{ backgroundColor: c.color, fontSize: "0.8rem" }}>
                   {c.label}
@@ -138,16 +146,14 @@ export function GuardianReportPage({ patients, selectedUserId, onSelectUser }: G
       {/* 이전/다음 네비게이션 */}
       <div className="flex items-center justify-between mb-6">
         <button onClick={() => setSelectedIdx(i => Math.max(0, i - 1))} disabled={selectedIdx === 0}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-30 font-bold transition-colors"
-          style={{ fontSize: "1rem" }}>
+          className="flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-30 font-bold transition-colors text-small">
           <ChevronLeft className="w-5 h-5" />이전
         </button>
-        <span className="text-gray-500 font-bold" style={{ fontSize: "1rem" }}>
+        <span className="text-gray-500 font-bold text-small">
           {selectedIdx + 1} / {patients.length}
         </span>
         <button onClick={() => setSelectedIdx(i => Math.min(patients.length - 1, i + 1))} disabled={selectedIdx === patients.length - 1}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-30 font-bold transition-colors"
-          style={{ fontSize: "1rem" }}>
+          className="flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-30 font-bold transition-colors text-small">
           다음<ChevronRight className="w-5 h-5" />
         </button>
       </div>
@@ -156,11 +162,12 @@ export function GuardianReportPage({ patients, selectedUserId, onSelectUser }: G
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 mb-6 overflow-hidden">
         <div className="p-4 border-b border-gray-100 flex items-center gap-2">
           <FileText className="w-5 h-5 text-gray-400" />
-          <p className="text-gray-700 font-bold" style={{ fontSize: "1rem" }}>최근 측정 기록</p>
+          <p className="text-gray-700 font-bold text-small">최근 측정 기록</p>
         </div>
         {recordsLoading ? (
           <div className="flex justify-center py-8">
-            <div className="w-6 h-6 border-2 border-[#0D9488] border-t-transparent rounded-full animate-spin" />
+            <div className="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin"
+              style={{ borderColor: COLORS.primary, borderTopColor: "transparent" }} />
           </div>
         ) : records.length === 0 ? (
           <p className="text-gray-400 font-bold text-center py-8" style={{ fontSize: "0.95rem" }}>측정 기록이 없습니다.</p>
@@ -175,13 +182,13 @@ export function GuardianReportPage({ patients, selectedUserId, onSelectUser }: G
                   <div className="w-2 h-10 rounded-full flex-shrink-0" style={{ backgroundColor: rc.color }} />
                   <div className="flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="px-3 py-1 rounded-full text-white font-bold"
-                        style={{ backgroundColor: rc.color, fontSize: "0.9rem" }}>
+                      <span className="px-3 py-1 rounded-full text-white font-bold text-tiny"
+                        style={{ backgroundColor: rc.color }}>
                         {rc.label} {r.riskScore}점
                       </span>
                       {i === 0 && <span className="px-2 py-0.5 bg-blue-100 text-blue-600 rounded-full font-bold" style={{ fontSize: "0.8rem" }}>최신</span>}
                     </div>
-                    <div className="flex items-center gap-1 text-gray-400 mt-1 font-bold" style={{ fontSize: "0.9rem" }}>
+                    <div className="flex items-center gap-1 text-gray-400 mt-1 font-bold text-tiny">
                       <Clock className="w-3 h-3" />{r.date}
                     </div>
                   </div>
@@ -193,7 +200,7 @@ export function GuardianReportPage({ patients, selectedUserId, onSelectUser }: G
         )}
       </div>
 
-      {/* 위험도 배너 */}
+      {/* 위험도 배너 — 동적 색상이므로 인라인 유지 */}
       <div className="rounded-2xl p-6 mb-6 border-2" style={{ backgroundColor: config.bg, borderColor: config.border }}>
         <div className="flex items-center gap-4 mb-4">
           <AlertTriangle className="w-10 h-10 flex-shrink-0" style={{ color: config.color }} />
@@ -201,14 +208,14 @@ export function GuardianReportPage({ patients, selectedUserId, onSelectUser }: G
             <div style={{ color: config.color, fontSize: "1.8rem", fontWeight: 900 }}>
               위험도 {patientRiskLevel} — {config.label}
             </div>
-            <div className="text-gray-600 font-bold mt-1" style={{ fontSize: "1rem" }}>
+            <div className="text-gray-600 font-bold mt-1 text-small">
               {patient.nickname}{patient.age != null ? ` (${patient.age}세)` : ""}
               {patient.latest_measured_at && ` · 최근 측정 ${toKSTDatetime(patient.latest_measured_at)}`}
             </div>
           </div>
           <div className="text-right flex-shrink-0">
             <div style={{ color: config.color, fontSize: "2.8rem", fontWeight: 900, lineHeight: 1 }}>{patient.risk_score ?? 0}</div>
-            <div className="text-gray-400 font-bold" style={{ fontSize: "1rem" }}>/ 100점</div>
+            <div className="text-gray-400 font-bold text-small">/ 100점</div>
           </div>
         </div>
         <div className="w-full bg-white rounded-full h-4 overflow-hidden">
@@ -216,26 +223,30 @@ export function GuardianReportPage({ patients, selectedUserId, onSelectUser }: G
         </div>
       </div>
 
-      {/* 일일 AI 리포트 보기 */}
-      <button
+      {/* 일일 AI 리포트 보기 — 공통 Button(primary) */}
+      <Button
+        variant="primary"
+        size="lg"
+        fullWidth
         onClick={handleGuardianReport}
         disabled={generating}
-        className="w-full flex items-center justify-center gap-3 py-5 bg-gradient-to-r from-[#0D9488] to-[#0D9488] text-white rounded-2xl hover:opacity-90 transition-all font-black mb-3 shadow-lg disabled:opacity-50"
-        style={{ minHeight: 68, fontSize: "1.2rem" }}
+        icon={<Sparkles className="w-7 h-7" />}
+        className="mb-3 shadow-lg"
       >
-        <Sparkles className="w-7 h-7" />
         {generating ? "리포트 생성 중..." : "일일 AI 리포트 보기"}
-      </button>
+      </Button>
 
-      {/* 리포트 기록 보기 */}
-      <button
+      {/* 리포트 기록 보기 — 공통 Button(outline) */}
+      <Button
+        variant="outline"
+        size="md"
+        fullWidth
         onClick={() => navigate(`/guardian-report-history/${patient.user_id}`)}
-        className="w-full flex items-center justify-center gap-3 py-4 border-2 border-[#0D9488] text-[#0D9488] rounded-2xl hover:bg-[#0D9488]/5 transition-all font-bold mb-5"
-        style={{ minHeight: 56, fontSize: "1.1rem" }}
+        icon={<FileText className="w-5 h-5" />}
+        className="mb-5"
       >
-        <FileText className="w-5 h-5" />
         리포트 기록 보기
-      </button>
+      </Button>
 
       <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-500 font-bold" style={{ fontSize: "0.95rem" }}>
         <Info className="w-4 h-4 inline mr-2 text-gray-400" />

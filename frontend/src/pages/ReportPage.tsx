@@ -1,7 +1,18 @@
+// ============================================================================
+// 내 건강 결과(일일 리포트) 페이지
+// - 최근 측정 7건 목록 + 위험도 배너 + 일일 AI 리포트/기록 보기 버튼
+// - 리팩터링 포인트:
+//   1) 하드코딩 색상(#DC2626 등) → tokens.ts 의 COLORS / RISK_COLOR 로 일원화
+//   2) 반복 버튼/배지 → 공통 <Card>, <Button> 사용 (단, 동적 색상 영역은 인라인 유지)
+//   3) 인라인 fontSize → 토큰 클래스(text-hero, text-sub 등) 우선, 없으면 임의값 유지
+//   기능(데이터 조회, 선택 인덱스, 리포트 생성/네비게이션)은 100% 동일
+// ============================================================================
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { AlertTriangle, CheckCircle, Info, Clock, Bell, Sparkles, FileText } from "lucide-react";
 import api from "../api/authApi";
+import { Card, Button } from "../components/ui";
+import { COLORS } from "../styles/tokens";
 
 type RiskLevel = "high" | "mid" | "low";
 
@@ -14,10 +25,12 @@ interface MeasurementItem {
   status: string;
 }
 
+// 위험도별 메타데이터(색/배경/라벨/아이콘).
+// 색 값은 더 이상 페이지에 하드코딩하지 않고 tokens.ts(COLORS)에서 가져온다.
 const RISK_META = {
-  상: { color: "#DC2626", bg: "#FEF2F2", border: "#FECACA", label: "위험", icon: AlertTriangle },
-  중: { color: "#D97706", bg: "#FFFBEB", border: "#FDE68A", label: "주의", icon: Info },
-  하: { color: "#16A34A", bg: "#F0FDF4", border: "#BBF7D0", label: "양호", icon: CheckCircle },
+  상: { color: COLORS.danger,  bg: COLORS.dangerBg,  border: COLORS.dangerBorder,  label: "위험", icon: AlertTriangle },
+  중: { color: COLORS.warning, bg: COLORS.warningBg, border: COLORS.warningBorder, label: "주의", icon: Info },
+  하: { color: COLORS.safe,    bg: COLORS.safeBg,    border: COLORS.safeBorder,    label: "양호", icon: CheckCircle },
 };
 
 const LEVEL_MAP: Record<string, "상" | "중" | "하"> = { high: "상", mid: "중", low: "하" };
@@ -31,6 +44,9 @@ function formatDate(iso: string) {
 
 interface DailyAlert { id: string; message: string; time: string; }
 
+// ----------------------------------------------------------------------------
+// 오늘의 위험(상) 알림 섹션 — 알림이 없으면 아무것도 렌더링하지 않는다.
+// ----------------------------------------------------------------------------
 function DailyAlertSection() {
   const [alerts, setAlerts] = useState<DailyAlert[]>([]);
   useEffect(() => {
@@ -49,21 +65,24 @@ function DailyAlertSection() {
   }, []);
 
   if (alerts.length === 0) return null;
+  const danger = RISK_META.상; // 알림은 항상 '위험' 색상 기준
   return (
     <div className="mb-6">
       <div className="flex items-center gap-2 mb-3">
-        <Bell className="w-6 h-6 text-[#DC2626]" />
-        <h3 className="text-[#DC2626] font-black" style={{ fontSize: "1.25rem" }}>오늘의 알림</h3>
+        <Bell className="w-6 h-6" style={{ color: danger.color }} />
+        <h3 className="font-black text-sub" style={{ color: danger.color }}>오늘의 알림</h3>
       </div>
       {alerts.map(a => (
-        <div key={a.id} className="bg-[#FEF2F2] border-2 border-[#FECACA] rounded-2xl p-5 flex items-start gap-3 mb-3">
-          <AlertTriangle className="w-7 h-7 flex-shrink-0 mt-0.5" style={{ color: "#DC2626" }} />
+        // 동적 위험 색상이므로 배경/테두리는 인라인 style 유지(값은 토큰에서)
+        <div key={a.id} className="border-2 rounded-2xl p-5 flex items-start gap-3 mb-3"
+          style={{ backgroundColor: danger.bg, borderColor: danger.border }}>
+          <AlertTriangle className="w-7 h-7 flex-shrink-0 mt-0.5" style={{ color: danger.color }} />
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-1">
-              <span className="px-3 py-1 rounded-full text-white font-bold" style={{ backgroundColor: "#DC2626", fontSize: "0.85rem" }}>위험</span>
-              <span className="text-gray-400 font-bold ml-auto" style={{ fontSize: "0.9rem" }}>{a.time}</span>
+              <span className="px-3 py-1 rounded-full text-white font-bold text-tiny" style={{ backgroundColor: danger.color }}>위험</span>
+              <span className="text-gray-400 font-bold ml-auto text-tiny">{a.time}</span>
             </div>
-            <p className="text-gray-700 font-bold leading-relaxed" style={{ fontSize: "1.05rem" }}>{a.message}</p>
+            <p className="text-gray-700 font-bold leading-relaxed text-small">{a.message}</p>
           </div>
         </div>
       ))}
@@ -78,6 +97,7 @@ export function ReportPage() {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
 
+  // 완료된 측정만 최근 7건까지 매핑
   useEffect(() => {
     (async () => {
       try {
@@ -102,6 +122,7 @@ export function ReportPage() {
     })();
   }, []);
 
+  // 선택된 측정으로 일일 리포트 생성 후 상세 페이지로 이동
   const handleDailyReport = async () => {
     const item = measurements[Math.min(selectedIdx, measurements.length - 1)];
     if (!item?.analysisId) return;
@@ -124,7 +145,8 @@ export function ReportPage() {
   if (loading) {
     return (
       <div className="max-w-2xl mx-auto p-5 flex justify-center py-20">
-        <div className="w-8 h-8 border-4 border-[#0D9488] border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin"
+          style={{ borderColor: COLORS.primary, borderTopColor: "transparent" }} />
       </div>
     );
   }
@@ -137,17 +159,17 @@ export function ReportPage() {
   return (
     <div className="max-w-2xl mx-auto p-5">
       <div className="mb-7">
-        <h1 className="font-black text-[#0D9488]" style={{ fontSize: "2.2rem" }}>내 건강 결과</h1>
-        <p className="text-gray-500 mt-1 font-bold" style={{ fontSize: "1.15rem" }}>인공지능이 분석한 오늘 심장 상태예요.</p>
+        <h1 className="font-black text-primary text-hero">내 건강 결과</h1>
+        <p className="text-gray-500 mt-1 font-bold text-body">인공지능이 분석한 오늘 심장 상태예요.</p>
       </div>
 
       <DailyAlertSection />
 
       {/* 측정 결과 목록 (최근 7개) */}
       {hasData && (
-        <div className="bg-white rounded-2xl shadow-sm border-2 border-gray-100 mb-6 overflow-hidden">
+        <Card padding="none" className="mb-6 border-2 border-gray-100 overflow-hidden">
           <div className="p-5 border-b-2 border-gray-100">
-            <h3 className="text-gray-800 font-black" style={{ fontSize: "1.25rem" }}>최근 측정 목록</h3>
+            <h3 className="text-gray-800 font-black text-sub">최근 측정 목록</h3>
           </div>
           {measurements.map((m, i) => {
             const mm = RISK_META[m.riskLevel];
@@ -158,22 +180,22 @@ export function ReportPage() {
                 <div className="w-4 h-16 rounded-full shrink-0" style={{ backgroundColor: mm.color }} />
                 <div className="flex-1">
                   <div className="flex items-center gap-3 flex-wrap mb-1">
-                    <span className="px-4 py-2 rounded-full text-white font-black" style={{ backgroundColor: mm.color, fontSize: "1.15rem" }}>
+                    <span className="px-4 py-2 rounded-full text-white font-black text-body" style={{ backgroundColor: mm.color }}>
                       위험도 {m.riskLevel} — {mm.label}
                     </span>
-                    <span className="text-gray-600 font-black" style={{ fontSize: "1.1rem" }}>{m.riskScore}점</span>
+                    <span className="text-gray-600 font-black text-[1.1rem]">{m.riskScore}점</span>
                   </div>
-                  <p className="text-gray-500 mt-1 flex items-center gap-1 font-bold" style={{ fontSize: "1rem" }}>
+                  <p className="text-gray-500 mt-1 flex items-center gap-1 font-bold text-small">
                     <Clock className="w-4 h-4" />{m.date}
                   </p>
                 </div>
               </button>
             );
           })}
-        </div>
+        </Card>
       )}
 
-      {/* 위험도 배너 */}
+      {/* 위험도 배너 — 동적 색상이므로 배경/테두리는 인라인 유지 */}
       {item && (
         <div className="rounded-2xl p-7 mb-5 border-4" style={{ backgroundColor: meta.bg, borderColor: meta.color }}>
           <div className="flex items-center gap-5 mb-5">
@@ -186,7 +208,7 @@ export function ReportPage() {
             </div>
             <div className="text-right shrink-0">
               <div style={{ color: meta.color, fontSize: "3.5rem", fontWeight: 900, lineHeight: 1 }}>{item.riskScore}</div>
-              <div className="text-gray-500 font-bold" style={{ fontSize: "1.1rem" }}>/ 100점</div>
+              <div className="text-gray-500 font-bold text-[1.1rem]">/ 100점</div>
             </div>
           </div>
           <div className="w-full bg-white/80 rounded-full mb-5 overflow-hidden" style={{ height: 20 }}>
@@ -195,28 +217,32 @@ export function ReportPage() {
         </div>
       )}
 
-      {/* 일일 AI 리포트 보기 */}
-      <button
+      {/* 일일 AI 리포트 보기 — 공통 Button(primary) 사용 */}
+      <Button
+        variant="primary"
+        size="lg"
+        fullWidth
         onClick={handleDailyReport}
         disabled={!hasData || !item?.analysisId || generating}
-        className="w-full flex items-center justify-center gap-3 py-5 bg-gradient-to-r from-[#0D9488] to-[#0D9488] text-white rounded-2xl hover:opacity-90 transition-all font-black mb-3 shadow-lg disabled:opacity-50"
-        style={{ minHeight: 68, fontSize: "1.2rem" }}
+        icon={<Sparkles className="w-6 h-6" />}
+        className="mb-3 shadow-lg"
       >
-        <Sparkles className="w-6 h-6" />
         {generating ? "리포트 생성 중..." : "일일 AI 리포트 보기"}
-      </button>
+      </Button>
 
-      {/* 리포트 기록 보기 */}
-      <button
+      {/* 리포트 기록 보기 — 공통 Button(outline) 사용 */}
+      <Button
+        variant="outline"
+        size="md"
+        fullWidth
         onClick={() => navigate("/report-history-list")}
-        className="w-full flex items-center justify-center gap-3 py-4 border-2 border-[#0D9488] text-[#0D9488] rounded-2xl hover:bg-[#0D9488]/5 transition-all font-bold mb-5"
-        style={{ minHeight: 56, fontSize: "1.1rem" }}
+        icon={<FileText className="w-5 h-5" />}
+        className="mb-5"
       >
-        <FileText className="w-5 h-5" />
         리포트 기록 보기
-      </button>
+      </Button>
 
-      <div className="bg-gray-50 border-2 border-gray-200 rounded-xl p-5 text-gray-500 leading-relaxed font-bold" style={{ fontSize: "1rem" }}>
+      <div className="bg-gray-50 border-2 border-gray-200 rounded-xl p-5 text-gray-500 leading-relaxed font-bold text-small">
         <Info className="w-5 h-5 inline mr-2 text-gray-400" />
         이 리포트는 참고용이며 의사의 진단을 대신하지 않습니다.
       </div>

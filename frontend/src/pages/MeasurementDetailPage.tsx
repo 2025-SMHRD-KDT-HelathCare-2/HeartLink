@@ -1,3 +1,10 @@
+// ============================================================================
+// 측정 상세 페이지 (위험도 배너 + ECG 파형 + 게이지 + 분석 수치)
+// - 리팩터링 포인트:
+//   1) 위험도 색상 → tokens.ts(COLORS) 로 일원화
+//   2) 인라인 fontSize → 토큰 클래스 우선
+//   조회/매핑 로직은 100% 동일
+// ============================================================================
 import { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { ChevronLeft, Activity, Heart, AlertTriangle, Clock } from "lucide-react";
@@ -5,6 +12,7 @@ import { toKSTDatetime } from "../utils/formatKST";
 import api from "../api/authApi";
 import { ECGChart } from "../components/charts/ECGChart";
 import { RiskGauge } from "../components/charts/RiskGauge";
+import { COLORS } from "../styles/tokens";
 
 interface Analysis {
   riskScore: number;
@@ -31,10 +39,11 @@ interface MeasurementDetail {
   analysis: Analysis | null;
 }
 
+// 위험도 색상 → tokens.ts(COLORS)로 일원화
 const RISK_META = {
-  high: { label: "위험", color: "#DC2626", bg: "#FEF2F2", border: "#FECACA" },
-  mid:  { label: "주의", color: "#D97706", bg: "#FFFBEB", border: "#FDE68A" },
-  low:  { label: "양호", color: "#16A34A", bg: "#F0FDF4", border: "#BBF7D0" },
+  high: { label: "위험", color: COLORS.danger,  bg: COLORS.dangerBg,  border: COLORS.dangerBorder },
+  mid:  { label: "주의", color: COLORS.warning, bg: COLORS.warningBg, border: COLORS.warningBorder },
+  low:  { label: "양호", color: COLORS.safe,    bg: COLORS.safeBg,    border: COLORS.safeBorder },
 };
 
 const CLASS_LABEL: Record<string, string> = {
@@ -92,7 +101,8 @@ export function MeasurementDetailPage() {
   if (loading) {
     return (
       <div className="max-w-3xl mx-auto p-6 flex justify-center py-20">
-        <div className="w-8 h-8 border-4 border-[#0D9488] border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin"
+          style={{ borderColor: COLORS.primary, borderTopColor: "transparent" }} />
       </div>
     );
   }
@@ -118,17 +128,16 @@ export function MeasurementDetailPage() {
       {/* 헤더 */}
       <div>
         <button onClick={() => navigate(-1)}
-          className="flex items-center gap-2 text-gray-500 hover:text-gray-700 font-bold mb-4"
-          style={{ fontSize: "1rem" }}>
+          className="flex items-center gap-2 text-gray-500 hover:text-gray-700 font-bold mb-4 text-small">
           <ChevronLeft className="w-5 h-5" />지난 기록으로
         </button>
-        <h1 className="font-black text-[#0D9488]" style={{ fontSize: "1.9rem" }}>측정 상세</h1>
-        <div className="flex items-center gap-2 text-gray-500 font-bold mt-1" style={{ fontSize: "1rem" }}>
+        <h1 className="font-black text-primary" style={{ fontSize: "1.9rem" }}>측정 상세</h1>
+        <div className="flex items-center gap-2 text-gray-500 font-bold mt-1 text-small">
           <Clock className="w-4 h-4" />{measuredDate}
         </div>
       </div>
 
-      {/* 위험도 배너 */}
+      {/* 위험도 배너 — 동적 색상이므로 인라인 유지(값은 토큰) */}
       {analysis && (
         <div className="rounded-2xl p-6 border-2" style={{ backgroundColor: meta.bg, borderColor: meta.border }}>
           <div className="flex items-center justify-between">
@@ -157,7 +166,7 @@ export function MeasurementDetailPage() {
         </div>
       )}
 
-      {/* ECG 파형 — 2번: sampleRate prop 추가 */}
+      {/* ECG 파형 */}
       {chartData.length > 0 ? (
         <div>
           <div className="text-gray-500 font-bold mb-2" style={{ fontSize: "0.95rem" }}>
@@ -168,7 +177,7 @@ export function MeasurementDetailPage() {
       ) : (
         <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 text-center">
           <Activity className="w-10 h-10 mx-auto text-gray-300 mb-2" />
-          <p className="text-gray-400 font-bold" style={{ fontSize: "1rem" }}>파형 데이터가 없습니다.</p>
+          <p className="text-gray-400 font-bold text-small">파형 데이터가 없습니다.</p>
         </div>
       )}
 
@@ -177,12 +186,12 @@ export function MeasurementDetailPage() {
         <RiskGauge score={analysis.riskScore} riskLevel={riskLevel} />
       )}
 
-      {/* 분석 수치 — HRV RMSSD, HRV SDNN 제거 */}
+      {/* 분석 수치 */}
       {analysis && (
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
           <div className="flex items-center gap-2 mb-5">
-            <Heart className="w-5 h-5 text-[#0D9488]" />
-            <h3 className="text-[#0D9488] font-bold" style={{ fontSize: "1.2rem" }}>분석 수치</h3>
+            <Heart className="w-5 h-5 text-primary" />
+            <h3 className="text-primary font-bold text-sub">분석 수치</h3>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <StatCard label="심박수" value={`${analysis.heartRate ?? 0} bpm`} />
@@ -204,14 +213,15 @@ export function MeasurementDetailPage() {
   );
 }
 
+// 분석 수치 카드 — highlight 시 위험(빨강), 평소엔 primary
 function StatCard({ label, value, small, highlight }: {
   label: string; value: string; small?: boolean; highlight?: boolean;
 }) {
   return (
     <div className="bg-gray-50 rounded-xl p-4">
       <p className="text-gray-500 font-bold mb-1" style={{ fontSize: "0.9rem" }}>{label}</p>
-      <p className={`font-black ${highlight ? "text-red-600" : "text-[#0D9488]"}`}
-        style={{ fontSize: small ? "0.9rem" : "1.15rem" }}>
+      <p className="font-black"
+        style={{ fontSize: small ? "0.9rem" : "1.15rem", color: highlight ? COLORS.danger : COLORS.primary }}>
         {value}
       </p>
     </div>

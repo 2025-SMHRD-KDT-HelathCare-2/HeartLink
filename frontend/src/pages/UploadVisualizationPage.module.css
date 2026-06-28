@@ -1,0 +1,20 @@
+/* ============================================================================
+   UploadVisualizationPage 전용 스타일 모듈
+   - 기존 컴포넌트 내부 inline <style>(fadein 애니메이션)을 이곳으로 분리
+   ============================================================================ */
+
+/* 결과/스캐닝 카드 등장 애니메이션 */
+@keyframes fadein {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fadein {
+  animation: fadein 0.6s ease-out;
+}

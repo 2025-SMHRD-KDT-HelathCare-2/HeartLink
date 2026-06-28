@@ -1,10 +1,30 @@
+// frontend/src/pages/FindIdPage.tsx
+// =============================================================================
+// 아이디(이메일) 찾기
+//
+// [이 파일이 하는 일]
+//   - step "phone" : 휴대전화번호 입력 → 인증번호 발송
+//   - step "code"  : 받은 인증번호 확인 → 가입된 이메일 조회
+//   - step "result": 찾은 이메일을 보여줌
+//
+// [1단계 리팩터링에서 바뀐 점 — 기능은 그대로, '겉모양 코드'만 정리]
+//   1) 색상 하드코딩 → 디자인 토큰 클래스(primary 등)
+//   2) 글자 크기 인라인 style → 토큰 클래스
+//   3) 인증번호 입력칸/제출 버튼 → 공통 <Input> / <Button>
+//   ※ 단, 휴대폰번호 입력칸은 옆에 '인증 요청' 버튼이 가로로 붙는 특수 구조라
+//      정렬 보존을 위해 원본 input 구조를 유지하고 색/폰트 토큰만 정리했습니다.
+//   ※ 화면 결과(디자인/동작)는 이전과 똑같습니다.
+// =============================================================================
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChevronLeft, Phone, ShieldCheck, Heart, Mail } from "lucide-react";
 import { sendFindEmailCode, verifyFindEmailCode } from "../api/authApi";
 import api from "../api/authApi"; // find-email 조회용
 import { useToast } from "../context/ToastContext";
+import { Input, Button } from "../components/ui";
 
+// 현재 단계: 전화번호 입력 / 인증번호 입력 / 결과 표시
 type Step = "phone" | "code" | "result";
 
 export function FindIdPage() {
@@ -15,11 +35,15 @@ export function FindIdPage() {
   const [code, setCode] = useState("");
   const [foundEmail, setFoundEmail] = useState("");
   const [error, setError] = useState("");
-  const [sending, setSending] = useState(false);
-  const [verifying, setVerifying] = useState(false);
-  const [codeSent, setCodeSent] = useState(false);
+  const [sending, setSending] = useState(false);     // 인증번호 발송 중
+  const [verifying, setVerifying] = useState(false); // 인증번호 확인 중
+  const [codeSent, setCodeSent] = useState(false);   // 한 번이라도 보냈는지
 
+  // ---------------------------------------------------------------------------
+  // [1단계] 휴대전화로 인증번호 발송
+  // ---------------------------------------------------------------------------
   const handleSendCode = async () => {
+    // 01012345678 형식(- 없이 숫자만) 검사
     if (!phone.match(/^01[0-9]{8,9}$/)) {
       setError("올바른 휴대전화번호를 입력해 주세요. (- 없이 숫자만)");
       return;
@@ -39,6 +63,9 @@ export function FindIdPage() {
     }
   };
 
+  // ---------------------------------------------------------------------------
+  // [2단계] 인증번호 확인 → 가입 이메일 조회 → 결과 화면으로
+  // ---------------------------------------------------------------------------
   const handleVerifyCode = async () => {
     if (code.length < 4) {
       setError("인증번호를 입력해 주세요.");
@@ -48,7 +75,6 @@ export function FindIdPage() {
     setVerifying(true);
     try {
       await verifyFindEmailCode(phone, code);
-      // 인증 성공 → 가입된 이메일 조회
       const { data } = await api.post("/auth/find-email", { phone });
       setFoundEmail(data.email);
       setStep("result");
@@ -61,85 +87,100 @@ export function FindIdPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0D9488] via-[#0F766E] to-[#0D9488] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-primary via-primary-mid to-primary flex items-center justify-center p-4">
       <div className="w-full max-w-md">
+        {/* 상단 로고 영역 */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-24 h-24 bg-white/20 rounded-full mb-4 backdrop-blur-sm">
             <Heart className="w-12 h-12 text-white fill-current" />
           </div>
-          <h1 className="text-white font-bold" style={{ fontSize: "2.4rem" }}>HeartLink</h1>
+          <h1 className="text-white font-bold text-hero">HeartLink</h1>
         </div>
 
+        {/* 흰색 카드 */}
         <div className="bg-white rounded-2xl shadow-2xl p-8">
-          <button onClick={() => navigate("/login")}
-            className="flex items-center gap-2 text-gray-400 hover:text-gray-600 mb-6 font-bold"
-            style={{ fontSize: "1rem" }}>
-            <ChevronLeft className="w-5 h-5" />로그인으로 돌아가기
+          <button
+            onClick={() => navigate("/login")}
+            className="flex items-center gap-2 text-gray-400 hover:text-gray-600 mb-6 font-bold text-small"
+          >
+            <ChevronLeft className="w-5 h-5" />
+            로그인으로 돌아가기
           </button>
 
-          <h2 className="text-[#0D9488] font-black mb-2" style={{ fontSize: "1.6rem" }}>아이디(이메일) 찾기</h2>
-          <p className="text-gray-500 mb-6 font-bold" style={{ fontSize: "1.05rem" }}>
+          <h2 className="text-primary font-black mb-2 text-title">아이디(이메일) 찾기</h2>
+          <p className="text-gray-500 mb-6 font-bold text-[1.05rem]">
             가입하신 휴대전화번호로 본인인증을 해 주세요.
           </p>
 
+          {/* ===== 전화번호/인증번호 입력 단계 ===== */}
           {step !== "result" && (
             <div className="space-y-5">
+              {/* 휴대전화번호 입력 + '인증 요청' 버튼 (가로 한 줄)
+                  이 줄은 정렬 보존을 위해 원본 input 구조를 유지합니다. */}
               <div>
-                <label className="block text-gray-700 mb-2 font-bold" style={{ fontSize: "1.1rem" }}>휴대전화번호</label>
+                <label className="block text-gray-700 mb-2 font-bold text-[1.1rem]">휴대전화번호</label>
                 <div className="flex gap-2">
                   <div className="relative flex-1">
                     <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <input type="tel" placeholder="01012345678" value={phone}
-                      disabled={step === "code"}
+                    <input
+                      type="tel"
+                      placeholder="01012345678"
+                      value={phone}
+                      disabled={step === "code"} // 인증번호 단계에선 전화번호 수정 잠금
                       onChange={e => { setPhone(e.target.value.replace(/[^0-9]/g, "")); setError(""); }}
-                      className="w-full pl-11 pr-4 py-4 border border-gray-200 rounded-xl focus:outline-none focus:border-[#0D9488] bg-gray-50 font-bold disabled:opacity-60"
-                      style={{ minHeight: 56, fontSize: "1.05rem" }} />
+                      className="w-full pl-11 pr-4 py-4 border border-gray-200 rounded-xl focus:outline-none focus:border-primary bg-gray-50 font-bold disabled:opacity-60 text-[1.05rem]"
+                      style={{ minHeight: 56 }}
+                    />
                   </div>
-                  <button onClick={handleSendCode} disabled={sending || step === "code"}
-                    className="px-4 rounded-xl bg-[#0D9488] text-white font-bold disabled:opacity-50 whitespace-nowrap"
-                    style={{ minHeight: 56, fontSize: "0.95rem" }}>
+                  {/* 인증 요청/재발송 버튼 — 폭이 좁고 작은 글씨라 일반 button 유지 */}
+                  <button
+                    onClick={handleSendCode}
+                    disabled={sending || step === "code"}
+                    className="px-4 rounded-xl bg-primary text-white font-bold disabled:opacity-50 whitespace-nowrap text-tiny"
+                    style={{ minHeight: 56 }}
+                  >
                     {sending ? "발송 중..." : codeSent ? "재발송" : "인증 요청"}
                   </button>
                 </div>
               </div>
 
+              {/* 인증번호 입력 (인증번호 단계에서만 표시) */}
               {step === "code" && (
                 <div>
-                  <label className="block text-gray-700 mb-2 font-bold" style={{ fontSize: "1.1rem" }}>인증번호</label>
-                  <div className="relative">
-                    <ShieldCheck className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <input type="text" placeholder="인증번호 6자리" value={code}
-                      onChange={e => { setCode(e.target.value.replace(/[^0-9]/g, "")); setError(""); }}
-                      className="w-full pl-11 pr-4 py-4 border border-gray-200 rounded-xl focus:outline-none focus:border-[#0D9488] bg-gray-50 font-bold"
-                      style={{ minHeight: 56, fontSize: "1.05rem" }} />
-                  </div>
+                  <label className="block text-gray-700 mb-2 font-bold text-[1.1rem]">인증번호</label>
+                  <Input
+                    type="text"
+                    placeholder="인증번호 6자리"
+                    value={code}
+                    onChange={e => { setCode(e.target.value.replace(/[^0-9]/g, "")); setError(""); }}
+                    leftIcon={<ShieldCheck className="w-5 h-5" />}
+                  />
                 </div>
               )}
 
-              {error && <p className="text-red-500 font-bold" style={{ fontSize: "1rem" }}>{error}</p>}
+              {/* 에러 메시지 (전화번호 단계/인증 단계 공용이라 폼 아래에 따로 표시) */}
+              {error && <p className="text-red-500 font-bold text-small">{error}</p>}
 
+              {/* 인증 확인 버튼 (인증번호 단계에서만 표시) */}
               {step === "code" && (
-                <button onClick={handleVerifyCode} disabled={verifying}
-                  className="w-full py-5 bg-gradient-to-r from-[#0D9488] to-[#0D9488] text-white rounded-xl hover:opacity-90 transition-all disabled:opacity-50 font-bold"
-                  style={{ minHeight: 60, fontSize: "1.2rem" }}>
+                <Button variant="primary" size="lg" fullWidth onClick={handleVerifyCode} disabled={verifying}>
                   {verifying ? "확인 중..." : "인증 확인"}
-                </button>
+                </Button>
               )}
             </div>
           )}
 
+          {/* ===== 결과 단계: 찾은 이메일 표시 ===== */}
           {step === "result" && (
             <div className="text-center">
-              <div className="bg-[#0D9488]/10 border-2 border-[#0D9488]/30 rounded-2xl p-6 mb-6">
-                <Mail className="w-10 h-10 text-[#0D9488] mx-auto mb-3" />
-                <p className="text-gray-500 font-bold mb-2" style={{ fontSize: "1rem" }}>가입하신 이메일 주소예요</p>
-                <p className="text-[#0D9488] font-black" style={{ fontSize: "1.4rem" }}>{foundEmail}</p>
+              <div className="bg-primary/10 border-2 border-primary/30 rounded-2xl p-6 mb-6">
+                <Mail className="w-10 h-10 text-primary mx-auto mb-3" />
+                <p className="text-gray-500 font-bold mb-2 text-small">가입하신 이메일 주소예요</p>
+                <p className="text-primary font-black text-[1.4rem]">{foundEmail}</p>
               </div>
-              <button onClick={() => navigate("/login")}
-                className="w-full py-5 bg-gradient-to-r from-[#0D9488] to-[#0D9488] text-white rounded-xl hover:opacity-90 transition-all font-bold"
-                style={{ minHeight: 60, fontSize: "1.2rem" }}>
+              <Button variant="primary" size="lg" fullWidth onClick={() => navigate("/login")}>
                 로그인하러 가기
-              </button>
+              </Button>
             </div>
           )}
         </div>
