@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { login as loginApi } from "../api/authApi";
 import { SocialLoginButtons } from "../components/auth/SocialLoginButtons";
+import { Button, Input, FieldLabel } from "../components/ui";
 import { Heart, Eye, EyeOff, Lock, Mail, User, Shield } from "lucide-react";
 
 type Role = "user" | "guardian";
@@ -28,12 +29,8 @@ function RoleToast({ role }: { role: Role }) {
   const isUser = displayRole === "user";
   return (
     <div
-      className={`flex items-start gap-3 px-4 py-3 rounded-xl border font-bold mb-4 transition-all duration-500 ${
+      className={`flex items-start gap-3 px-4 py-3 rounded-xl border font-bold mb-4 transition-all duration-500 bg-primary/10 border-primary/30 text-primary ${
         visible ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-1"
-      } ${
-        isUser
-          ? "bg-[#0D9488]/10 border-[#0D9488]/30 text-[#0D9488]"
-          : "bg-[#0D9488]/10 border-[#0D9488]/30 text-[#0D9488]"
       }`}
       style={{ fontSize: "0.95rem", minHeight: "3.5rem" }}
     >
@@ -92,81 +89,100 @@ export function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0D9488] via-[#0F766E] to-[#0D9488] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-primary via-primary-mid to-primary flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-24 h-24 bg-white/20 rounded-full mb-4 backdrop-blur-sm">
             <Heart className="w-12 h-12 text-white fill-current" />
           </div>
-          <h1 className="text-white font-bold" style={{ fontSize: "2.4rem" }}>HeartLink</h1>
-          <p className="text-white/80 mt-2" style={{ fontSize: "1.2rem" }}>심장 건강 모니터링 서비스</p>
+          <h1 className="text-white font-bold text-hero">HeartLink</h1>
+          <p className="text-white/80 mt-2 text-body">심장 건강 모니터링 서비스</p>
         </div>
 
         <div className="bg-white rounded-2xl shadow-2xl p-8">
           <div className="flex gap-3 mb-3">
-            <button type="button" onClick={() => setRole("user")}
-              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all font-bold ${role === "user" ? "border-[#0D9488] bg-[#0D9488]/10 text-[#0D9488]" : "border-gray-200 text-gray-500"}`}
-              style={{ minHeight: 56, fontSize: "1.05rem" }}>
-              <User className="w-6 h-6" />사용자
-            </button>
-            <button type="button" onClick={() => setRole("guardian")}
-              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all font-bold ${role === "guardian" ? "border-[#0D9488] bg-[#0D9488]/10 text-[#0D9488]" : "border-gray-200 text-gray-500"}`}
-              style={{ minHeight: 56, fontSize: "1.05rem" }}>
-              <Shield className="w-6 h-6" />가족·보호자
-            </button>
+            <Button
+              variant={role === "user" ? "selected" : "outline"}
+              size="md"
+              fullWidth
+              icon={<User className="w-6 h-6" />}
+              onClick={() => setRole("user")}
+            >
+              사용자
+            </Button>
+            <Button
+              variant={role === "guardian" ? "selected" : "outline"}
+              size="md"
+              fullWidth
+              icon={<Shield className="w-6 h-6" />}
+              onClick={() => setRole("guardian")}
+            >
+              가족·보호자
+            </Button>
           </div>
 
           <RoleToast role={role} />
 
           <form onSubmit={handleSubmit} className="space-y-5">
             {errors.global && (
-              <div className="bg-amber-50 border border-amber-300 text-amber-800 rounded-lg p-4 font-bold" style={{ fontSize: "1rem" }}>
+              <div className="bg-amber-50 border border-amber-300 text-amber-800 rounded-lg p-4 font-bold text-small">
                 {errors.global}
               </div>
             )}
 
             <div>
-              <label className="block text-gray-700 mb-2 font-bold" style={{ fontSize: "1.1rem" }}>이메일 주소</label>
-              <div className="relative">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-400" />
-                <input type="email" placeholder="example@email.com" value={form.email}
-                  onChange={e => setForm({ ...form, email: e.target.value })}
-                  className="w-full pl-12 pr-4 py-4 border border-gray-200 rounded-xl focus:outline-none focus:border-[#0D9488] bg-gray-50 font-bold"
-                  style={{ minHeight: 56, fontSize: "1.1rem" }} />
-              </div>
-              {errors.email && <p className="text-red-500 mt-1 font-bold" style={{ fontSize: "1rem" }}>{errors.email}</p>}
+              <FieldLabel htmlFor="login-email">이메일 주소</FieldLabel>
+              <Input
+                id="login-email"
+                type="email"
+                placeholder="example@email.com"
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
+                leftIcon={<Mail className="w-6 h-6" />}
+                error={errors.email}
+              />
             </div>
 
             <div>
-              <label className="block text-gray-700 mb-2 font-bold" style={{ fontSize: "1.1rem" }}>비밀번호</label>
-              <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-400" />
-                <input type={showPassword ? "text" : "password"} placeholder="8글자 이상 입력" value={form.password}
-                  onChange={e => setForm({ ...form, password: e.target.value })}
-                  className="w-full pl-12 pr-14 py-4 border border-gray-200 rounded-xl focus:outline-none focus:border-[#0D9488] bg-gray-50 font-bold"
-                  style={{ minHeight: 56, fontSize: "1.1rem" }} />
-                <button type="button" onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                  {showPassword ? <EyeOff className="w-6 h-6" /> : <Eye className="w-6 h-6" />}
-                </button>
-              </div>
-              {errors.password && <p className="text-red-500 mt-1 font-bold" style={{ fontSize: "1rem" }}>{errors.password}</p>}
+              <FieldLabel htmlFor="login-password">비밀번호</FieldLabel>
+              <Input
+                id="login-password"
+                type={showPassword ? "text" : "password"}
+                placeholder="8글자 이상 입력"
+                value={form.password}
+                onChange={(e) => setForm({ ...form, password: e.target.value })}
+                leftIcon={<Lock className="w-6 h-6" />}
+                error={errors.password}
+                rightSlot={
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    {showPassword ? <EyeOff className="w-6 h-6" /> : <Eye className="w-6 h-6" />}
+                  </button>
+                }
+              />
             </div>
 
-            <button type="submit" disabled={submitting}
-              className="w-full py-5 bg-gradient-to-r from-[#0D9488] to-[#0D9488] text-white rounded-xl hover:opacity-90 active:scale-95 transition-all disabled:opacity-50 font-bold"
-              style={{ minHeight: 60, fontSize: "1.2rem" }}>
+            <Button type="submit" variant="primary" size="lg" fullWidth loading={submitting}>
               {submitting ? "로그인 중..." : "로그인"}
-            </button>
+            </Button>
 
             <div className="flex items-center justify-center gap-3">
-              <button type="button" onClick={() => navigate("/find-id")}
-                className="text-gray-400 hover:text-[#0D9488] underline font-bold" style={{ fontSize: "1rem" }}>
+              <button
+                type="button"
+                onClick={() => navigate("/find-id")}
+                className="text-gray-400 hover:text-primary underline font-bold text-small"
+              >
                 아이디 찾기
               </button>
               <span className="text-gray-300">|</span>
-              <button type="button" onClick={() => navigate("/forgot-password")}
-                className="text-gray-400 hover:text-[#0D9488] underline font-bold" style={{ fontSize: "1rem" }}>
+              <button
+                type="button"
+                onClick={() => navigate("/forgot-password")}
+                className="text-gray-400 hover:text-primary underline font-bold text-small"
+              >
                 비밀번호 찾기
               </button>
             </div>
@@ -177,8 +193,11 @@ export function LoginPage() {
           </div>
 
           <div className="mt-6 pt-6 border-t border-gray-100 text-center">
-            <span className="text-gray-500 font-bold" style={{ fontSize: "1rem" }}>아직 회원이 아니신가요? </span>
-            <button onClick={() => navigate("/signup")} className="text-[#0D9488] font-bold underline" style={{ fontSize: "1rem" }}>
+            <span className="text-gray-500 font-bold text-small">아직 회원이 아니신가요? </span>
+            <button
+              onClick={() => navigate("/signup")}
+              className="text-primary font-bold underline text-small"
+            >
               회원가입
             </button>
           </div>

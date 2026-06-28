@@ -1,0 +1,69 @@
+/* ============================================================================
+   AnomalyTimeline 전용 스타일 모듈
+   - 카드 컨테이너, 세로 타임라인 레일, 노드 마커, 팝업 등 순수 CSS 분리
+   - 심각도별 색(동적)은 chartTokens 의 RISK_COLOR_MAP 으로 인라인 적용
+   ============================================================================ */
+
+/* 차트 카드 공통 컨테이너 */
+.card {
+  background-color: #ffffff;
+  border-radius: 1rem;
+  padding: 1.5rem;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  border: 1px solid #f3f4f6;
+}
+
+/* 제목 (primary 색) */
+.title {
+  color: var(--color-primary);
+  font-weight: 700;
+  font-size: 1.3rem;
+}
+
+/* 타임라인 래퍼 (세로 레일의 기준) */
+.timeline {
+  position: relative;
+}
+
+/* 왼쪽 세로 레일 선 */
+.rail {
+  position: absolute;
+  left: 2rem;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background-color: #e5e7eb;
+}
+
+/* 각 이상 신호 행 */
+.row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  cursor: pointer;
+}
+
+/* 레일 위에 올라가는 노드 마커 (색은 인라인으로 주입) */
+.node {
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 9999px;
+  border: 2px solid #ffffff;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  flex-shrink: 0;
+  z-index: 10;
+  margin-left: 16px;
+  transition: transform 0.15s ease;
+}
+.row:hover .node {
+  transform: scale(1.1);
+}
+
+/* 상세 팝업 */
+.popup {
+  margin-top: 1.25rem;
+  padding: 1.25rem;
+  background-color: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 0.75rem;
+}

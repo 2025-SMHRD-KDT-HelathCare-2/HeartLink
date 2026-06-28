@@ -1,16 +1,18 @@
 @import "tailwindcss";
 
 /* ===========================================
-   HeartLink Design Tokens
+   HeartLink Design Tokens (Tailwind v4 @theme)
    여기 값만 바꾸면 전체 스킨이 바뀝니다.
+   @theme 에 정의하면 bg-primary / text-sub 같은
+   유틸리티 클래스가 자동 생성됩니다.
    =========================================== */
-:root {
+@theme {
   /* 주요 색상 */
-  --color-primary:        #0D9488;   /* 민트 — 제목, 메인 버튼 */
-  --color-primary-mid:    #0F766E;   /* 진한 민트 — 호버, 강조 */
-  --color-accent:         #3B82F6;   /* 밝은 파랑 — 포인트, 링크 */
+  --color-primary:      #0D9488;   /* 민트 — 제목, 메인 버튼 */
+  --color-primary-mid:  #0F766E;   /* 진한 민트 — 호버, 강조 */
+  --color-accent:       #3B82F6;   /* 밝은 파랑 — 포인트, 링크 */
 
-  /* 위험도 색상 — 유지 */
+  /* 위험도 색상 */
   --color-danger:         #DC2626;
   --color-danger-bg:      #FEF2F2;
   --color-danger-border:  #FECACA;
@@ -23,22 +25,34 @@
   --color-safe-bg:        #F0FDF4;
   --color-safe-border:    #BBF7D0;
 
-  /* 텍스트 */
-  --color-text-primary:   #111827;   /* 거의 검정 — 제목 */
-  --color-text-body:      #374151;
-  --color-text-muted:     #6B7280;
+  /* 텍스트 (text-primary 는 Tailwind 예약어라 ink/body/muted 로 명명) */
+  --color-ink:    #111827;   /* 거의 검정 — 제목 */
+  --color-body:   #374151;
+  --color-muted:  #6B7280;
 
   /* 배경 — 흰 기조 */
-  --color-bg-page:        #F9FAFB;   /* 아주 연한 회색 */
-  --color-bg-card:        #FFFFFF;
+  --color-bg-page: #F9FAFB;
+  --color-bg-card: #FFFFFF;
 
-  /* 폰트 크기 */
-  --text-hero:    2.2rem;
-  --text-title:   1.6rem;
-  --text-sub:     1.3rem;
-  --text-body:    1.15rem;
-  --text-small:   1rem;
-  --text-tiny:    0.9rem;
+  /* 폰트 크기 — text-hero / text-title ... 로 사용 */
+  --text-hero:   2.2rem;
+  --text-title:  1.6rem;
+  --text-sub:    1.3rem;
+  --text-body:   1.15rem;
+  --text-small:  1rem;
+  --text-tiny:   0.9rem;
+}
 
-  font-size: 20px;
+/* ===========================================
+   하위 호환: 기존 코드에서 var(--color-primary) 등을
+   직접 참조하던 부분이 깨지지 않도록 :root 에도 노출.
+   (@theme 변수는 :root 로 내려가지만, 명시적으로 둬서
+    의존 코드가 점진적으로 마이그레이션되도록 함)
+   =========================================== */
+:root {
+  --color-text-primary: var(--color-ink);
+  --color-text-body:    var(--color-body);
+  --color-text-muted:   var(--color-muted);
+
+  font-size: 20px;   /* 기존 베이스 폰트 크기 유지 */
 }

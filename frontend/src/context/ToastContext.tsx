@@ -1,4 +1,5 @@
-import { createContext, useContext, useState, useCallback, ReactNode } from "react";
+import { createContext, useContext, useState, useCallback } from "react";
+import type { ReactNode } from "react";
 import { AlertTriangle, AlertCircle, Info, CheckCircle2, X } from "lucide-react";
 
 type ToastLevel = "상" | "중" | "하" | "info" | "success";

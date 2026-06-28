@@ -1,0 +1,35 @@
+/* ============================================================================
+   MonitorChart 전용 스타일 모듈 (병원 심장 모니터 톤)
+   - 특수한 다크 모니터 색은 chartTokens.ts(MONITOR_COLORS)와 함께 쓰며,
+     순수 레이아웃/펄스 표현 등은 이곳에 둔다.
+   ============================================================================ */
+
+/* 모니터 외곽 컨테이너 (다크 배경 + primary 톤 테두리) */
+.monitor {
+  background-color: #0a1628;
+  border: 2px solid rgba(13, 148, 136, 0.3); /* primary 30% */
+  border-radius: 1rem;
+  padding: 1.5rem;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+/* 차트 플롯 영역 고정 높이 */
+.plot {
+  height: 200px;
+  min-height: 200px;
+  width: 100%;
+}
+
+/* LIVE 표시 점 (깜빡임) */
+.liveDot {
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 9999px;
+  background-color: #3de8c0;
+  animation: monitorPulse 1.2s ease-in-out infinite;
+}
+
+@keyframes monitorPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}

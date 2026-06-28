@@ -1,0 +1,62 @@
+/* ============================================================================
+   ECGChart 전용 스타일 모듈
+   - 기존 컴포넌트 안에 박혀 있던 인라인 style 객체(격자 배경, 페이지 dot 등)를
+     순수 CSS 인 것만 이곳으로 분리한다.
+   - Recharts 내부 색/폰트는 SVG props 라 chartTokens.ts 로 처리(여기 아님).
+   ============================================================================ */
+
+/* 차트 영역(격자 배경을 절대배치로 깔기 위한 기준) */
+.plotArea {
+  position: relative;
+  height: 220px;
+}
+
+/* ECG 모눈종이 격자 배경 (대/소 격자) — 차트 margin 에 맞춰 inset 조정 */
+.gridBackground {
+  position: absolute;
+  inset: 5px 10px 25px 30px;
+  background-image:
+    linear-gradient(rgba(255, 100, 100, 0.4) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 100, 100, 0.4) 1px, transparent 1px),
+    linear-gradient(rgba(255, 100, 100, 0.15) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 100, 100, 0.15) 1px, transparent 1px);
+  background-size:
+    100% 50px,
+    50px 100%,
+    100% 10px,
+    10px 100%;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* 실제 Recharts 가 그려지는 레이어 (격자 위에 올림) */
+.chartLayer {
+  position: relative;
+  z-index: 2;
+  height: 100%;
+}
+
+/* 하단 페이지 인디케이터 dot */
+.pageDot {
+  height: 8px;
+  border-radius: 9999px;
+  transition: all 0.2s ease;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+/* 범례의 점선 마커(심장 박동 위치) */
+.legendDashed {
+  width: 1.25rem;
+  height: 0;
+  border-top: 2px dashed var(--color-danger);
+}
+
+/* 범례의 격자 색 샘플 박스 */
+.legendGridBox {
+  width: 1rem;
+  height: 1rem;
+  border: 1px solid #fca5a5;
+  background-color: rgba(255, 200, 200, 0.3);
+}

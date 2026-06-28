@@ -1,6 +1,16 @@
+// ============================================================================
+// 위험도 점수 반원 게이지
+// - 리팩터링 포인트:
+//   1) 카드/게이지 영역/점수 블록/배지 등 순수 CSS → RiskGauge.module.css
+//   2) 위험도 색 하드코딩(#DC2626/#F59E0B/#16A34A) → chartTokens 의 RISK_COLOR_MAP
+//      (Tailwind 배경 클래스 bg-red-600 등도 토큰 색 인라인으로 통일)
+//   scoreToLevel 임계값 로직은 100% 동일
+// ============================================================================
 import {
   RadialBarChart, RadialBar, PolarAngleAxis, ResponsiveContainer
 } from "recharts";
+import { RISK_COLOR_MAP } from "../../styles/chartTokens";
+import styles from "./RiskGauge.module.css";
 
 type RiskLevelEn = "high" | "mid" | "low";
 
@@ -9,20 +19,11 @@ interface RiskGaugeProps {
   riskLevel?: RiskLevelEn;
 }
 
-const LEVEL_COLOR: Record<RiskLevelEn, string> = {
-  high: "#DC2626",
-  mid:  "#F59E0B",
-  low:  "#16A34A",
-};
+// 색은 RISK_COLOR_MAP 으로 일원화. 라벨만 게이지 전용 텍스트로 유지.
 const LEVEL_LABEL: Record<RiskLevelEn, string> = {
   high: "위험도 상",
   mid:  "위험도 중",
   low:  "위험도 하",
-};
-const LEVEL_BG: Record<RiskLevelEn, string> = {
-  high: "bg-red-600",
-  mid:  "bg-amber-500",
-  low:  "bg-green-600",
 };
 
 function scoreToLevel(score: number): RiskLevelEn {
@@ -32,18 +33,17 @@ function scoreToLevel(score: number): RiskLevelEn {
 }
 
 export function RiskGauge({ score, riskLevel }: RiskGaugeProps) {
-  const level   = riskLevel ?? scoreToLevel(score);
-  const color   = LEVEL_COLOR[level];
-  const label   = LEVEL_LABEL[level];
-  const bgColor = LEVEL_BG[level];
+  const level = riskLevel ?? scoreToLevel(score);
+  const color = RISK_COLOR_MAP[level]; // high/mid/low 모두 chartTokens 에서 해석
+  const label = LEVEL_LABEL[level];
 
   return (
-    <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-      <h3 className="text-[#0D9488] font-bold mb-4" style={{ fontSize: "1.3rem" }}>
+    <div className={styles.card}>
+      <h3 className={`${styles.title} mb-4`}>
         위험도 점수 (0~100점, 높을수록 위험)
       </h3>
       <div className="flex flex-col items-center">
-        <div style={{ height: 200, width: "100%", maxWidth: 320, margin: "0 auto" }}>
+        <div className={styles.plot}>
           <ResponsiveContainer width="100%" height="100%" debounce={1}>
             <RadialBarChart cx="50%" cy="80%" innerRadius="60%" outerRadius="90%"
               startAngle={180} endAngle={0}
@@ -53,11 +53,12 @@ export function RiskGauge({ score, riskLevel }: RiskGaugeProps) {
             </RadialBarChart>
           </ResponsiveContainer>
         </div>
-        <div className="text-center -mt-8">
-          <div style={{ fontSize: "2.2rem", fontWeight: 800, color }}>{score}</div>
-          <div className="text-gray-500 font-bold" style={{ fontSize: "1rem" }}>/ 100점</div>
-          <div className={`mt-2 px-4 py-1.5 rounded-full text-white font-bold ${bgColor}`}
-            style={{ fontSize: "1rem" }}>
+        <div className={styles.scoreBlock}>
+          {/* 점수 색은 위험도에 따라 동적이므로 인라인 주입 */}
+          <div className={styles.scoreValue} style={{ color }}>{score}</div>
+          <div className={styles.scoreUnit}>/ 100점</div>
+          {/* 배지 배경색도 위험도에 따라 동적 — Tailwind bg-* 클래스 대신 토큰 색 인라인 */}
+          <div className={styles.levelBadge} style={{ backgroundColor: color }}>
             {label}
           </div>
         </div>

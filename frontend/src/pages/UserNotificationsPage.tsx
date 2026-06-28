@@ -1,14 +1,34 @@
+// frontend/src/pages/UserNotificationsPage.tsx
+// =============================================================================
+// 사용자용 알림함 — 내가 받은 최근 7일간의 위험도 알림
+//
+// [이 파일이 하는 일]
+//   - 상단 고정 헤더(뒤로가기 + 제목)와 함께 내 알림 목록을 보여줍니다.
+//   - 알림 카드를 누르면 '읽음' 처리됩니다.
+//
+// [1단계 리팩터링에서 바뀐 점 — 기능은 그대로, '겉모양 코드'만 정리]
+//   1) 위험도 색상(상/중/하) → 공통 토큰(COLORS) 값 사용
+//   2) 색상 하드코딩(#0D9488) → 토큰 클래스(bg-primary 등)
+//   3) 글자 크기 인라인 style → 토큰 클래스
+//   ※ 안 읽은 알림 카드 배경/테두리는 위험도별 동적 색상이라 인라인 style 유지
+//   ※ 페이지 배경색(#F4F7FA)은 토큰에 대응값이 없어 임의값으로 그대로 둡니다.
+//   ※ 화면 결과(디자인/동작)는 이전과 똑같습니다.
+// =============================================================================
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChevronLeft, Bell, AlertTriangle, AlertCircle, Info } from "lucide-react";
 import { getMyNotifications, markNotificationRead, type AppNotification } from "../api/notificationApi";
+import { COLORS } from "../styles/tokens";
 
+// 위험 등급별 색/배경/테두리/아이콘 (색은 공통 토큰 사용)
 const LEVEL_META = {
-  상: { color: "#DC2626", bg: "#FEF2F2", border: "#FECACA", icon: AlertTriangle },
-  중: { color: "#D97706", bg: "#FFFBEB", border: "#FDE68A", icon: AlertCircle },
-  하: { color: "#16A34A", bg: "#F0FDF4", border: "#BBF7D0", icon: Info },
+  상: { color: COLORS.danger,  bg: COLORS.dangerBg,  border: COLORS.dangerBorder,  icon: AlertTriangle },
+  중: { color: COLORS.warning, bg: COLORS.warningBg, border: COLORS.warningBorder, icon: AlertCircle },
+  하: { color: COLORS.safe,    bg: COLORS.safeBg,    border: COLORS.safeBorder,    icon: Info },
 };
 
+// 경과 시간을 "방금 전 / N시간 전 / N일 전"으로 표시
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const h = Math.floor(diff / 3600000);
@@ -22,6 +42,7 @@ export function UserNotificationsPage() {
   const [items, setItems] = useState<AppNotification[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // 화면이 열리면 내 알림을 불러옵니다.
   useEffect(() => {
     getMyNotifications()
       .then(setItems)
@@ -29,35 +50,40 @@ export function UserNotificationsPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  // 알림 카드를 누르면 읽음 처리 (화면 + 서버)
   const markRead = (id: string) => {
     setItems(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
     markNotificationRead(id).catch(() => {});
   };
 
   return (
+    // 페이지 배경: 연한 회청색(#F4F7FA) — 토큰 대응값이 없어 임의값 유지
     <div className="min-h-screen bg-[#F4F7FA]">
-      <header className="bg-[#0D9488] text-white px-5 py-4 flex items-center gap-3 sticky top-0 z-20 shadow-lg">
+      {/* 상단 고정 헤더 (민트색) */}
+      <header className="bg-primary text-white px-5 py-4 flex items-center gap-3 sticky top-0 z-20 shadow-lg">
         <button onClick={() => navigate(-1)} className="p-2 rounded-xl hover:bg-white/10 transition-colors">
           <ChevronLeft className="w-6 h-6" />
         </button>
         <div className="flex items-center gap-2">
           <Bell className="w-6 h-6" />
           <div>
-            <div className="font-black" style={{ fontSize: "1.3rem" }}>알림함</div>
-            <div className="text-white/60 font-bold" style={{ fontSize: "0.9rem" }}>최근 7일간의 알림</div>
+            <div className="font-black text-sub">알림함</div>
+            <div className="text-white/60 font-bold text-[0.9rem]">최근 7일간의 알림</div>
           </div>
         </div>
       </header>
 
       <div className="max-w-2xl mx-auto p-5">
         {loading ? (
+          // 로딩 스피너
           <div className="flex justify-center py-16">
-            <div className="w-8 h-8 border-4 border-[#0D9488] border-t-transparent rounded-full animate-spin" />
+            <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
           </div>
         ) : items.length === 0 ? (
+          // 알림이 없을 때
           <div className="bg-white rounded-2xl p-12 shadow-sm border border-gray-100 text-center">
             <Bell className="w-12 h-12 mx-auto text-gray-300 mb-3" />
-            <p className="text-gray-400 font-bold" style={{ fontSize: "1.1rem" }}>최근 7일간 받은 알림이 없어요.</p>
+            <p className="text-gray-400 font-bold text-[1.1rem]">최근 7일간 받은 알림이 없어요.</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -65,21 +91,24 @@ export function UserNotificationsPage() {
               const meta = LEVEL_META[n.level];
               const Icon = meta.icon;
               return (
-                <div key={n.id}
+                <div
+                  key={n.id}
                   onClick={() => markRead(n.id)}
                   className={`rounded-2xl p-5 border-2 cursor-pointer transition-all ${n.isRead ? "bg-white border-gray-100" : ""}`}
-                  style={!n.isRead ? { backgroundColor: meta.bg, borderColor: meta.border } : {}}>
+                  // 안 읽은 알림은 위험도별 색 배경/테두리 → 동적 색상이라 인라인 style
+                  style={!n.isRead ? { backgroundColor: meta.bg, borderColor: meta.border } : {}}
+                >
                   <div className="flex items-start gap-3">
                     <Icon className="w-7 h-7 flex-shrink-0 mt-0.5" style={{ color: meta.color }} />
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <span className="px-3 py-1 rounded-full text-white font-bold" style={{ backgroundColor: meta.color, fontSize: "0.85rem" }}>
+                        <span className="px-3 py-1 rounded-full text-white font-bold text-[0.85rem]" style={{ backgroundColor: meta.color }}>
                           위험도 {n.level}
                         </span>
                         {!n.isRead && <span className="w-2.5 h-2.5 bg-red-500 rounded-full" />}
-                        <span className="text-gray-400 font-bold ml-auto" style={{ fontSize: "0.9rem" }}>{timeAgo(n.createdAt)}</span>
+                        <span className="text-gray-400 font-bold ml-auto text-[0.9rem]">{timeAgo(n.createdAt)}</span>
                       </div>
-                      <p className="text-gray-700 font-bold leading-relaxed" style={{ fontSize: "1.05rem" }}>{n.message}</p>
+                      <p className="text-gray-700 font-bold leading-relaxed text-[1.05rem]">{n.message}</p>
                     </div>
                   </div>
                 </div>

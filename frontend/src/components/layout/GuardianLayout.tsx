@@ -1,3 +1,11 @@
+// ============================================================================
+// 보호자 레이아웃 — 좌측 사이드바 + 상단 헤더 + 화면 전환
+// - 리팩터링 포인트:
+//   1) 색상 하드코딩(#0F766E / #0D9488) → COLORS 토큰
+//      (사이드바 진한 톤은 primaryMid, 헤더 하트는 primary)
+//   2) 인라인 fontSize → 토큰 클래스 우선
+//   환자/알림 조회, 사이드바 토글, 화면 전환 로직은 100% 동일
+// ============================================================================
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -10,6 +18,7 @@ import type { AppNotification } from "../../api/notificationApi";
 import { GuardianDashboard } from "../../pages/GuardianDashboard";
 import { NotificationsPage } from "../../pages/NotificationsPage";
 import { GuardianReportPage } from "../../pages/GuardianReportPage";
+import { COLORS } from "../../styles/tokens";
 
 export interface Patient {
   relation_id: string;
@@ -116,7 +125,7 @@ export function GuardianLayout({ onLogout }: GuardianLayoutProps) {
       >
         <Icon className="w-5 h-5 flex-shrink-0" />
         <div className="flex-1">
-          <div className="font-bold" style={{ fontSize: "1rem" }}>{label}</div>
+          <div className="font-bold text-small">{label}</div>
         </div>
         {badge != null && badge > 0 && (
           <span className="bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
@@ -131,10 +140,11 @@ export function GuardianLayout({ onLogout }: GuardianLayoutProps) {
   return (
     <div className="min-h-screen bg-gray-50 flex">
 
-      {/* 사이드바 */}
-      <aside className={`fixed inset-y-0 left-0 z-40 w-72 bg-[#0F766E] flex flex-col transform transition-transform duration-300 ${
+      {/* 사이드바 (primaryMid 진한 톤) */}
+      <aside className={`fixed inset-y-0 left-0 z-40 w-72 flex flex-col transform transition-transform duration-300 ${
         sidebarOpen ? "translate-x-0" : "-translate-x-full"
-      } lg:translate-x-0 lg:static`}>
+      } lg:translate-x-0 lg:static`}
+        style={{ backgroundColor: COLORS.primaryMid }}>
 
         <div className="p-6 border-b border-white/10">
           <div className="flex items-center gap-3">
@@ -142,8 +152,8 @@ export function GuardianLayout({ onLogout }: GuardianLayoutProps) {
               <Shield className="w-6 h-6 text-white" />
             </div>
             <div>
-              <div className="text-white font-bold" style={{ fontSize: "1.2rem" }}>HeartLink</div>
-              <div className="text-white/50 font-bold" style={{ fontSize: "0.9rem" }}>보호자 포털</div>
+              <div className="text-white font-bold text-sub">HeartLink</div>
+              <div className="text-white/50 font-bold text-tiny">보호자 포털</div>
             </div>
           </div>
         </div>
@@ -174,14 +184,14 @@ export function GuardianLayout({ onLogout }: GuardianLayoutProps) {
               {initial}
             </div>
             <div className="text-left flex-1">
-              <div className="text-white font-bold" style={{ fontSize: "1rem" }}>{nickname}</div>
-              <div className="text-white/50 font-bold" style={{ fontSize: "0.85rem" }}>마이페이지 →</div>
+              <div className="text-white font-bold text-small">{nickname}</div>
+              <div className="text-white/50 font-bold text-tiny">마이페이지 →</div>
             </div>
           </button>
           <button
             onClick={onLogout}
-            className="w-full flex items-center gap-2 px-4 py-2.5 text-white/60 hover:text-white hover:bg-white/10 rounded-xl transition-colors font-bold"
-            style={{ minHeight: 44, fontSize: "1rem" }}
+            className="w-full flex items-center gap-2 px-4 py-2.5 text-white/60 hover:text-white hover:bg-white/10 rounded-xl transition-colors font-bold text-small"
+            style={{ minHeight: 44 }}
           >
             <LogOut className="w-5 h-5" />
             로그아웃
@@ -203,8 +213,8 @@ export function GuardianLayout({ onLogout }: GuardianLayoutProps) {
             {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
           <div className="flex items-center gap-2">
-            <Heart className="w-5 h-5 text-[#0D9488] fill-current" />
-            <div className="text-gray-800 font-bold" style={{ fontSize: "1.1rem" }}>{currentNav?.label}</div>
+            <Heart className="w-5 h-5 fill-current" style={{ color: COLORS.primary }} />
+            <div className="text-gray-800 font-bold text-[1.1rem]">{currentNav?.label}</div>
           </div>
         </header>
 

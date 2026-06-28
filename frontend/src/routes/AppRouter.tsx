@@ -1,4 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import type { ReactNode } from "react";
+
 import { useAuth } from "../context/AuthContext";
 
 import { LoginPage } from "../pages/LoginPage";
@@ -19,13 +21,14 @@ import { MeasurementDetailPage } from "../pages/MeasurementDetailPage";
 import { ReportHistoryListPage } from "../pages/ReportHistoryListPage";
 import { GuardianReportHistoryPage } from "../pages/GuardianReportHistoryPage";
 
-function PrivateRoute({ children }) {
-  const { user, loading } = useAuth();
+
+
+function PrivateRoute({ children }: { children: ReactNode }) {  const { user, loading } = useAuth();
   if (loading) return null;
   return user ? children : <Navigate to="/login" replace />;
 }
 
-function PublicRoute({ children }) {
+function PublicRoute({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
   if (loading) return null;
   return user ? <Navigate to="/dashboard" replace /> : children;
