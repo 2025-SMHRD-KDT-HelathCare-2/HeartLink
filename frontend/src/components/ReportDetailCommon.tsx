@@ -210,7 +210,22 @@ export function ReportDetailPage({ mode, memberId }: ReportDetailPageProps) {
       {/* 상단 고정 헤더 (primary 배경) */}
       <header className="text-white px-5 py-4 flex items-center gap-3 sticky top-0 z-20 shadow-lg"
         style={{ backgroundColor: COLORS.primary }}>
-        <button onClick={() => navigate(-1)} className="p-2 rounded-xl hover:bg-white/10 transition-colors">
+        // 변경 전
+<button onClick={() => navigate(-1)} className="p-2 rounded-xl hover:bg-white/10 transition-colors">
+
+// 변경 후: 뒤로 갈 곳이 있으면 뒤로, 없으면(딥링크로 바로 진입 등) 홈으로
+        <button
+          onClick={() => {
+            // window.history.state.idx 가 0보다 크면 "앱 안에서 이동해 온" 상태라
+            // 안전하게 뒤로 갈 수 있습니다. 0이거나 없으면 외부/직접 진입이므로 홈으로.
+            if (window.history.state && window.history.state.idx > 0) {
+              navigate(-1);
+            } else {
+              navigate("/"); // 사용자 홈으로 안전 복귀
+            }
+          }}
+          className="p-2 rounded-xl hover:bg-white/10 transition-colors"
+        >
           <ChevronLeft className="w-6 h-6" />
         </button>
         <div className="flex items-center gap-2">

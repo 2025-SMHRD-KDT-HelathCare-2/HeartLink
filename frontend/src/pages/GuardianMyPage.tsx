@@ -25,7 +25,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import {
-  ChevronLeft, UserPlus, User, Clock, Users, AlertTriangle,
+  UserPlus, User, Clock, Users, AlertTriangle,
   LogOut, LinkIcon, Search, CheckCircle2,
 } from "lucide-react";
 import {
@@ -209,9 +209,6 @@ export function GuardianMyPage() {
     <div className="max-w-2xl mx-auto p-5">
       {/* 상단: 뒤로가기 + 제목 + 닉네임 */}
       <div className="flex items-center gap-3 mb-7">
-        <button onClick={() => navigate(-1)} className="p-2 rounded-xl hover:bg-gray-100 transition-colors">
-          <ChevronLeft className="w-6 h-6 text-gray-600" />
-        </button>
         <div>
           <h1 className="font-black text-primary text-[2rem]">마이페이지</h1>
           <p className="text-gray-500 font-bold text-small">{nickname} · 보호자</p>
