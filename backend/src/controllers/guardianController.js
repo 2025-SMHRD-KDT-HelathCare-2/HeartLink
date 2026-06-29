@@ -50,7 +50,8 @@ export const addGuardian = async (req, res, next) => {
       sendPushNotification(
         patientUser.deviceToken,
         '보호자 등록 요청',
-        `${guardian.nickname}님이 보호자 등록 요청을 하셨습니다.`
+        `${guardian.nickname}님이 보호자 등록 요청을 하셨습니다.`,
+        { type: 'guardian_request' }
       ).catch((err) => console.error('[FCM] 발송 실패:', err.message));
     } else {
       console.log('[FCM] deviceToken 없음 - 알림 건너뜀');
@@ -82,7 +83,8 @@ export const acceptRelation = async (req, res, next) => {
       sendPushNotification(
         guardian.deviceToken,
         '보호자 등록 수락',
-        `${acceptingUser?.nickname}님이 보호자 등록 요청을 수락했습니다.`
+        `${acceptingUser?.nickname}님이 보호자 등록 요청을 수락했습니다.`,
+        { type: 'guardian_accepted' }
       ).catch((err) => console.error('[FCM] 수락 알림 실패:', err.message));
     } else {
       console.log('[FCM] guardian deviceToken 없음 - 알림 건너뜀');
@@ -112,7 +114,8 @@ export const deleteGuardian = async (req, res, next) => {
       ? sendPushNotification(
           patientUser.deviceToken,
           '보호자 연결 해제',
-          `${guardianUser?.nickname ?? '보호자'}님과의 보호자 연결이 해제되었습니다.`
+          `${guardianUser?.nickname ?? '보호자'}님과의 보호자 연결이 해제되었습니다.`,
+          { type: 'guardian_disconnected' }
         ).catch((err) => console.error('[FCM] 연결 해제 알림(환자) 실패:', err.message))
       : null;
 
@@ -120,7 +123,8 @@ export const deleteGuardian = async (req, res, next) => {
       ? sendPushNotification(
           guardianUser.deviceToken,
           '보호자 연결 해제',
-          `${patientUser?.nickname ?? '사용자'}님과의 보호자 연결이 해제되었습니다.`
+          `${patientUser?.nickname ?? '사용자'}님과의 보호자 연결이 해제되었습니다.`,
+          { type: 'guardian_disconnected' }
         ).catch((err) => console.error('[FCM] 연결 해제 알림(보호자) 실패:', err.message))
       : null;
 

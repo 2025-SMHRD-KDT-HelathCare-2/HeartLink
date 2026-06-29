@@ -27,6 +27,7 @@ const mcpServer = spawn(npxCmd, [
   '--transport', 'http',
 ], {
   stdio: 'inherit',
+  shell: true,
   env: {
     ...process.env,
     MDB_MCP_CONNECTION_STRING: process.env.MONGO_URI,

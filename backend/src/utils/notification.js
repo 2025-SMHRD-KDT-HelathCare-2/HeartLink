@@ -12,13 +12,15 @@ function getNextMorning() {
   return next;
 }
 
-export const sendPushNotification = async (fcmToken, title, body, retries = 3) => {
+export const sendPushNotification = async (fcmToken, title, body, data = null, retries = 3) => {
+  const message = { token: fcmToken, notification: { title, body } };
+  if (data) {
+    // FCM data 값은 모두 문자열이어야 함
+    message.data = Object.fromEntries(Object.entries(data).map(([k, v]) => [k, String(v)]));
+  }
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
-      const response = await admin.messaging().send({
-        token: fcmToken,
-        notification: { title, body },
-      });
+      const response = await admin.messaging().send(message);
       console.log('✅ 푸시 알림 발송 성공:', response);
       return response;
     } catch (err) {

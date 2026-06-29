@@ -143,18 +143,31 @@ export const uploadECG = async (req, res, next) => {
         for (const rel of guardianRelations) {
           const token = rel.guardianId?.deviceToken;
           if (token) {
-            sendPushNotification(token, `${user.nickname ?? '어르신'}님에게 이상이 감지됐어요`, GUARDIAN_RISK_MESSAGES[riskLevel] ?? GUARDIAN_RISK_MESSAGES.mid)
-              .catch(err => console.error('보호자 FCM 실패:', err.message));
+            sendPushNotification(
+              token,
+              `${user.nickname ?? '어르신'}님에게 이상이 감지됐어요`,
+              GUARDIAN_RISK_MESSAGES[riskLevel] ?? GUARDIAN_RISK_MESSAGES.mid,
+              { type: 'measurement', measurementId: measurement._id.toString(), userId: req.user.id.toString() }
+            ).catch(err => console.error('보호자 FCM 실패:', err.message));
           }
         }
       }
 
-      // 사용자 FCM push + SMS: 상일 때만
+      // 사용자 FCM: 모든 risk level에서 측정 완료 알림 발송
+      if (user?.deviceToken) {
+        const isHighRisk = riskLevel === 'high';
+        sendPushNotification(
+          user.deviceToken,
+          isHighRisk ? '⚠️ 위험 신호가 감지되었어요' : '측정이 완료됐어요',
+          isHighRisk
+            ? '심장이 불규칙하게 뛰는 증상이 있어요. 내 건강 결과를 확인해 주세요.'
+            : RISK_MESSAGES[riskLevel],
+          { type: 'measurement', measurementId: measurement._id.toString() }
+        ).catch(err => console.error('사용자 FCM 실패:', err.message));
+      }
+
+      // SMS: 상일 때만
       if (riskLevel === 'high') {
-        if (user?.deviceToken) {
-          sendPushNotification(user.deviceToken, '위험 신호가 감지되었어요', '심장이 불규칙하게 뛰는 증상이 있어요. 내 건강 결과를 확인해 주세요.')
-            .catch(err => console.error('사용자 FCM 실패:', err.message));
-        }
         sendHighRiskSMS(req.user.id, score).catch(err =>
           console.error('SMS 발송 중 오류:', err.message)
         );

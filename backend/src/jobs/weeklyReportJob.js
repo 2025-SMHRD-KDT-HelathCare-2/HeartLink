@@ -110,7 +110,8 @@ async function generateWeeklyForUser(user, periodStart, periodEnd) {
         sendPushNotification(
           user.deviceToken,
           '주간 건강 리포트가 준비됐어요 📋',
-          '이번 주 심장 건강 리포트를 확인해 보세요!'
+          '이번 주 심장 건강 리포트를 확인해 보세요!',
+          { type: 'report', reportType: 'weekly', reportId: report._id.toString() }
         ).catch(() => {});
       }
 
@@ -126,7 +127,8 @@ async function generateWeeklyForUser(user, periodStart, periodEnd) {
           sendPushNotification(
             token,
             '보호 중인 분의 주간 리포트가 준비됐어요 📋',
-            `${user.nickname ?? '어르신'}의 이번 주 건강 리포트를 확인해 보세요!`
+            `${user.nickname ?? '어르신'}의 이번 주 건강 리포트를 확인해 보세요!`,
+            { type: 'report', userId: user._id.toString(), reportType: 'weekly', reportId: report._id.toString() }
           ).catch(() => {});
         }
       }
