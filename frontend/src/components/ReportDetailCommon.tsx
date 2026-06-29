@@ -1,11 +1,21 @@
-// ============================================================================
+// ReportDetailCommon.tsx
+// frontend/src/pages/ReportDetailCommon.tsx
+// =============================================================================
 // 사용자/보호자 공통 리포트 상세 페이지 (일간/주간 분기)
-// - 리팩터링 포인트:
-//   1) 위험도/색상 하드코딩 → tokens.ts(COLORS) 로 일원화
-//   2) inline <style>(TTS 슬라이더) → ReportDetailCommon.module.css 로 분리
-//   3) 인라인 fontSize → 토큰 클래스 우선
-//   기능(데이터 조회/폴링, TTS 재생, PDF 저장)은 100% 동일
-// ============================================================================
+//
+// [이 화면이 하는 일]
+//   - 일간/주간 AI 리포트를 보여줍니다. (mode 로 사용자/보호자 구분)
+//   - TTS(음성 듣기) 재생/속도 조절, 위험도 게이지, LLM 텍스트, 차트, PDF 저장.
+//
+// [디자인 리뉴얼 포인트 — 기능은 그대로, '겉모양'만 업그레이드]
+//   1) 상단 고정 헤더: 단색(primary) → 청록→블루 그라데이션(GRADIENTS.brand)
+//   2) TTS/위험도 게이지/일·주간 통계칸 → 공통 <Card> 로 통일
+//   3) PDF 저장 버튼 → 공통 <Button variant="gradient">
+//   4) 하드코딩 색(bg-red-50/green-50 등) → 토큰 색(COLORS)으로 교체
+//   ※ 위험도별로 색이 바뀌는 게이지/LLM 배너는 '동적 색상'이라 인라인 유지.
+//   ※ 조회/폴링/TTS/PDF 로직은 이전과 100% 동일합니다.
+// =============================================================================
+
 import { useState, useRef, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
@@ -17,7 +27,9 @@ import {
   HourlyHeartRateChart, RiskTimelineChart, ArrhythmiaDonutChart,
   WeeklyHeartRateChart, WeeklyRiskDistributionChart, HRVTrendChart
 } from "./charts/ReportCharts";
-import { COLORS } from "../styles/tokens";
+// 공통 UI: 카드 + 버튼(겉모양 통일용)
+import { Card, Button } from "../components/ui";
+import { COLORS, GRADIENTS } from "../styles/tokens";
 import styles from "./ReportDetailCommon.module.css"; // TTS 슬라이더 스타일 분리
 
 type ReportType = "daily" | "weekly";
@@ -182,6 +194,7 @@ export function ReportDetailPage({ mode, memberId }: ReportDetailPageProps) {
     finally { setGeneratingPdf(false); }
   };
 
+  // ── 로딩 ──
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="flex flex-col items-center gap-4">
@@ -192,6 +205,7 @@ export function ReportDetailPage({ mode, memberId }: ReportDetailPageProps) {
     </div>
   );
 
+  // ── 데이터 없음 ──
   if (!report) return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <p className="text-gray-500 font-bold">리포트를 불러올 수 없습니다.</p>
@@ -207,9 +221,15 @@ export function ReportDetailPage({ mode, memberId }: ReportDetailPageProps) {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: COLORS.appBg }}>
-      {/* 상단 고정 헤더 (primary 배경) */}
-      <header className="text-white px-5 py-4 flex items-center gap-3 sticky top-0 z-20 shadow-lg"
-        style={{ backgroundColor: COLORS.primary }}>
+      {/* ───────────── 상단 고정 헤더 ─────────────
+          [리뉴얼] 단색(primary) → 청록→블루 그라데이션 + 부드러운 그림자. */}
+      <header
+        className="text-white px-5 py-4 flex items-center gap-3 sticky top-0 z-20"
+        style={{
+          background: GRADIENTS.brand,
+          boxShadow: "0 4px 16px rgba(13, 148, 136, 0.25)",
+        }}
+      >
         <button
           onClick={() => {
             // window.history.state.idx 가 0보다 크면 "앱 안에서 이동해 온" 상태라
@@ -220,7 +240,7 @@ export function ReportDetailPage({ mode, memberId }: ReportDetailPageProps) {
               navigate("/"); // 사용자 홈으로 안전 복귀
             }
           }}
-          className="p-2 rounded-xl hover:bg-white/10 transition-colors"
+          className="p-2 rounded-xl hover:bg-white/15 transition-colors"
         >
           <ChevronLeft className="w-6 h-6" />
         </button>
@@ -228,7 +248,7 @@ export function ReportDetailPage({ mode, memberId }: ReportDetailPageProps) {
           {type === "daily" ? <CalendarDays className="w-5 h-5" /> : <BarChart2 className="w-5 h-5" />}
           <div>
             <div className="font-black text-sub">{title}</div>
-            <div className="text-white/60 font-bold text-tiny">음성으로 들어보세요</div>
+            <div className="text-white/70 font-bold text-tiny">음성으로 들어보세요</div>
           </div>
         </div>
       </header>
@@ -236,13 +256,16 @@ export function ReportDetailPage({ mode, memberId }: ReportDetailPageProps) {
       <div ref={captureRef} className="max-w-2xl mx-auto p-5 space-y-5">
 
         {/* ===== TTS ===== */}
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+        <Card padding="lg">
           <button onClick={handleTTS} disabled={ttsLoading}
-            className={`w-full flex items-center justify-center gap-3 py-5 rounded-xl border-2 transition-all font-black mb-4 disabled:opacity-50 ${
-              playing ? "bg-red-50 border-red-400 text-red-600" : "bg-white hover:text-white"
-            }`}
-            style={{ minHeight: 72, fontSize: "1.3rem",
-              ...(playing ? {} : { borderColor: COLORS.primary, color: COLORS.primary }) }}>
+            className="w-full flex items-center justify-center gap-3 py-5 rounded-xl border-2 transition-all font-black mb-4 disabled:opacity-50"
+            style={{
+              minHeight: 72, fontSize: "1.3rem",
+              // 재생 중: 연한 빨강(토큰) / 평소: 청록 테두리(토큰)
+              ...(playing
+                ? { backgroundColor: COLORS.dangerBg, borderColor: COLORS.danger, color: COLORS.danger }
+                : { borderColor: COLORS.primary, color: COLORS.primary }),
+            }}>
             {ttsLoading ? "준비 중..." : playing
               ? <><StopCircle className="w-8 h-8" />멈추기</>
               : <><Volume2 className="w-8 h-8" />🔊 {typeLabel} 리포트 듣기</>}
@@ -265,10 +288,10 @@ export function ReportDetailPage({ mode, memberId }: ReportDetailPageProps) {
               ))}
             </div>
           </div>
-        </div>
+        </Card>
 
         {/* ===== 위험도 가로 바 ===== */}
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+        <Card padding="lg">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-bold text-sub" style={{ color: COLORS.primary }}>위험도 평가</h3>
             <div className="flex items-baseline gap-2">
@@ -309,9 +332,9 @@ export function ReportDetailPage({ mode, memberId }: ReportDetailPageProps) {
               위험도 {report.riskLevel} — {config.label}
             </span>
           </div>
-        </div>
+        </Card>
 
-        {/* ===== LLM 텍스트 ===== */}
+        {/* ===== LLM 텍스트 — 동적 색상이므로 인라인 유지(값은 토큰) ===== */}
         <div className="rounded-2xl p-6 border-2" style={{ backgroundColor: config.bg, borderColor: config.border }}>
           <div className="flex items-start gap-3">
             <AlertTriangle className="w-6 h-6 flex-shrink-0 mt-0.5" style={{ color: config.color }} />
@@ -328,16 +351,30 @@ export function ReportDetailPage({ mode, memberId }: ReportDetailPageProps) {
                 { label: "평균 심박수", value: `${report.avgHeartRate}`, unit: "BPM", color: COLORS.primary },
                 { label: "최소 심박수", value: `${report.minHeartRate}`, unit: "BPM", color: COLORS.safe },
               ].map(s => (
-                <div key={s.label} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 text-center">
+                <Card key={s.label} padding="md" className="text-center">
                   <div className="font-black text-sub" style={{ color: s.color }}>{s.value}</div>
                   <div className="text-gray-400 font-bold" style={{ fontSize: "0.75rem" }}>{s.unit}</div>
                   <div className="text-gray-500 font-bold mt-1" style={{ fontSize: "0.8rem" }}>{s.label}</div>
-                </div>
+                </Card>
               ))}
             </div>
-            <div className={`rounded-2xl p-4 border-2 flex items-center gap-3 ${report.afDetected ? "bg-red-50 border-red-200" : "bg-green-50 border-green-200"}`}>
-              <div className={`w-3 h-3 rounded-full flex-shrink-0 ${report.afDetected ? "bg-red-500" : "bg-green-500"}`} />
-              <span className={`font-bold text-small ${report.afDetected ? "text-red-700" : "text-green-700"}`}>
+            {/* AF 감지 배너 — 감지/미감지에 따라 토큰 색 인라인 적용 */}
+            <div
+              className="rounded-2xl p-4 border-2 flex items-center gap-3"
+              style={
+                report.afDetected
+                  ? { backgroundColor: COLORS.dangerBg, borderColor: COLORS.dangerBorder }
+                  : { backgroundColor: COLORS.safeBg, borderColor: COLORS.safeBorder }
+              }
+            >
+              <div
+                className="w-3 h-3 rounded-full flex-shrink-0"
+                style={{ backgroundColor: report.afDetected ? COLORS.danger : COLORS.safe }}
+              />
+              <span
+                className="font-bold text-small"
+                style={{ color: report.afDetected ? COLORS.danger : COLORS.safe }}
+              >
                 심방세동(AF) {report.afDetected ? "감지됨" : "감지 안 됨"} · 오늘 {report.measurementCount}회 측정
               </span>
             </div>
@@ -356,10 +393,10 @@ export function ReportDetailPage({ mode, memberId }: ReportDetailPageProps) {
                 { label: "총 부정맥", value: `${report.totalArrhythmiaCount}건`, color: COLORS.warning },
                 { label: "측정 일수", value: `${report.measurementDays}일`, color: COLORS.primary },
               ].map(s => (
-                <div key={s.label} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 text-center">
+                <Card key={s.label} padding="md" className="text-center">
                   <div className="font-black text-sub" style={{ color: s.color }}>{s.value}</div>
                   <div className="text-gray-500 font-bold mt-1" style={{ fontSize: "0.8rem" }}>{s.label}</div>
-                </div>
+                </Card>
               ))}
             </div>
             <WeeklyHeartRateChart data={report.dailyStats} />
@@ -377,14 +414,18 @@ export function ReportDetailPage({ mode, memberId }: ReportDetailPageProps) {
           {"측정 시점, 횟수, 빈도에 따라\n결과는 달라질 수 있습니다."}
         </p>
 
-        {/* ===== PDF 저장 ===== */}
-        <button onClick={handleSavePdf} disabled={generatingPdf}
-          className="w-full flex items-center justify-center gap-2 py-5 text-white rounded-xl transition-colors font-black disabled:opacity-50"
-          style={{ minHeight: 64, fontSize: "1.2rem", backgroundColor: COLORS.primary }}
-          onMouseEnter={e => (e.currentTarget.style.backgroundColor = COLORS.primaryMid)}
-          onMouseLeave={e => (e.currentTarget.style.backgroundColor = COLORS.primary)}>
-          <Download className="w-6 h-6" />{generatingPdf ? "저장 중..." : "PDF 저장"}
-        </button>
+        {/* ===== PDF 저장 — 공통 Button(gradient) ===== */}
+        <Button
+          variant="gradient"
+          size="lg"
+          fullWidth
+          onClick={handleSavePdf}
+          disabled={generatingPdf}
+          loading={generatingPdf}
+          icon={<Download className="w-6 h-6" />}
+        >
+          {generatingPdf ? "저장 중..." : "PDF 저장"}
+        </Button>
       </div>
     </div>
   );

@@ -10,3 +10,5 @@ export type { InputProps } from "./Input";
 
 export { FieldLabel } from "./FieldLabel";
 export type { FieldLabelProps } from "./FieldLabel";
+
+export { DonutGauge } from "./DonutGauge";

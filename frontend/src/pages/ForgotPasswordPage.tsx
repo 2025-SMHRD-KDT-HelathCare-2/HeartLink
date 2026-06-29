@@ -7,11 +7,10 @@
 //   - step "code" : 메일로 받은 인증번호를 확인하고, 맞으면 새 비밀번호 설정
 //                   페이지(/reset-password)로 이동합니다.
 //
-// [1단계 리팩터링에서 바뀐 점 — 기능은 그대로, '겉모양 코드'만 정리]
-//   1) 색상 하드코딩(#0D9488 등) → 디자인 토큰 클래스(primary 등)
-//   2) 글자 크기 인라인 style → 토큰 클래스(text-hero, text-small 등)
-//   3) 반복되던 입력칸/버튼 → 공통 <Input> / <Button> 으로 교체
-//   ※ 화면 결과(디자인/동작)는 이전과 똑같습니다.
+// [디자인 리뉴얼 포인트 — 기능은 그대로, '겉모양'만 통일]
+//   1) 배경 그라데이션: from-primary..via.. → GRADIENTS.brand (청록→블루)로 통일
+//   2) 주요 버튼 → gradient 변형으로 통일 (로그인/회원가입과 톤 일치)
+//   ※ 메일 발송/인증번호 확인/라우팅 로직은 이전과 100% 동일합니다.
 // =============================================================================
 
 import { useState } from "react";
@@ -20,6 +19,7 @@ import { ChevronLeft, Mail, Heart, ShieldCheck } from "lucide-react";
 import api from "../api/authApi";
 import { useToast } from "../context/ToastContext";
 import { Input, Button } from "../components/ui";
+import { GRADIENTS } from "../styles/tokens";
 
 // 현재 단계: 이메일 입력 화면 / 인증번호 입력 화면
 type Step = "email" | "code";
@@ -93,8 +93,8 @@ export function ForgotPasswordPage() {
   };
 
   return (
-    // 전체 배경: 민트 그라데이션
-    <div className="min-h-screen bg-gradient-to-br from-primary via-primary-mid to-primary flex items-center justify-center p-4">
+    // [리뉴얼] 전체 배경: GRADIENTS.brand(청록→블루)로 통일 — 인라인 적용
+    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: GRADIENTS.brand }}>
       <div className="w-full max-w-md">
         {/* 상단 로고 영역 */}
         <div className="text-center mb-8">
@@ -143,7 +143,8 @@ export function ForgotPasswordPage() {
                 />
               </div>
 
-              <Button type="submit" variant="primary" size="lg" fullWidth disabled={submitting}>
+              {/* [리뉴얼] gradient 변형 + loading 으로 통일 */}
+              <Button type="submit" variant="gradient" size="lg" fullWidth disabled={submitting} loading={submitting}>
                 {submitting ? "확인 중..." : "재설정 메일 보내기"}
               </Button>
             </form>
@@ -167,7 +168,8 @@ export function ForgotPasswordPage() {
                 />
               </div>
 
-              <Button type="submit" variant="primary" size="lg" fullWidth disabled={verifying}>
+              {/* [리뉴얼] gradient 변형 + loading 으로 통일 */}
+              <Button type="submit" variant="gradient" size="lg" fullWidth disabled={verifying} loading={verifying}>
                 {verifying ? "확인 중..." : "인증번호 확인"}
               </Button>
             </form>

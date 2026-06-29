@@ -1,3 +1,4 @@
+// NotificationsPage.tsx
 // frontend/src/pages/NotificationsPage.tsx
 // =============================================================================
 // 보호자용 알림함 — 최근 7일간 연결된 사용자들의 위험도 알림 모음
@@ -7,19 +8,21 @@
 //   - 알림 카드를 누르면 '읽음' 처리됩니다.
 //   - 위험(상) 알림에는 '리포트 보기' 버튼이 함께 나옵니다.
 //
-// [1단계 리팩터링에서 바뀐 점 — 기능은 그대로, '겉모양 코드'만 정리]
-//   1) 위험도 색상(상/중/하)을 직접 적던 것 → 공통 토큰(COLORS) 값 사용
-//   2) 색상 하드코딩(#0D9488) → 토큰 클래스(text-primary / border-primary 등)
-//   3) 글자 크기 인라인 style → 토큰 클래스
+// [디자인 리뉴얼 포인트 — 기능은 그대로, '겉모양'만 업그레이드]
+//   1) 페이지 제목 → 청록→블루 그라데이션 헤더 카드(<Card variant="gradient">)
+//   2) 필터 영역 / 빈 상태 → 공통 <Card> 로 통일
+//   3) 필터 버튼의 활성 색을 토큰(primary/primarySoft)으로 통일
 //   ※ 안 읽은 알림 카드의 배경/테두리는 위험도별 '동적 색상'이라
 //      인라인 style 이 꼭 필요합니다. (색 값은 토큰에서 가져옴)
-//   ※ 화면 결과(디자인/동작)는 이전과 똑같습니다.
+//   ※ 알림 조회/읽음 처리/필터링 로직은 이전과 100% 동일합니다.
 // =============================================================================
 
 import { useState, useEffect } from "react";
 import { Bell, AlertTriangle, AlertCircle, Info, FileText, Filter } from "lucide-react";
 import { getGuardianNotifications, markNotificationRead, type AppNotification } from "../api/notificationApi";
 import { COLORS } from "../styles/tokens";
+// 공통 UI: 카드(겉모양 통일용)
+import { Card } from "../components/ui";
 
 type RiskLevel = "상" | "중" | "하";
 
@@ -73,19 +76,38 @@ export function NotificationsPage({ onViewReport }: NotificationsPageProps) {
     return true;
   });
 
+  // ───────────────────────────────────────────────────────────
+  // [도우미] 필터 버튼 스타일.
+  //   - 선택(active) 시: 청록 테두리 + 연한 청록 배경 + 청록 글자 (토큰 색).
+  //   - 비선택 시: 회색 테두리 + 회색 글자.
+  //   동적 색이라 인라인 style 로 토큰 색을 적용합니다.
+  // ───────────────────────────────────────────────────────────
+  const chipStyle = (active: boolean): React.CSSProperties =>
+    active
+      ? { borderColor: COLORS.primary, backgroundColor: COLORS.primarySoft, color: COLORS.primary }
+      : { borderColor: "#E5E7EB", color: "#6B7280" };
+
   return (
     <div className="max-w-2xl mx-auto p-6">
-      {/* 제목 */}
-      <div className="mb-6">
-        <div className="flex items-center gap-2">
-          <Bell className="w-7 h-7 text-primary" />
-          <h1 className="font-black text-primary text-[1.9rem]">주간 위험도 알림함</h1>
+      {/* ───────────── 그라데이션 헤더 카드 ─────────────
+          [리뉴얼] 제목을 청록→블루 그라데이션 카드로 교체. */}
+      <Card variant="gradient" padding="lg" className="mb-6">
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center shrink-0">
+            <Bell className="w-8 h-8 text-white" />
+          </div>
+          <div>
+            <h1 className="font-black text-white text-[1.8rem] leading-tight">주간 위험도 알림함</h1>
+            <p className="text-white/80 mt-1 font-bold text-small">
+              최근 7일간 연결된 사용자들의 위험도 알림이에요.
+            </p>
+          </div>
         </div>
-        <p className="text-gray-500 mt-2 font-bold text-[1.05rem]">최근 7일간 연결된 사용자들의 위험도 알림이에요.</p>
-      </div>
+      </Card>
 
-      {/* 필터 영역 */}
-      <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 mb-5">
+      {/* ───────────── 필터 영역 ─────────────
+          [리뉴얼] 공통 <Card> 로 통일. 버튼 활성 색은 토큰(primary)으로. */}
+      <Card padding="lg" className="mb-5">
         <div className="flex items-center gap-2 mb-3">
           <Filter className="w-5 h-5 text-gray-400" />
           <span className="text-gray-700 font-bold text-[1.05rem]">필터</span>
@@ -98,7 +120,8 @@ export function NotificationsPage({ onViewReport }: NotificationsPageProps) {
             <button
               key={m}
               onClick={() => setMemberFilter(m)}
-              className={`px-4 py-2 rounded-xl border-2 transition-all font-bold text-tiny ${memberFilter === m ? "border-primary bg-primary/10 text-primary" : "border-gray-200 text-gray-500"}`}
+              className="px-4 py-2 rounded-xl border-2 transition-all font-bold text-tiny"
+              style={chipStyle(memberFilter === m)}
             >
               {m}
             </button>
@@ -112,13 +135,14 @@ export function NotificationsPage({ onViewReport }: NotificationsPageProps) {
             <button
               key={l}
               onClick={() => setLevelFilter(l)}
-              className={`px-4 py-2 rounded-xl border-2 transition-all font-bold text-tiny ${levelFilter === l ? "border-primary bg-primary/10 text-primary" : "border-gray-200 text-gray-500"}`}
+              className="px-4 py-2 rounded-xl border-2 transition-all font-bold text-tiny"
+              style={chipStyle(levelFilter === l)}
             >
               {l}
             </button>
           ))}
         </div>
-      </div>
+      </Card>
 
       {loading ? (
         // 로딩 스피너 (테두리 색만 토큰으로)
@@ -126,13 +150,13 @@ export function NotificationsPage({ onViewReport }: NotificationsPageProps) {
           <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
         </div>
       ) : filtered.length === 0 ? (
-        // 알림이 없거나, 필터에 걸리는 게 없을 때
-        <div className="bg-white rounded-2xl p-12 shadow-sm border border-gray-100 text-center">
+        // 알림이 없거나, 필터에 걸리는 게 없을 때 — 공통 카드로 빈 상태 표시
+        <Card padding="lg" className="text-center py-12">
           <Bell className="w-12 h-12 mx-auto text-gray-300 mb-3" />
           <p className="text-gray-400 font-bold text-[1.1rem]">
             {items.length === 0 ? "최근 7일간 알림이 없습니다." : "해당 조건의 알림이 없습니다."}
           </p>
-        </div>
+        </Card>
       ) : (
         <div className="space-y-3">
           {filtered.map(n => {
@@ -154,8 +178,13 @@ export function NotificationsPage({ onViewReport }: NotificationsPageProps) {
                       <span className="px-3 py-1 rounded-full text-white font-bold text-[0.8rem]" style={{ backgroundColor: meta.color }}>
                         {meta.label}
                       </span>
-                      {/* 안 읽음 표시 빨간 점 */}
-                      {!n.isRead && <span className="w-2.5 h-2.5 bg-red-500 rounded-full" />}
+                      {/* 안 읽음 표시 빨간 점 — 토큰 색 */}
+                      {!n.isRead && (
+                        <span
+                          className="w-2.5 h-2.5 rounded-full"
+                          style={{ backgroundColor: COLORS.danger }}
+                        />
+                      )}
                       <span className="text-gray-400 font-bold ml-auto text-[0.9rem]">{timeAgo(n.createdAt)}</span>
                     </div>
                     <p className="text-gray-700 font-bold leading-relaxed mb-2 text-[1.05rem]">{n.message}</p>

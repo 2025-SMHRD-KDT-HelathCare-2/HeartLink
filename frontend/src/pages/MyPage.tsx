@@ -1,22 +1,15 @@
-// frontend/src/pages/Mypage.tsx
+// MyPage.tsx
+
+// frontend/src/pages/MyPage.tsx
 // =============================================================================
 // 사용자 마이페이지 — (1) 건강 정보 수정 (2) 보호자 요청 관리 + 회원 탈퇴
+//  ※ 디자인 리뉴얼 버전 (탭 전환/저장/요청 처리/탈퇴 로직은 100% 동일)
 //
-// [이 파일이 하는 일]
-//   - 탭으로 '건강 정보 수정'과 '보호자 요청'을 전환합니다.
-//   - 건강 정보 탭: 기저질환을 선택해 저장합니다.
-//   - 보호자 요청 탭: 보호자가 보낸 등록 요청을 수락/거절/연결해제 합니다.
-//   - 하단의 '회원 탈퇴'를 누르면 확인 모달이 뜹니다.
-//
-// [1단계 리팩터링에서 바뀐 점 — 기능은 그대로, '겉모양 코드'만 정리]
-//   1) 색상 하드코딩(#0D9488/#0F766E) → 토큰 클래스(primary 등)
-//   2) 글자 크기 인라인 style → 토큰 클래스
-//   3) 반복되던 흰 카드 → 공통 <Card> / 제목은 <CardTitle>
-//   4) 탈퇴 모달의 '취소/탈퇴' 버튼 → 공통 <Button>
-//   ※ 질병 칩, 수락/거절/연결해제처럼 크기·아이콘이 특수한 버튼은
-//      외형 보존을 위해 일반 button 으로 두고 색/폰트 토큰만 정리했습니다.
-//   ※ 상태 배지의 amber/green/red 표준색은 토큰 대상이 아니라 그대로 둡니다.
-//   ※ 화면 결과(디자인/동작)는 이전과 똑같습니다.
+// [디자인 리뉴얼 포인트]
+//   1) 상단 제목 → 청록→블루 그라데이션 헤더 배너 (닉네임 함께 표시)
+//   2) 탭 토글의 활성 탭, 질병 칩, 안내/상태 색을 tokens.ts(COLORS) 로 정리
+//   3) 보호자 요청 배지(빨간 점) / 수락 버튼을 토큰 색상으로 통일
+//   4) 카드/모달은 기존 공용 <Card>/<Button> 유지
 // =============================================================================
 
 import { useState, useEffect } from "react";
@@ -29,6 +22,7 @@ import {
 import { getPendingRequests, acceptRequest, rejectRequest, disconnectRelation } from "../api/guardianApi";
 import api from "../api/authApi";
 import { Card, CardTitle, Button } from "../components/ui";
+import { COLORS } from "../styles/tokens";
 
 type Tab = "profile" | "guardian";
 type RequestStatus = "pending" | "accepted" | "rejected";
@@ -43,30 +37,30 @@ interface GuardianRequest {
   createdAt: string;
 }
 
-// 요청 상태별 배지 색 (Tailwind 표준 색이라 토큰 대상이 아님)
-const STATUS_CONFIG = {
-  pending:  { label: "대기 중", color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-200" },
-  accepted: { label: "수락됨", color: "text-green-600", bg: "bg-green-50", border: "border-green-200" },
-  rejected: { label: "거절됨", color: "text-red-500",   bg: "bg-red-50",   border: "border-red-200" },
+// 요청 상태별 배지 색 — 토큰 기반으로 정리 (대기=주의, 수락=안전, 거절=위험)
+const STATUS_CONFIG: Record<RequestStatus, { label: string; color: string; bg: string; border: string }> = {
+  pending:  { label: "대기 중", color: COLORS.warning, bg: COLORS.warningBg, border: COLORS.warningBorder },
+  accepted: { label: "수락됨", color: COLORS.safe,    bg: COLORS.safeBg,    border: COLORS.safeBorder },
+  rejected: { label: "거절됨", color: COLORS.danger,  bg: COLORS.dangerBg,  border: COLORS.dangerBorder },
 };
 
 // -----------------------------------------------------------------------------
-// [탈퇴 확인 모달] 화면 전체를 덮는 확인 창. '취소'와 '탈퇴하기' 버튼이 있습니다.
+// [탈퇴 확인 모달]
 // -----------------------------------------------------------------------------
 function WithdrawModal({ onConfirm, onCancel, processing }:
   { onConfirm: () => void; onCancel: () => void; processing: boolean }) {
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl p-7 w-full max-w-sm">
-        <div className="flex items-center justify-center w-16 h-16 bg-red-100 rounded-full mx-auto mb-5">
-          <AlertTriangle className="w-9 h-9 text-red-500" />
+        <div className="flex items-center justify-center w-16 h-16 rounded-full mx-auto mb-5"
+          style={{ backgroundColor: COLORS.dangerBg }}>
+          <AlertTriangle className="w-9 h-9" style={{ color: COLORS.danger }} />
         </div>
         <h2 className="text-primary font-black text-center mb-3 text-[1.5rem]">정말 탈퇴하시겠어요?</h2>
         <p className="text-gray-600 font-bold text-center mb-7 leading-relaxed text-[1.05rem]">
           탈퇴하시면 모든 건강 데이터와<br />측정 기록이 삭제되며<br />복구할 수 없습니다.
         </p>
         <div className="flex gap-3">
-          {/* 취소: 회색 테두리 버튼(outline) / 탈퇴: 빨강 버튼(danger) */}
           <Button variant="outline" size="md" fullWidth onClick={onCancel} disabled={processing}>
             취소
           </Button>
@@ -177,14 +171,17 @@ export function MyPage() {
 
   return (
     <div className="max-w-2xl mx-auto p-5">
-      {/* 상단: 뒤로가기 + 제목 + 닉네임 */}
-      
-      <div className="flex items-center gap-3 mb-7">
-        <div>
-          <h1 className="font-black text-primary text-[2rem]">마이페이지</h1>
-          <p className="text-gray-500 font-bold text-small">{nickname}</p>
+
+      {/* ───────── 상단 그라데이션 헤더 배너 (제목 + 닉네임) ───────── */}
+      <Card variant="gradient" padding="lg" className="mb-6 flex items-center gap-4">
+        <div className="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm shrink-0">
+          <Heart className="w-8 h-8 text-white fill-current" />
         </div>
-      </div>
+        <div>
+          <h1 className="font-black text-[1.8rem] leading-tight">마이페이지</h1>
+          <p className="font-bold text-body opacity-90">{nickname}님</p>
+        </div>
+      </Card>
 
       {/* 탭 전환 (건강 정보 수정 / 보호자 요청) */}
       <div className="flex bg-gray-100 rounded-xl p-1 mb-6">
@@ -201,9 +198,11 @@ export function MyPage() {
           style={{ minHeight: 52 }}
         >
           <Bell className="w-5 h-5" />보호자 요청
-          {/* 대기 중 요청 개수 빨간 배지 */}
           {pendingCount > 0 && (
-            <span className="absolute top-1 right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-[0.7rem]">
+            <span
+              className="absolute top-1 right-2 w-5 h-5 text-white rounded-full flex items-center justify-center text-[0.7rem]"
+              style={{ backgroundColor: COLORS.danger }}
+            >
               {pendingCount}
             </span>
           )}
@@ -214,7 +213,6 @@ export function MyPage() {
       {tab === "profile" && (
         <form onSubmit={handleSaveProfile} className="space-y-6">
           <Card padding="lg">
-            {/* CardTitle 은 font-bold 기본이라, 원본의 font-black 느낌을 위해 클래스 보강 */}
             <CardTitle className="font-black mb-2">기저질환</CardTitle>
             <p className="text-gray-500 mb-4 font-bold text-small">앓고 계신 질환을 모두 선택해 주세요.</p>
             <div className="flex flex-wrap gap-3">
@@ -225,8 +223,12 @@ export function MyPage() {
                     key={d}
                     type="button"
                     onClick={() => toggleDisease(d)}
-                    className={`px-4 py-3 rounded-xl border-2 transition-all font-bold text-small ${selected ? "border-primary bg-primary/10 text-primary" : "border-gray-200 text-gray-600 hover:border-gray-300"}`}
-                    style={{ minHeight: 52 }}
+                    className="px-4 py-3 rounded-xl border-2 transition-all font-bold text-small"
+                    style={selected
+                      ? { borderColor: COLORS.primary, backgroundColor: COLORS.primarySoft, color: COLORS.primary }
+                      : { borderColor: COLORS.border, color: COLORS.body }}
+                    onMouseEnter={(e) => { if (!selected) e.currentTarget.style.borderColor = COLORS.faint; }}
+                    onMouseLeave={(e) => { if (!selected) e.currentTarget.style.borderColor = COLORS.border; }}
                   >
                     {selected && <span className="mr-1">✓</span>}{d}
                   </button>
@@ -235,10 +237,8 @@ export function MyPage() {
             </div>
           </Card>
 
-          {/* 저장 버튼: 상태별로 '저장하기 / 저장 중 / 저장 완료'로 바뀜.
-              원본은 직접 스피너(Loader2)를 넣었으므로, 공통 Button 의 loading 대신
-              disabled 를 쓰고 children 으로 상태별 내용을 그대로 전달합니다. */}
-          <Button type="submit" variant="primary" size="lg" fullWidth disabled={saving}>
+          {/* 저장 버튼: 상태별로 '저장하기 / 저장 중 / 저장 완료' */}
+          <Button type="submit" variant="gradient" size="lg" fullWidth disabled={saving}>
             {saved ? (
               <><Check className="w-6 h-6" />저장 완료!</>
             ) : saving ? (
@@ -253,9 +253,10 @@ export function MyPage() {
       {/* ===== 탭 2: 보호자 요청 ===== */}
       {tab === "guardian" && (
         <div className="space-y-6">
-          {/* 안내 박스 (파란 톤은 표준색이라 그대로) */}
-          <div className="bg-blue-50 border-2 border-blue-200 rounded-2xl p-5">
-            <p className="text-blue-800 font-bold leading-relaxed text-[1.05rem]">
+          {/* 안내 박스 (정보 톤) */}
+          <div className="border-2 rounded-2xl p-5"
+            style={{ backgroundColor: COLORS.infoBg, borderColor: COLORS.infoBorder }}>
+            <p className="font-bold leading-relaxed text-[1.05rem]" style={{ color: COLORS.info }}>
               💡 보호자가 회원님을 보호자 등록하려고 요청을 보냈습니다.<br />
               수락하면 보호자가 회원님의 건강 상태를 확인할 수 있어요.
             </p>
@@ -265,9 +266,10 @@ export function MyPage() {
             <div className="flex items-center justify-between mb-5">
               <CardTitle className="font-black">받은 등록 요청</CardTitle>
               {pendingCount > 0 && (
-                <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-full px-3 py-1.5">
-                  <Bell className="w-4 h-4 text-red-500" />
-                  <span className="text-red-600 font-bold text-tiny">미확인 {pendingCount}건</span>
+                <div className="flex items-center gap-2 rounded-full px-3 py-1.5 border"
+                  style={{ backgroundColor: COLORS.dangerBg, borderColor: COLORS.dangerBorder }}>
+                  <Bell className="w-4 h-4" style={{ color: COLORS.danger }} />
+                  <span className="font-bold text-tiny" style={{ color: COLORS.danger }}>미확인 {pendingCount}건</span>
                 </div>
               )}
             </div>
@@ -287,12 +289,14 @@ export function MyPage() {
                   const guardianEmail = req.guardianId?.email ?? "";
                   const requestedAt = new Date(req.createdAt).toLocaleString("ko-KR").slice(0, 16);
                   return (
-                    <div key={req._id} className={`rounded-2xl p-5 border-2 ${config.bg} ${config.border}`}>
+                    <div key={req._id} className="rounded-2xl p-5 border-2"
+                      style={{ backgroundColor: config.bg, borderColor: config.border }}>
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1">
                           <div className="flex items-center gap-3 mb-1 flex-wrap">
                             <span className="text-gray-800 font-black text-[1.15rem]">{guardianName}</span>
-                            <span className={`px-3 py-1 rounded-full font-bold ${config.color} ${config.bg} border ${config.border} text-[0.85rem]`}>
+                            <span className="px-3 py-1 rounded-full font-bold border text-[0.85rem]"
+                              style={{ color: config.color, backgroundColor: config.bg, borderColor: config.border }}>
                               {config.label}
                             </span>
                           </div>
@@ -302,18 +306,20 @@ export function MyPage() {
                           </div>
                         </div>
 
-                        {/* 수락/거절 버튼 (작은 패딩+아이콘이라 일반 button 유지) */}
+                        {/* 수락/거절 버튼 */}
                         {req.relationStatus === "pending" && (
                           <div className="flex gap-2 shrink-0">
                             <button
                               onClick={() => handleAccept(req._id)}
-                              className="flex items-center gap-1.5 px-4 py-2.5 bg-primary text-white rounded-xl hover:bg-primary-mid transition-colors font-bold text-tiny"
+                              className="flex items-center gap-1.5 px-4 py-2.5 text-white rounded-xl transition-opacity hover:opacity-90 font-bold text-tiny"
+                              style={{ backgroundColor: COLORS.primary }}
                             >
                               <UserCheck className="w-4 h-4" />수락
                             </button>
                             <button
                               onClick={() => handleReject(req._id)}
-                              className="flex items-center gap-1.5 px-4 py-2.5 border-2 border-red-300 text-red-500 rounded-xl hover:bg-red-50 transition-colors font-bold text-tiny"
+                              className="flex items-center gap-1.5 px-4 py-2.5 border-2 rounded-xl transition-colors font-bold text-tiny"
+                              style={{ borderColor: COLORS.dangerBorder, color: COLORS.danger }}
                             >
                               <UserX className="w-4 h-4" />거절
                             </button>
@@ -322,7 +328,8 @@ export function MyPage() {
                         {req.relationStatus === "accepted" && (
                           <button
                             onClick={() => handleDisconnect(req._id)}
-                            className="flex items-center gap-1.5 px-4 py-2.5 border-2 border-red-300 text-red-500 rounded-xl hover:bg-red-50 transition-colors font-bold shrink-0 text-tiny"
+                            className="flex items-center gap-1.5 px-4 py-2.5 border-2 rounded-xl transition-colors font-bold shrink-0 text-tiny"
+                            style={{ borderColor: COLORS.dangerBorder, color: COLORS.danger }}
                           >
                             <LinkIcon className="w-4 h-4" />연결 해제
                           </button>
@@ -337,7 +344,7 @@ export function MyPage() {
         </div>
       )}
 
-      {/* 회원 탈퇴 (텍스트 버튼이라 일반 button 유지) */}
+      {/* 회원 탈퇴 */}
       <div className="mt-10 pt-6 border-t border-gray-200">
         <button
           onClick={() => setShowWithdraw(true)}

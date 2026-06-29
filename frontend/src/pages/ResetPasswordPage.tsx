@@ -7,11 +7,11 @@
 //   - 새 비밀번호를 입력받아 서버에 변경 요청을 보내고, 성공하면 로그인으로 이동합니다.
 //   - email/code 없이 직접 들어오면 '잘못된 접근' 안내를 보여줍니다.
 //
-// [1단계 리팩터링에서 바뀐 점 — 기능은 그대로, '겉모양 코드'만 정리]
-//   1) 색상 하드코딩 → 디자인 토큰 클래스(primary 등)
-//   2) 글자 크기 인라인 style → 토큰 클래스
-//   3) 반복 입력칸/버튼 → 공통 <Input> / <Button>
-//   ※ 화면 결과(디자인/동작)는 이전과 똑같습니다.
+// [디자인 리뉴얼 포인트 — 기능은 그대로, '겉모양'만 통일]
+//   1) 배경 그라데이션: from-primary..via.. → GRADIENTS.brand (청록→블루)로 통일
+//      (잘못된 접근 화면 / 정상 화면 양쪽 모두)
+//   2) 주요 버튼 → gradient 변형으로 통일
+//   ※ 검증/비밀번호 변경/라우팅 로직은 이전과 100% 동일합니다.
 // =============================================================================
 
 import { useState } from "react";
@@ -20,6 +20,7 @@ import { ChevronLeft, Lock, Eye, EyeOff, Heart } from "lucide-react";
 import api from "../api/authApi";
 import { useToast } from "../context/ToastContext";
 import { Input, Button } from "../components/ui";
+import { GRADIENTS } from "../styles/tokens";
 
 export function ResetPasswordPage() {
   const navigate = useNavigate();
@@ -41,13 +42,14 @@ export function ResetPasswordPage() {
   // ---------------------------------------------------------------------------
   if (!email || !code) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-primary via-primary-mid to-primary flex items-center justify-center p-4">
+      // [리뉴얼] 배경 그라데이션 통일
+      <div className="min-h-screen flex items-center justify-center p-4" style={{ background: GRADIENTS.brand }}>
         <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center">
           <p className="text-gray-600 font-bold mb-5 text-[1.1rem]">
             잘못된 접근입니다. 비밀번호 찾기를 다시 시도해 주세요.
           </p>
-          {/* size="md" 는 min-height 56 (원본 py-4 버튼과 동일한 느낌) */}
-          <Button variant="primary" size="md" fullWidth onClick={() => navigate("/forgot-password")}>
+          {/* [리뉴얼] gradient 변형으로 통일 */}
+          <Button variant="gradient" size="md" fullWidth onClick={() => navigate("/forgot-password")}>
             비밀번호 찾기로 이동
           </Button>
         </div>
@@ -88,7 +90,8 @@ export function ResetPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary via-primary-mid to-primary flex items-center justify-center p-4">
+    // [리뉴얼] 배경 그라데이션 통일
+    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: GRADIENTS.brand }}>
       <div className="w-full max-w-md">
         {/* 상단 로고 영역 */}
         <div className="text-center mb-8">
@@ -148,7 +151,8 @@ export function ResetPasswordPage() {
               />
             </div>
 
-            <Button type="submit" variant="primary" size="lg" fullWidth disabled={submitting}>
+            {/* [리뉴얼] gradient 변형 + loading 으로 통일 */}
+            <Button type="submit" variant="gradient" size="lg" fullWidth disabled={submitting} loading={submitting}>
               {submitting ? "변경 중..." : "비밀번호 변경하기"}
             </Button>
           </form>

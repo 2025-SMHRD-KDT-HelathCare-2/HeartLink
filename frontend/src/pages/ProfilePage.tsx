@@ -1,30 +1,21 @@
+// ProfilePage.tsx
+
 // frontend/src/pages/ProfilePage.tsx
 // =============================================================================
 // 건강 정보 등록(프로필) 페이지
 //
-// [이 파일이 하는 일]
-//   - 화면이 열리면 서버에서 내 기존 정보를 불러와 입력칸을 채웁니다.
-//   - 생년월일/성별/앓고 있는 질병을 입력하고 '저장하기'를 누르면 서버에 반영됩니다.
-//
-// [1단계 리팩터링에서 바뀐 점 — 기능은 그대로, '겉모양 코드'만 정리]
-//   1) 색상 하드코딩(#0D9488 등) → 디자인 토큰 클래스(primary 등)
-//   2) 글자 크기 인라인 style(style={{ fontSize: ... }}) → 토큰 클래스(text-sub 등)
-//   3) 반복되던 흰 카드 박스 → 공통 컴포넌트 <Card> / 제목은 <CardTitle>
-//   4) 규격이 맞는 입력칸/버튼 → 공통 <Input> / <Button> 으로 교체
-//   ※ 질병 선택 '칩' 버튼은 크기 규격이 공통 Button 과 달라(외형 보존 위해)
-//      일반 button 으로 두고 색상/폰트 토큰만 정리했습니다.
-//   ※ 화면에 보이는 결과(디자인/동작)는 이전과 똑같습니다.
+// [디자인 리뉴얼 포인트]
+//   1) 상단 제목 → 청록→블루 그라데이션 헤더 배너 (<Card variant="gradient">)
+//   2) 오류 박스 / 질병 칩 / 동의 영역 색상을 tokens.ts(COLORS) 로 정리
+//   3) 카드/입력칸/버튼은 기존 공용 <Card>/<Input>/<Button> 유지
+//   ※ 정보 조회/저장/검증 로직은 100% 동일
 // =============================================================================
 
 import { useState, useEffect } from "react";
 import { Save, Check } from "lucide-react";
 import { getMe, updateMe } from "../api/authApi";
-// 공통 UI 컴포넌트
-//   - Card      : 흰색 둥근 카드 박스 (그림자 + 테두리)
-//   - CardTitle : 카드 안의 민트색 제목
-//   - Input     : 입력칸 (여기서는 생년월일 날짜 선택에 사용)
-//   - Button    : 표준 버튼 (성별 선택, 저장 버튼)
 import { Card, CardTitle, Input, Button } from "../components/ui";
+import { COLORS } from "../styles/tokens";
 
 // 질병 목록 (사용자가 선택할 수 있는 후보들)
 const DISEASES = [
@@ -33,11 +24,7 @@ const DISEASES = [
   "고지혈증 (피 속 지방 과다)", "심방세동 (심장이 불규칙하게 뜀)",
 ];
 
-// -----------------------------------------------------------------------------
-// [도우미] 생년월일("YYYY-MM-DD")로 '만 나이'를 계산해 "만 OO세" 문자열로 돌려줍니다.
-//   - 화면에 참고용으로만 보여줍니다. (실제 나이는 서버가 계산)
-//   - 값이 없거나 이상하면 빈 문자열을 돌려줍니다.
-// -----------------------------------------------------------------------------
+// 생년월일("YYYY-MM-DD")로 '만 나이'를 계산해 "만 OO세" 문자열로 반환
 function calcAge(birthDate: string): string {
   if (!birthDate) return "";
   const birth = new Date(birthDate);
@@ -46,7 +33,6 @@ function calcAge(birthDate: string): string {
   const today = new Date();
   let age = today.getFullYear() - birth.getFullYear();
   const monthDiff = today.getMonth() - birth.getMonth();
-  // 아직 올해 생일이 안 지났으면 한 살 빼줍니다.
   if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
     age--;
   }
@@ -54,27 +40,18 @@ function calcAge(birthDate: string): string {
   return `만 ${age}세`;
 }
 
-// -----------------------------------------------------------------------------
-// [도우미] 서버에서 받은 birthDate(ISO 날짜 문자열)를
-//          날짜 입력칸(type="date")이 알아듣는 "YYYY-MM-DD"로 잘라줍니다.
-//   - 예: "1955-03-12T00:00:00.000Z" → "1955-03-12"
-// -----------------------------------------------------------------------------
+// 서버 birthDate(ISO)를 type="date" 입력칸용 "YYYY-MM-DD"로 변환
 function toDateInputValue(iso?: string): string {
   if (!iso) return "";
   return iso.split("T")[0];
 }
 
 export function ProfilePage() {
-  const [saved, setSaved] = useState(false);           // 저장 직후 '완료' 표시 여부
-  const [loading, setLoading] = useState(true);        // 첫 정보 불러오는 중 여부
-  const [submitting, setSubmitting] = useState(false); // 저장 진행 중 여부
-  const [errorMsg, setErrorMsg] = useState("");        // 화면에 보여줄 오류 메시지
+  const [saved, setSaved] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
 
-  // 입력값 상태
-  //   - birthDate : "YYYY-MM-DD" 문자열
-  //   - gender    : 서버가 쓰는 "M"/"F" 값 그대로 저장
-  //   - diseases  : 선택한 질병 이름들의 목록
-  //   - agreeMedical : 동의 체크 여부(필수)
   const [form, setForm] = useState({
     birthDate: "",
     gender: "" as "" | "M" | "F",
@@ -82,11 +59,7 @@ export function ProfilePage() {
     agreeMedical: false,
   });
 
-  // ---------------------------------------------------------------------------
-  // [최초 1회] 화면이 열릴 때 서버에서 내 기존 정보를 불러와 form 에 채웁니다.
-  //   - alive 플래그: 데이터를 받기 전에 화면을 떠나면, 이미 사라진 화면의
-  //     상태를 바꾸려다 생기는 경고/오류를 막는 안전장치입니다.
-  // ---------------------------------------------------------------------------
+  // [최초 1회] 서버에서 내 기존 정보를 불러와 form 에 채움
   useEffect(() => {
     let alive = true;
 
@@ -112,7 +85,6 @@ export function ProfilePage() {
     return () => { alive = false; };
   }, []);
 
-  // 질병 칩을 눌렀을 때: 이미 선택돼 있으면 빼고, 아니면 추가합니다.
   const toggleDisease = (d: string) =>
     setForm(f => ({
       ...f,
@@ -121,14 +93,10 @@ export function ProfilePage() {
         : [...f.diseases, d],
     }));
 
-  // ---------------------------------------------------------------------------
-  // [저장] 저장 버튼을 눌렀을 때 실행됩니다.
-  // ---------------------------------------------------------------------------
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg("");
 
-    // 동의 체크는 필수입니다.
     if (!form.agreeMedical) {
       setErrorMsg("건강 정보 수집·이용에 동의해 주세요.");
       return;
@@ -136,15 +104,11 @@ export function ProfilePage() {
 
     try {
       setSubmitting(true);
-
-      // 서버로 보낼 값 구성 (생년월일/성별은 값이 있을 때만 포함)
       await updateMe({
         medical_history: form.diseases,
         ...(form.birthDate && { birthDate: form.birthDate }),
         ...(form.gender && { gender: form.gender }),
       });
-
-      // 저장 성공 표시 → 3초 뒤 원래 버튼으로 복귀
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch (err) {
@@ -168,25 +132,27 @@ export function ProfilePage() {
 
   return (
     <div className="max-w-2xl mx-auto p-6">
-      {/* 페이지 상단 제목 영역 */}
-      <div className="mb-8">
-        <h1 className="font-bold text-primary text-[1.9rem]">건강 정보 등록</h1>
-        <p className="text-gray-600 mt-2 font-bold text-[1.1rem]">
+      {/* ───────── 상단 그라데이션 헤더 배너 ───────── */}
+      <Card variant="gradient" padding="lg" className="mb-8">
+        <h1 className="font-black text-hero leading-tight">건강 정보 등록</h1>
+        <p className="mt-2 font-bold text-body opacity-90">
           입력하신 정보로 더 정확한 심장 건강 분석을 해드립니다.
         </p>
-      </div>
+      </Card>
 
       <form onSubmit={handleSave} className="space-y-6">
-        {/* 오류 메시지 (있을 때만 표시) */}
+        {/* 오류 메시지 (있을 때만 표시) — 토큰 색상 */}
         {errorMsg && (
-          <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl p-4 font-bold text-[1.05rem]">
+          <div
+            className="border rounded-xl p-4 font-bold text-[1.05rem]"
+            style={{ backgroundColor: COLORS.dangerBg, borderColor: COLORS.dangerBorder, color: COLORS.danger }}
+          >
             {errorMsg}
           </div>
         )}
 
         {/* ===== 카드 1: 기본 신체 정보 ===== */}
         <Card padding="lg">
-          {/* CardTitle 기본 크기는 text-sub(1.3rem)라 원본과 동일합니다. */}
           <CardTitle className="mb-5">기본 신체 정보</CardTitle>
 
           <div className="grid grid-cols-2 gap-5">
@@ -200,8 +166,6 @@ export function ProfilePage() {
                   </span>
                 )}
               </label>
-              {/* 공통 Input 사용. 이 칸은 왼쪽 아이콘 없이 쓰던 칸이라
-                  leftIcon 을 지정하지 않습니다(원본과 동일하게 패딩 왼쪽 기본). */}
               <Input
                 type="date"
                 value={form.birthDate}
@@ -240,8 +204,8 @@ export function ProfilePage() {
             현재 앓고 계신 병을 모두 선택해 주세요. 없으면 선택 안 하셔도 됩니다.
           </p>
 
-          {/* 질병 '칩' 버튼들 — 가변 폭에 min-height 52 라서 공통 Button 규격과 달라
-              외형 보존을 위해 일반 button 으로 두고 색상/폰트 토큰만 정리했습니다. */}
+          {/* 질병 '칩' 버튼들 — 가변 폭 + min-height 52 라서 외형 보존 위해
+              일반 button 으로 두고 선택색은 COLORS 토큰을 인라인으로 적용 */}
           <div className="flex flex-wrap gap-3">
             {DISEASES.map(d => {
               const selected = form.diseases.includes(d);
@@ -250,14 +214,13 @@ export function ProfilePage() {
                   key={d}
                   type="button"
                   onClick={() => toggleDisease(d)}
-                  className={`px-4 py-3 rounded-xl border-2 transition-all font-bold text-small ${
-                    selected
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "border-gray-200 text-gray-600 hover:border-gray-300"
-                  }`}
-                  style={{ minHeight: 52 }}
+                  className="px-4 py-3 rounded-xl border-2 transition-all font-bold text-small"
+                  style={selected
+                    ? { borderColor: COLORS.primary, backgroundColor: COLORS.primarySoft, color: COLORS.primary }
+                    : { borderColor: COLORS.border, color: COLORS.body }}
+                  onMouseEnter={(e) => { if (!selected) e.currentTarget.style.borderColor = COLORS.faint; }}
+                  onMouseLeave={(e) => { if (!selected) e.currentTarget.style.borderColor = COLORS.border; }}
                 >
-                  {/* 선택된 질병 앞에는 체크 표시(✓)를 붙입니다. */}
                   {selected && <span className="mr-1">✓</span>}
                   {d}
                 </button>
@@ -266,21 +229,22 @@ export function ProfilePage() {
           </div>
         </Card>
 
-        {/* ===== 동의 영역 (필수) ===== */}
-        {/* 노란 경고 톤은 amber 계열 고정 색이라 토큰 대상이 아니므로 그대로 둡니다. */}
-        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6">
+        {/* ===== 동의 영역 (필수) — 주의(warning) 톤 토큰 ===== */}
+        <div
+          className="border rounded-2xl p-6"
+          style={{ backgroundColor: COLORS.warningBg, borderColor: COLORS.warningBorder }}
+        >
           <label className="flex items-start gap-4 cursor-pointer">
             <input
               type="checkbox"
               checked={form.agreeMedical}
               onChange={e => setForm({ ...form, agreeMedical: e.target.checked })}
-              // accent-primary: 체크박스 색을 디자인 토큰(민트)으로 지정
               className="mt-1 w-6 h-6 accent-primary"
             />
-            <span className="text-amber-800 leading-relaxed font-bold text-[1.05rem]">
+            <span className="leading-relaxed font-bold text-[1.05rem]" style={{ color: COLORS.warning }}>
               건강 정보 수집·이용에 동의합니다. (필수)
               <br />
-              <span className="text-amber-700 font-normal">
+              <span className="font-normal" style={{ color: COLORS.warning, opacity: 0.85 }}>
                 질병 정보는 심장 건강 분석에만 사용되며, 다른 곳에 제공되지 않습니다.
               </span>
             </span>
@@ -288,10 +252,7 @@ export function ProfilePage() {
         </div>
 
         {/* ===== 저장 버튼 ===== */}
-        {/* 상태에 따라 내용이 3가지로 바뀝니다: 저장중 / 저장완료 / 평소
-            (loading prop 을 쓰면 스피너가 함께 나오므로, 원본처럼 텍스트만
-             바꾸기 위해 loading 대신 disabled 를 사용합니다.) */}
-        <Button type="submit" variant="primary" size="lg" fullWidth disabled={submitting}>
+        <Button type="submit" variant="gradient" size="lg" fullWidth disabled={submitting}>
           {submitting ? (
             "저장 중..."
           ) : saved ? (

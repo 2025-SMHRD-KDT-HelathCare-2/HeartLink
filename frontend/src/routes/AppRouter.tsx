@@ -11,11 +11,17 @@
 //        · 탭 화면(/, /history, /ecg, 보호자 탭) → 레이아웃이 헤더와 함께 그림
 //          (이 탭들의 가운데 내용은 UserLayout / GuardianLayout 내부의 <Routes>가 담당)
 //        · 독립 화면(상세, 마이페이지, 알림 등)   → 여기 AppRouter에서 직접 라우트로 그림
+//
+// [디자인 리뉴얼 포인트]
+//   - SplashScreen(로딩 화면)을 브랜드 그라데이션 배경 + 흰색 스피너로 통일
+//     (OAuthCallbackPage 로딩 화면과 동일 톤)
+//   - 라우팅 로직(문지기/레이아웃/Route 정의)은 변경 없음
 // ============================================================================
 
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import type { ReactNode } from "react";
 import { useAuth } from "../context/AuthContext";
+import { GRADIENTS } from "../styles/tokens";
 
 // ---- 인증 전 화면 (모두 named export) ----
 import { LoginPage } from "../pages/LoginPage";
@@ -45,18 +51,20 @@ import GuardianReportDetailPage from "../pages/GuardianReportDetailPage";
 // 스플래시(로딩) 화면
 // - 앱 실행 직후, 저장된 세션이 유효한지 확인하는 "잠깐" 동안 보여줍니다.
 // - 이게 있어야 로그인된 사용자가 새로고침해도 로그인 화면이 깜빡이지 않습니다.
+// - 디자인 리뉴얼: 브랜드 그라데이션 배경 + 흰색 스피너 (다른 로딩 화면과 통일)
 // ============================================================================
 function SplashScreen() {
   return (
     <div
-      style={{
-        display: "flex",
-        justifyContent: "center", // 가로 가운데
-        alignItems: "center",     // 세로 가운데
-        minHeight: "100vh",       // 화면 전체 높이
-      }}
+      className="min-h-screen flex flex-col items-center justify-center gap-5"
+      style={{ background: GRADIENTS.brand }}
     >
-      <p>불러오는 중입니다…</p>
+      {/* 흰색 스피너 */}
+      <div
+        className="w-10 h-10 rounded-full border-4 border-white/30 border-t-white animate-spin"
+        aria-hidden="true"
+      />
+      <p className="text-white font-bold text-lg">불러오는 중입니다…</p>
     </div>
   );
 }

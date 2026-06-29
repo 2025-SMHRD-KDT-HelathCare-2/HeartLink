@@ -1,3 +1,4 @@
+// FindIdPage.tsx
 // frontend/src/pages/FindIdPage.tsx
 // =============================================================================
 // 아이디(이메일) 찾기
@@ -7,13 +8,13 @@
 //   - step "code"  : 받은 인증번호 확인 → 가입된 이메일 조회
 //   - step "result": 찾은 이메일을 보여줌
 //
-// [1단계 리팩터링에서 바뀐 점 — 기능은 그대로, '겉모양 코드'만 정리]
-//   1) 색상 하드코딩 → 디자인 토큰 클래스(primary 등)
-//   2) 글자 크기 인라인 style → 토큰 클래스
-//   3) 인증번호 입력칸/제출 버튼 → 공통 <Input> / <Button>
-//   ※ 단, 휴대폰번호 입력칸은 옆에 '인증 요청' 버튼이 가로로 붙는 특수 구조라
-//      정렬 보존을 위해 원본 input 구조를 유지하고 색/폰트 토큰만 정리했습니다.
-//   ※ 화면 결과(디자인/동작)는 이전과 똑같습니다.
+// [디자인 리뉴얼 포인트 — 기능은 그대로, '겉모양'만 통일]
+//   1) 배경 그라데이션: from-primary..via.. → GRADIENTS.brand (청록→블루)로 통일
+//   2) 주요 버튼(인증 확인 / 로그인하러 가기) → gradient 변형으로 통일
+//   3) 에러 메시지 하드코딩 색(text-red-500) → 토큰 색(COLORS.danger)
+//   ※ 전화번호+인증요청 가로 줄은 정렬 보존 위해 원본 input 구조 유지(색만 토큰화 가능).
+//      여기선 'bg-primary' 같은 토큰 클래스를 이미 쓰고 있어 그대로 둡니다.
+//   ※ 인증 발송/확인/이메일 조회/라우팅 로직은 이전과 100% 동일합니다.
 // =============================================================================
 
 import { useState } from "react";
@@ -23,6 +24,7 @@ import { sendFindEmailCode, verifyFindEmailCode } from "../api/authApi";
 import api from "../api/authApi"; // find-email 조회용
 import { useToast } from "../context/ToastContext";
 import { Input, Button } from "../components/ui";
+import { COLORS, GRADIENTS } from "../styles/tokens";
 
 // 현재 단계: 전화번호 입력 / 인증번호 입력 / 결과 표시
 type Step = "phone" | "code" | "result";
@@ -87,7 +89,8 @@ export function FindIdPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary via-primary-mid to-primary flex items-center justify-center p-4">
+    // [리뉴얼] 전체 배경: GRADIENTS.brand(청록→블루)로 통일 — 인라인 적용
+    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: GRADIENTS.brand }}>
       <div className="w-full max-w-md">
         {/* 상단 로고 영역 */}
         <div className="text-center mb-8">
@@ -116,7 +119,8 @@ export function FindIdPage() {
           {step !== "result" && (
             <div className="space-y-5">
               {/* 휴대전화번호 입력 + '인증 요청' 버튼 (가로 한 줄)
-                  이 줄은 정렬 보존을 위해 원본 input 구조를 유지합니다. */}
+                  이 줄은 정렬 보존을 위해 원본 input 구조를 유지합니다.
+                  색은 이미 토큰 클래스(focus:border-primary, bg-primary)를 사용 중. */}
               <div>
                 <label className="block text-gray-700 mb-2 font-bold text-[1.1rem]">휴대전화번호</label>
                 <div className="flex gap-2">
@@ -158,12 +162,12 @@ export function FindIdPage() {
                 </div>
               )}
 
-              {/* 에러 메시지 (전화번호 단계/인증 단계 공용이라 폼 아래에 따로 표시) */}
-              {error && <p className="text-red-500 font-bold text-small">{error}</p>}
+              {/* 에러 메시지 — [리뉴얼] 토큰 색(COLORS.danger) */}
+              {error && <p className="font-bold text-small" style={{ color: COLORS.danger }}>{error}</p>}
 
-              {/* 인증 확인 버튼 (인증번호 단계에서만 표시) */}
+              {/* 인증 확인 버튼 (인증번호 단계에서만 표시) — [리뉴얼] gradient + loading */}
               {step === "code" && (
-                <Button variant="primary" size="lg" fullWidth onClick={handleVerifyCode} disabled={verifying}>
+                <Button variant="gradient" size="lg" fullWidth onClick={handleVerifyCode} disabled={verifying} loading={verifying}>
                   {verifying ? "확인 중..." : "인증 확인"}
                 </Button>
               )}
@@ -178,7 +182,8 @@ export function FindIdPage() {
                 <p className="text-gray-500 font-bold mb-2 text-small">가입하신 이메일 주소예요</p>
                 <p className="text-primary font-black text-[1.4rem]">{foundEmail}</p>
               </div>
-              <Button variant="primary" size="lg" fullWidth onClick={() => navigate("/login")}>
+              {/* [리뉴얼] gradient 변형으로 통일 */}
+              <Button variant="gradient" size="lg" fullWidth onClick={() => navigate("/login")}>
                 로그인하러 가기
               </Button>
             </div>

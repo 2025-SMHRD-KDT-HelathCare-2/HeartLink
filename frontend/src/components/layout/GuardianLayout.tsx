@@ -1,3 +1,4 @@
+// GuardianLayout.tsx
 // frontend/src/components/layout/GuardianLayout.tsx
 // =============================================================================
 // 보호자 레이아웃 — 상단 헤더 + 본문 + 하단 탭바(4개)
@@ -26,6 +27,11 @@
 //       → 선택 환자만 갱신 (이동은 안 함)
 //   - 알림의 '리포트 보기'(위험 알림) → handleViewReport()
 //       → 리포트 탭으로 이동
+//
+// [디자인 리뉴얼 포인트 — 이번 변경]
+//   - 헤더 배경: 단색(COLORS.primary) → 청록→블루 그라데이션(GRADIENTS.brand)
+//   - 헤더 그림자: 토큰 그림자(shadow-float 느낌)로 살짝 깊이감 부여
+//   - 로직/구조/탭 구성은 변경 없음. 오직 헤더 시각 스타일만 업그레이드.
 // =============================================================================
 
 import { useState, useEffect } from "react";
@@ -41,7 +47,8 @@ import { NotificationsPage } from "../../pages/NotificationsPage";
 import { GuardianMyPage } from "../../pages/GuardianMyPage";
 // 공통 하단 탭바 + 탭 한 개의 타입
 import { BottomTabBar, type TabItem } from "./BottomTabBar";
-import { COLORS } from "../../styles/tokens";
+// 색 토큰(COLORS) + 그라데이션 토큰(GRADIENTS) 를 함께 사용
+import { COLORS, GRADIENTS } from "../../styles/tokens";
 
 export function GuardianLayout({ onLogout }: { onLogout: () => void }) {
   const navigate = useNavigate();
@@ -141,12 +148,21 @@ export function GuardianLayout({ onLogout }: { onLogout: () => void }) {
       className="min-h-screen flex flex-col"
       style={{ backgroundColor: COLORS.appBg }}
     >
-      {/* ───────────────── 상단 헤더 (항상 고정) ───────────────── */}
+      {/* ───────────────── 상단 헤더 (항상 고정) ─────────────────
+          [리뉴얼] 단색 → 청록→블루 그라데이션 배경 + 부드러운 그림자.
+          - background 에 GRADIENTS.brand 를 인라인으로 적용합니다.
+            (Tailwind 의 bg-gradient-brand 클래스가 있어도 되지만,
+             레이아웃은 토큰을 직접 쓰는 방식으로 통일했습니다.)
+          - boxShadow 로 헤더가 본문 위에 살짝 떠 있는 느낌을 줍니다. */}
       <header
-        className="text-white px-5 py-4 flex items-center justify-between sticky top-0 z-30 shadow-lg"
-        style={{ backgroundColor: COLORS.primary }}
+        className="text-white px-5 py-4 flex items-center justify-between sticky top-0 z-30"
+        style={{
+          background: GRADIENTS.brand,
+          boxShadow: "0 4px 16px rgba(13, 148, 136, 0.25)",
+        }}
       >
         <div className="flex items-center gap-3">
+          {/* 로고 아이콘: 반투명 흰색 박스 안에 하트 */}
           <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
             <Heart className="w-7 h-7 text-white fill-current" />
           </div>
@@ -154,16 +170,18 @@ export function GuardianLayout({ onLogout }: { onLogout: () => void }) {
             <div className="font-black" style={{ fontSize: "1.4rem" }}>
               HeartLink
             </div>
-            <div className="text-white/60 font-bold text-tiny">
+            {/* 닉네임 + 역할(보호자) */}
+            <div className="text-white/70 font-bold text-tiny">
               {nickname}님 · 보호자
             </div>
           </div>
         </div>
 
-        {/* 오른쪽: 로그아웃 (알림은 하단 탭에 있으므로 헤더에는 두지 않음) */}
+        {/* 오른쪽: 로그아웃 (알림은 하단 탭에 있으므로 헤더에는 두지 않음)
+            - 최소 높이 48px 로 터치 영역 확보 */}
         <button
           onClick={onLogout}
-          className="flex items-center gap-2 px-3 py-2 text-white/70 hover:text-white hover:bg-white/10 rounded-xl transition-colors font-bold text-small"
+          className="flex items-center gap-2 px-3 py-2 text-white/80 hover:text-white hover:bg-white/15 rounded-xl transition-colors font-bold text-small"
           style={{ minHeight: 48 }}
         >
           <LogOut className="w-5 h-5" />
@@ -173,7 +191,7 @@ export function GuardianLayout({ onLogout }: { onLogout: () => void }) {
 
       {/* ───────────────── 본문 (현재 탭 화면) ─────────────────
           - 각 페이지가 필요로 하는 props 를 여기서 내려줍니다.
-          - 하단 탭바에 가려지지 않도록 아래 여백을 넉넉히 줍니다. */}
+          - 하단 탭바에 가려지지 않도록 아래 여백을 넉넉히(88px) 줍니다. */}
       <main className="flex-1" style={{ paddingBottom: 88 }}>
         <Routes>
           <Route
