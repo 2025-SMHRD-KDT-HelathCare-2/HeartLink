@@ -259,7 +259,7 @@ export function ReportHistoryPage() {
 
               return (
                 <button key={r.id}
-                  onClick={() => isCompleted && navigate("/report-detail", { state: { reportId: r.id, type: "weekly" } })}
+                  onClick={() => isCompleted && navigate(`/report-detail/weekly/${r.id}`)}
                   disabled={!isCompleted}
                   className={`w-full bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center gap-4 text-left transition-all
                     ${isCompleted ? "hover:shadow-md cursor-pointer" : "cursor-default opacity-70"}`}

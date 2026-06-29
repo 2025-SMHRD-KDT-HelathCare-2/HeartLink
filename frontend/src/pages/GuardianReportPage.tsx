@@ -96,7 +96,7 @@ export function GuardianReportPage({ patients, selectedUserId, onSelectUser }: G
       setGenerating(true);
       const res = await api.post(`/reports/generate-for/${patient.user_id}`);
       const reportId = res.data?._id;
-      navigate(`/guardian-report-detail/${patient.user_id}`, { state: { type: "daily", reportId } });
+      navigate(`/guardian-report-detail/${patient.user_id}/daily/${reportId}`);
     } catch (err) {
       console.error("보호자 리포트 생성 실패", err);
     } finally {

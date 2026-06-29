@@ -134,7 +134,8 @@ export function ReportPage() {
         measurementId: item.id,
       });
       const reportId = res.data?._id;
-      navigate("/report-detail", { state: { reportId, type: "daily" } });
+      navigate(`/report-detail/daily/${reportId}`);
+
     } catch (err) {
       console.error("리포트 생성 실패", err);
     } finally {

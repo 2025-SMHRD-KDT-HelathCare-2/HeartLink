@@ -7,7 +7,7 @@
 //   기능(데이터 조회/폴링, TTS 재생, PDF 저장)은 100% 동일
 // ============================================================================
 import { useState, useRef, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import {
   ChevronLeft, Volume2, StopCircle, AlertTriangle, Info,
   CalendarDays, BarChart2, Download
@@ -77,9 +77,13 @@ interface ReportDetailPageProps {
 
 export function ReportDetailPage({ mode, memberId }: ReportDetailPageProps) {
   const navigate = useNavigate();
-  const location = useLocation();
-  const reportId = (location.state as any)?.reportId;
-  const type: ReportType = (location.state as any)?.type ?? "daily";
+  // ── URL 주소에서 직접 값을 꺼냅니다. ──────────────────────────────
+  // 사용자 경로:  /report-detail/:type/:id          → type, id 가 채워짐
+  // 보호자 경로:  /guardian-report-detail/:userId/:type/:id
+  //             → userId, type, id 가 채워짐 (userId 는 아래 memberId 로 사용)
+  const params = useParams();
+  const reportId = params.id;                                  // 주소의 :id
+  const type: ReportType = (params.type as ReportType) ?? "daily"; // 주소의 :type
 
   const [report, setReport] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(true);
