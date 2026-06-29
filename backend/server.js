@@ -21,12 +21,12 @@ startWeeklyReportJob();
 // MCP 서버 시작 (AI 서버가 MongoDB 데이터에 접근하기 위한 MCP HTTP 서버)
 const MCP_PORT = process.env.MCP_PORT || 3001;
 
-const mcpServer = spawn('npx', [
+const npxCmd = process.platform === 'win32' ? 'npx.cmd' : 'npx';
+const mcpServer = spawn(npxCmd, [
   'mongodb-mcp-server',
   '--transport', 'http',
 ], {
   stdio: 'inherit',
-  shell: true,
   env: {
     ...process.env,
     MDB_MCP_CONNECTION_STRING: process.env.MONGO_URI,
