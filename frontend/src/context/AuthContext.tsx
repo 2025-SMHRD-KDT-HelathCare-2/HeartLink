@@ -4,6 +4,8 @@ import { setAccessToken } from "../api/tokenStore";
 import api from "../api/authApi";
 import { onMessage } from 'firebase/messaging';
 import { messaging, getToken, VAPID_KEY } from '../firebase';
+import { resolveNotificationPath } from '../utils/notificationLink'; // ← 추가
+
 
 type Role = "user" | "guardian";
 
@@ -38,15 +40,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (permission !== 'granted') return;
       const token = await getToken(messaging, { vapidKey: VAPID_KEY });
       if (token) await api.patch('/auth/device-token', { deviceToken: token });
-      // 앱이 열려 있을 때(포그라운드)도 알림 표시
+      
+      // 앱이 열려 있을 때(포그라운드)도 알림 표시 + 클릭 시 딥링크 이동
       onMessage(messaging, (payload) => {
-        if (payload.notification?.title) {
-          new Notification(payload.notification.title, {
-            body: payload.notification.body ?? '',
-            icon: '/favicon.ico',
-          });
-        }
+        if (!payload.notification?.title) return;
+
+        // 1) 화면에 알림 띄우기
+        const notif = new Notification(payload.notification.title, {
+          body: payload.notification.body ?? '',
+          icon: '/favicon.ico',
+        });
+
+        // 2) 알림 클릭 시 이동할 경로 계산
+        //    - localStorage 의 role 을 쓰는 이유:
+        //      이 핸들러는 한 번 등록되면 클로저로 옛 role 값을 붙잡을 수 있어,
+        //      "지금" 로그인된 역할을 안전하게 읽으려고 localStorage 를 본다.
+        const currentRole =
+          (localStorage.getItem('role') as 'user' | 'guardian' | null) ?? null;
+        const data = payload.data as Record<string, string> | undefined;
+        const path = resolveNotificationPath(currentRole, data);
+
+        // 3) 클릭하면 해당 화면으로 이동 + 알림 닫기
+        notif.onclick = () => {
+          window.focus();        // 백그라운드 탭이면 앱 탭으로 포커스
+          notif.close();
+          // SPA 라우터 대신 location 이동: 어떤 화면에서든 안전하게 동작
+          window.location.assign(path);
+        };
       });
+
     } catch (e) {
       console.error('FCM 토큰 등록 실패', e);
     }
