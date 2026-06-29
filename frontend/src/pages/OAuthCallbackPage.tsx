@@ -1,13 +1,16 @@
+// OAuthCallbackPage.tsx
+
 // ============================================================================
 // 소셜 로그인 콜백 처리 페이지 (토큰 교환 / 신규는 역할 선택으로 분기)
-// - 리팩터링 포인트: 로딩 문구 인라인 fontSize → 토큰 클래스
-//   (이 페이지는 색 하드코딩이 없고 로직만 있어 변경 최소)
+// - 디자인 리뉴얼: 로딩 화면을 브랜드 그라데이션 배경 + 스피너로 통일
+//   (로직은 일절 변경 없음 — 토큰 교환/분기/세션 적용 그대로 유지)
 // ============================================================================
 import { useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { exchangeToken } from "../api/authApi";
 import { setAccessToken } from "../api/tokenStore";
+import { GRADIENTS } from "../styles/tokens";
 
 export function OAuthCallbackPage() {
   const [params] = useSearchParams();
@@ -44,8 +47,16 @@ export function OAuthCallbackPage() {
   }, [params, navigate, applySession]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <p className="text-gray-600 font-bold text-[1.1rem]">
+    <div
+      className="min-h-screen flex flex-col items-center justify-center gap-5"
+      style={{ background: GRADIENTS.brand }}
+    >
+      {/* 흰색 스피너 */}
+      <div
+        className="w-10 h-10 rounded-full border-4 border-white/30 border-t-white animate-spin"
+        aria-hidden="true"
+      />
+      <p className="text-white font-bold text-lg">
         로그인 처리 중입니다...
       </p>
     </div>

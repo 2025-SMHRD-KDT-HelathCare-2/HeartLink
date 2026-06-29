@@ -1,3 +1,4 @@
+// GuardianMyPage.tsx
 // frontend/src/pages/GuardianMyPage.tsx
 // =============================================================================
 // 보호자 마이페이지 — 사용자 등록 요청(2단계) + 등록한 사용자 관리 + 회원 탈퇴
@@ -9,16 +10,12 @@
 //   3) 보낸 요청 / 연결된 사용자 목록을 보여주고, 연결을 해제할 수 있습니다.
 //   4) 하단 '회원 탈퇴'를 누르면 확인 모달이 뜹니다.
 //
-// [2단계 UX 가 필요한 이유]
-//   - 이메일만 보고 요청을 바로 보내면, 오타로 엉뚱한 사람에게 요청이 갈 수 있습니다.
-//   - 그래서 "보내기 전에 닉네임을 먼저 보여주고 → 사람이 눈으로 확인 → 그다음 전송"
-//     하는 흐름으로 만들어 실수를 줄입니다.
-//
-// [이번 변경점]
-//   - 기존: 이메일 입력 후 곧바로 [요청 보내기] → 서버로 POST
-//   - 변경: 이메일 입력 후 [확인] → GET /guardians/lookup 으로 닉네임 조회 →
-//           닉네임 확인 카드 표시 → [요청 보내기] 눌러야 POST
-//   - "최대 3명" 제약은 백엔드에서 해제되어, 프론트에서도 모두 제거했습니다.
+// [디자인 리뉴얼 포인트 — 기능은 그대로, '겉모양'만 업그레이드]
+//   1) 페이지 제목 → 청록→블루 그라데이션 헤더 카드(<Card variant="gradient">)
+//   2) 안내 박스 / 닉네임 확인 카드 / 상태 배지 색을 공통 토큰(COLORS)으로 통일
+//   3) 1단계 [확인], 2단계 [요청 보내기]/[다시 입력] 버튼을 공통 <Button> 으로 교체
+//      (gradient / outline 변형 사용 → 다른 화면과 톤 일치)
+//   ※ 데이터 조회/요청 전송/연결 해제/탈퇴 로직은 이전과 100% 동일합니다.
 // =============================================================================
 
 import { useState, useEffect } from "react";
@@ -32,6 +29,7 @@ import {
   requestUser, getSentRequests, disconnectRelation, lookupUser,
 } from "../api/guardianApi";
 import { Card, CardTitle, Input, Button } from "../components/ui";
+import { COLORS } from "../styles/tokens";
 
 // 요청 상태값(서버가 내려주는 값)의 타입
 type RequestStatus = "pending" | "accepted" | "rejected";
@@ -44,11 +42,15 @@ interface SentRequest {
   createdAt: string;
 }
 
-// 요청 상태별 배지 색 (Tailwind 표준 색이라 디자인 토큰 대상이 아님)
+// -----------------------------------------------------------------------------
+// [요청 상태별 배지 설정] 색 값을 공통 토큰(COLORS)에서 가져와 앱 전체와 통일.
+//   - color(글자/아이콘) / bg(연한 배경) / border(연한 테두리) 를 한 묶음으로.
+//   - Tailwind 표준색(text-amber-600 등) → 토큰 색 인라인 적용으로 교체.
+// -----------------------------------------------------------------------------
 const STATUS_CONFIG = {
-  pending:  { label: "수락 대기", color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-200" },
-  accepted: { label: "연결됨",   color: "text-green-600", bg: "bg-green-50", border: "border-green-200" },
-  rejected: { label: "거절됨",   color: "text-red-500",   bg: "bg-red-50",   border: "border-red-200" },
+  pending:  { label: "수락 대기", color: COLORS.warning, bg: COLORS.warningBg, border: COLORS.warningBorder },
+  accepted: { label: "연결됨",   color: COLORS.safe,    bg: COLORS.safeBg,    border: COLORS.safeBorder },
+  rejected: { label: "거절됨",   color: COLORS.danger,  bg: COLORS.dangerBg,  border: COLORS.dangerBorder },
 };
 
 // -----------------------------------------------------------------------------
@@ -60,8 +62,12 @@ function WithdrawModal({ onConfirm, onCancel, processing }:
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl p-7 w-full max-w-sm">
-        <div className="flex items-center justify-center w-16 h-16 bg-red-100 rounded-full mx-auto mb-5">
-          <AlertTriangle className="w-9 h-9 text-red-500" />
+        {/* 경고 아이콘 원 — 연한 빨강(토큰 색) */}
+        <div
+          className="flex items-center justify-center w-16 h-16 rounded-full mx-auto mb-5"
+          style={{ backgroundColor: COLORS.dangerBg }}
+        >
+          <AlertTriangle className="w-9 h-9" style={{ color: COLORS.danger }} />
         </div>
         <h2 className="text-primary font-black text-center mb-3 text-[1.5rem]">정말 탈퇴하시겠어요?</h2>
         <p className="text-gray-600 font-bold text-center mb-7 leading-relaxed text-[1.05rem]">
@@ -118,9 +124,6 @@ export function GuardianMyPage() {
 
   // ───────────────────────────────────────────────────────────
   // [1단계] 닉네임 확인 — GET /guardians/lookup?email=...
-  //   - 이메일이 비었거나 형식이 틀리면 에러만 표시하고 중단합니다.
-  //   - 성공하면 lookedUpNickname 에 닉네임을 담아 "확인 카드"가 뜨게 합니다.
-  //   - 404(존재하지 않는 사용자)면 그에 맞는 안내를 띄웁니다.
   // ───────────────────────────────────────────────────────────
   const handleLookup = async (e: { preventDefault(): void }) => {
     e.preventDefault();
@@ -148,8 +151,6 @@ export function GuardianMyPage() {
 
   // ───────────────────────────────────────────────────────────
   // [2단계] 실제 등록 요청 보내기 — POST /guardians
-  //   - 닉네임 확인을 마친 뒤(=lookedUpNickname 이 있을 때)만 호출됩니다.
-  //   - 성공하면 목록 맨 위에 새 요청을 추가하고, 입력/조회 상태를 모두 초기화합니다.
   // ───────────────────────────────────────────────────────────
   const handleSendRequest = async () => {
     const email = userEmail.trim();
@@ -174,7 +175,7 @@ export function GuardianMyPage() {
     }
   };
 
-  // [확인 취소] 닉네임 확인 카드에서 "아니에요, 다시 입력" 을 누르면
+  // [확인 취소] 닉네임 확인 카드에서 "다시 입력" 을 누르면
   //   조회 결과만 지우고 이메일은 그대로 둬서 다시 고쳐 입력할 수 있게 합니다.
   const handleCancelLookup = () => {
     setLookedUpNickname(null);
@@ -207,17 +208,27 @@ export function GuardianMyPage() {
 
   return (
     <div className="max-w-2xl mx-auto p-5">
-      {/* 상단: 뒤로가기 + 제목 + 닉네임 */}
-      <div className="flex items-center gap-3 mb-7">
-        <div>
-          <h1 className="font-black text-primary text-[2rem]">마이페이지</h1>
-          <p className="text-gray-500 font-bold text-small">{nickname} · 보호자</p>
+      {/* ───────────── 그라데이션 헤더 카드 ─────────────
+          [리뉴얼] 제목을 청록→블루 그라데이션 카드로 교체. */}
+      <Card variant="gradient" padding="lg" className="mb-6">
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center shrink-0">
+            <User className="w-8 h-8 text-white" />
+          </div>
+          <div>
+            <h1 className="font-black text-white text-[1.8rem] leading-tight">마이페이지</h1>
+            <p className="text-white/80 mt-1 font-bold text-small">{nickname}님 · 보호자</p>
+          </div>
         </div>
-      </div>
+      </Card>
 
-      {/* 안내 박스 (파란 톤은 표준색이라 그대로) */}
-      <div className="bg-blue-50 border-2 border-blue-200 rounded-2xl p-5 mb-6">
-        <p className="text-blue-800 font-bold leading-relaxed text-[1.05rem]">
+      {/* ───────────── 안내 박스 ─────────────
+          [리뉴얼] 파란 톤을 토큰 색(infoBg/info)으로 통일. */}
+      <div
+        className="rounded-2xl p-5 mb-6 border-2"
+        style={{ backgroundColor: COLORS.infoBg, borderColor: COLORS.infoBorder }}
+      >
+        <p className="font-bold leading-relaxed text-[1.05rem]" style={{ color: COLORS.info }}>
           💡 돌보실 사용자의 <strong>HeartLink 아이디(이메일)</strong>를 입력하고<br />
           <strong>[확인]</strong>을 누르면 닉네임이 표시됩니다.<br />
           맞는 사람인지 확인한 뒤 <strong>[요청 보내기]</strong>를 눌러 주세요.
@@ -252,62 +263,76 @@ export function GuardianMyPage() {
           </div>
 
           {lookedUpNickname === null ? (
-            // ── 1단계 화면: [확인] 버튼 (닉네임 조회) ──
-            <button
+            // ── 1단계 화면: [확인] 버튼 (닉네임 조회) — 공통 Button(gradient) ──
+            <Button
               type="submit"
+              variant="gradient"
+              size="lg"
+              fullWidth
               disabled={looking}
-              className="w-full py-5 bg-primary text-white rounded-xl hover:bg-primary-mid transition-colors flex items-center justify-center gap-2 font-black disabled:opacity-50 text-[1.2rem]"
-              style={{ minHeight: 64 }}
+              loading={looking}
+              icon={<Search className="w-6 h-6" />}
             >
-              <Search className="w-6 h-6" />{looking ? "확인 중..." : "사용자 확인"}
-            </button>
+              {looking ? "확인 중..." : "사용자 확인"}
+            </Button>
           ) : (
             // ── 2단계 화면: 닉네임 확인 카드 + [요청 보내기] / [다시 입력] ──
             <div>
-              {/* 조회된 닉네임을 크게 보여주는 확인 카드 */}
-              <div className="flex items-center gap-3 bg-green-50 border-2 border-green-200 rounded-2xl p-5 mb-4">
-                <CheckCircle2 className="w-9 h-9 text-green-600 shrink-0" />
+              {/* 조회된 닉네임을 크게 보여주는 확인 카드 — 연한 초록(토큰 색) */}
+              <div
+                className="flex items-center gap-3 rounded-2xl p-5 mb-4 border-2"
+                style={{ backgroundColor: COLORS.safeBg, borderColor: COLORS.safeBorder }}
+              >
+                <CheckCircle2 className="w-9 h-9 shrink-0" style={{ color: COLORS.safe }} />
                 <div>
-                  <p className="text-green-700 font-bold text-tiny mb-0.5">이 사용자가 맞나요?</p>
+                  <p className="font-bold text-tiny mb-0.5" style={{ color: COLORS.safe }}>이 사용자가 맞나요?</p>
                   <p className="text-gray-800 font-black text-[1.3rem]">{lookedUpNickname}</p>
                   <p className="text-gray-500 font-bold text-tiny mt-0.5">{userEmail.trim()}</p>
                 </div>
               </div>
 
               <div className="flex gap-3">
-                {/* 다시 입력: 조회 결과만 지우고 이메일은 유지 (form submit 방지: type=button) */}
-                <button
+                {/* 다시 입력: 조회 결과만 지우고 이메일은 유지 (공통 Button outline) */}
+                <Button
                   type="button"
+                  variant="outline"
+                  size="lg"
                   onClick={handleCancelLookup}
                   disabled={sending}
-                  className="flex-1 py-5 border-2 border-gray-300 text-gray-600 rounded-xl hover:bg-gray-50 transition-colors font-black disabled:opacity-50 text-[1.1rem]"
-                  style={{ minHeight: 64 }}
+                  className="flex-1"
                 >
                   다시 입력
-                </button>
-                {/* 요청 보내기: 실제 POST 호출 (type=button 이라 form 의 onSubmit 과 무관) */}
-                <button
+                </Button>
+                {/* 요청 보내기: 실제 POST 호출 (공통 Button gradient) */}
+                <Button
                   type="button"
+                  variant="gradient"
+                  size="lg"
                   onClick={handleSendRequest}
                   disabled={sending}
-                  className="flex-[2] py-5 bg-primary text-white rounded-xl hover:bg-primary-mid transition-colors flex items-center justify-center gap-2 font-black disabled:opacity-50 text-[1.2rem]"
-                  style={{ minHeight: 64 }}
+                  loading={sending}
+                  icon={<UserPlus className="w-6 h-6" />}
+                  className="flex-[2]"
                 >
-                  <UserPlus className="w-6 h-6" />{sending ? "요청 중..." : "요청 보내기"}
-                </button>
+                  {sending ? "요청 중..." : "요청 보내기"}
+                </Button>
               </div>
             </div>
           )}
         </Card>
       </form>
 
-      {/* 등록한 사용자 목록 */}
+      {/* ───────────── 등록한 사용자 목록 ───────────── */}
       <Card padding="lg">
         <div className="flex items-center justify-between mb-5">
           <CardTitle className="font-black">등록한 사용자</CardTitle>
-          <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-full px-3 py-1.5">
-            <Users className="w-4 h-4 text-green-600" />
-            <span className="text-green-600 font-bold text-tiny">{acceptedCount}명 연결</span>
+          {/* 연결 인원 배지 — 연한 초록(토큰 색) */}
+          <div
+            className="flex items-center gap-2 rounded-full px-3 py-1.5 border"
+            style={{ backgroundColor: COLORS.safeBg, borderColor: COLORS.safeBorder }}
+          >
+            <Users className="w-4 h-4" style={{ color: COLORS.safe }} />
+            <span className="font-bold text-tiny" style={{ color: COLORS.safe }}>{acceptedCount}명 연결</span>
           </div>
         </div>
 
@@ -324,12 +349,21 @@ export function GuardianMyPage() {
               const sub = req.userId?.nickname ? req.userId?.email : "";
               const sentAt = new Date(req.createdAt).toLocaleString("ko-KR").slice(0, 16);
               return (
-                <div key={req._id} className={`rounded-2xl p-5 border-2 ${config.bg} ${config.border}`}>
+                // 카드 배경/테두리 색이 상태별 동적 → 인라인 style (색은 토큰)
+                <div
+                  key={req._id}
+                  className="rounded-2xl p-5 border-2"
+                  style={{ backgroundColor: config.bg, borderColor: config.border }}
+                >
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <span className="text-gray-800 font-black text-[1.1rem]">{displayName}</span>
-                        <span className={`px-3 py-1 rounded-full font-bold ${config.color} ${config.bg} border ${config.border} text-[0.85rem]`}>
+                        {/* 상태 배지 — 글자/배경/테두리 모두 토큰 색 */}
+                        <span
+                          className="px-3 py-1 rounded-full font-bold border text-[0.85rem]"
+                          style={{ color: config.color, backgroundColor: config.bg, borderColor: config.border }}
+                        >
                           {config.label}
                         </span>
                       </div>
@@ -339,9 +373,11 @@ export function GuardianMyPage() {
                       </div>
                     </div>
                     {req.relationStatus === "accepted" && (
+                      // 연결 해제 버튼 — 빨강 테두리(토큰 색) 인라인
                       <button
                         onClick={() => handleDisconnect(req._id)}
-                        className="flex items-center gap-1.5 px-4 py-2.5 border-2 border-red-300 text-red-500 rounded-xl hover:bg-red-50 transition-colors font-bold shrink-0 text-tiny"
+                        className="flex items-center gap-1.5 px-4 py-2.5 border-2 rounded-xl transition-colors font-bold shrink-0 text-tiny hover:opacity-80"
+                        style={{ borderColor: COLORS.dangerBorder, color: COLORS.danger }}
                       >
                         <LinkIcon className="w-4 h-4" />연결 해제
                       </button>
@@ -352,10 +388,9 @@ export function GuardianMyPage() {
             })}
           </div>
         )}
-        {/* "최대 3명" 안내 문구는 제약 해제로 삭제했습니다. */}
       </Card>
 
-      {/* 회원 탈퇴 */}
+      {/* ───────────── 회원 탈퇴 ───────────── */}
       <div className="mt-10 pt-6 border-t border-gray-200">
         <button
           onClick={() => setShowWithdraw(true)}

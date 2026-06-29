@@ -1,34 +1,27 @@
 // frontend/src/components/layout/UserLayout.tsx
 // =============================================================================
-// 사용자(시니어) 레이아웃 — 상단 헤더 + 본문 + 하단 탭바(4개)
+// 사용자 레이아웃: 상단 헤더 + 본문 + 하단 탭바(4개)
 //
-// [이 화면의 큰 그림]
-//   ┌───────────────────────────────┐
-//   │ 헤더: 로고 · 앱이름 · 알림종 · 로그아웃 │  ← 항상 위에 고정
-//   ├───────────────────────────────┤
-//   │                               │
-//   │   본문 (현재 탭에 맞는 화면)        │  ← 탭에 따라 바뀜
-//   │                               │
-//   ├───────────────────────────────┤
-//   │  [❤️홈] [📈측정] [📋기록] [👤내정보] │  ← 항상 아래에 고정 (BottomTabBar)
-//   └───────────────────────────────┘
+// [화면 구조]
+//   ┌─────────────────────────────┐
+//   │ 헤더: 로고·앱이름·알림벨·로그아웃   │ ← 항상 위에 고정
+//   ├─────────────────────────────┤
+//   │  본문 (현재 탭에 맞는 화면)        │ ← 탭에 따라 바뀜
+//   ├─────────────────────────────┤
+//   │ [홈] [측정] [기록] [내 정보]      │ ← 항상 아래 고정 (BottomTabBar)
+//   └─────────────────────────────┘
 //
-// [이전 방식과 무엇이 달라졌나요?]
-//   - 이전: 카드형 메뉴 + 햄버거(모바일 드롭다운)로 화면 전환
-//   - 변경: 화면 아래 "하단 탭바"로 전환 → 어르신이 한 손 엄지로 누르기 쉽고,
-//           지금 어느 메뉴에 있는지 항상 한눈에 보입니다.
-//   - 알림은 탭에 넣지 않고 "헤더의 종 아이콘 + 빨간 점"으로 둡니다.
-//     (알림은 수시로 오가기보다 '배지 보고 들어가는' 성격이라 헤더가 더 적합)
+// [디자인 리뉴얼 포인트]
+//   - 헤더를 단색 청록 → 청록→블루 "브랜드 그라데이션"으로 변경 (이미지 톤)
+//   - 헤더 하단에 부드러운 그림자로 본문과 분리
+//   - 알림벨 빨간 점 → COLORS.danger 토큰 / 버튼 hover white/15 로 통일
+//   ※ 라우팅·알림 조회·탭 전환 로직은 기존과 100% 동일
 //
-// [탭(메뉴) 구성 — 4개]
-//   ❤️ 홈     → "/"        : 내 건강 결과 요약 (ReportPage)
-//   📈 측정   → "/ecg"     : 심전도 올리기·보기 (UploadVisualizationPage)
-//   📋 기록   → "/history" : 지난 리포트 기록 (ReportHistoryPage)
-//   👤 내 정보 → "/mypage"  : 마이페이지 (MyPage)
-//
-//   ※ '홈/기록' 탭은 리포트 상세(/report-detail/...)로,
-//     '측정' 탭은 측정 상세(/measurement/...)로 들어가도 활성으로 보이게
-//     match 옵션을 줍니다. (상세 화면에서도 어느 탭인지 헷갈리지 않도록)
+// [탭 메뉴 4개]
+//   홈      → "/"        : 내 건강 결과 요약 (ReportPage)
+//   측정    → "/ecg"     : 측정/시각화 (UploadVisualizationPage)
+//   기록    → "/history" : 지난 리포트 기록 (ReportHistoryPage)
+//   내 정보 → "/mypage"  : 마이페이지 (MyPage)
 // =============================================================================
 
 import { useState, useEffect } from "react";
@@ -36,20 +29,20 @@ import { Heart, LogOut, Bell, Home, Activity, List, User } from "lucide-react";
 import { useNavigate, useLocation, Routes, Route } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import api from "../../api/authApi";
-// 탭을 눌렀을 때 본문에 표시할 화면들
+// 탭을 누르면 본문에 표시되는 화면들
 import { ReportPage } from "../../pages/ReportPage";
 import { ReportHistoryPage } from "../../pages/ReportHistoryPage";
 import { UploadVisualizationPage } from "../../pages/UploadVisualizationPage";
 import { MyPage } from "../../pages/MyPage";
 // 공통 하단 탭바 + 탭 한 개의 타입
 import { BottomTabBar, type TabItem } from "./BottomTabBar";
-import { COLORS } from "../../styles/tokens";
+import { COLORS, GRADIENTS } from "../../styles/tokens";
 
 export function UserLayout({ onLogout }: { onLogout: () => void }) {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // 알림 '안 읽음'이 하나라도 있으면 헤더 종에 빨간 점을 띄우기 위한 상태
+  // 안 읽은 알림이 하나라도 있으면 헤더 종에 빨간 점을 띄우기 위한 상태
   const [hasUnread, setHasUnread] = useState(false);
 
   // 로그인한 사용자 정보(닉네임 표시용)
@@ -57,9 +50,9 @@ export function UserLayout({ onLogout }: { onLogout: () => void }) {
   const nickname =
     (user as any)?.nickname || (user as any)?.email?.split("@")[0] || "사용자";
 
-  // 화면이 처음 뜰 때(그리고 알림함을 보고 돌아왔을 때) 안 읽음 여부 확인
-  //   - location.pathname 을 의존성에 넣어, 알림함(/notifications)에 다녀오면
-  //     다시 조회해서 빨간 점을 갱신합니다.
+  // 화면이 바뀔 때마다 알림을 다시 조회해서 빨간 점(안 읽음 여부)을 갱신
+  //   - location.pathname 을 의존성에 넣어, 알림함(/notifications)을 다녀오면
+  //     안 읽음 상태가 갱신되도록 한다.
   useEffect(() => {
     (async () => {
       try {
@@ -76,7 +69,6 @@ export function UserLayout({ onLogout }: { onLogout: () => void }) {
 
   // -------------------------------------------------------------------------
   // [탭 목록 정의]
-  //   - 여기서 "어떤 탭을 보여줄지"만 정합니다. 실제 막대 그리기는 BottomTabBar 담당.
   //   - match: 상세 화면에 들어가도 해당 탭을 활성으로 보이게 하는 추가 주소들
   // -------------------------------------------------------------------------
   const tabs: TabItem[] = [
@@ -106,27 +98,22 @@ export function UserLayout({ onLogout }: { onLogout: () => void }) {
   ];
 
   return (
-    <div
-      className="min-h-screen flex flex-col"
-      style={{ backgroundColor: COLORS.appBg }}
-    >
-      {/* ───────────────── 상단 헤더 (항상 고정) ───────────────── */}
+    <div className="min-h-screen flex flex-col" style={{ backgroundColor: COLORS.appBg }}>
+
+      {/* ───────────────── 상단 헤더 (항상 고정) ─────────────────
+          단색 청록 대신 브랜드 그라데이션으로 변경 + 부드러운 그림자 */}
       <header
-        className="text-white px-5 py-4 flex items-center justify-between sticky top-0 z-30 shadow-lg"
-        style={{ backgroundColor: COLORS.primary }}
+        className="text-white px-5 py-4 flex items-center justify-between sticky top-0 z-30"
+        style={{ background: GRADIENTS.brand, boxShadow: "0 4px 16px rgba(13, 148, 136, 0.25)" }}
       >
-        {/* 왼쪽: 로고 + 앱 이름 */}
+        {/* 왼쪽: 로고 + 앱 이름 + 인사말 */}
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+          <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
             <Heart className="w-7 h-7 text-white fill-current" />
           </div>
           <div>
-            <div className="font-black" style={{ fontSize: "1.4rem" }}>
-              HeartLink
-            </div>
-            <div className="text-white/60 font-bold text-tiny">
-              {nickname}님 환영합니다
-            </div>
+            <div className="font-black" style={{ fontSize: "1.4rem" }}>HeartLink</div>
+            <div className="text-white/70 font-bold text-tiny">{nickname}님 환영합니다</div>
           </div>
         </div>
 
@@ -134,18 +121,21 @@ export function UserLayout({ onLogout }: { onLogout: () => void }) {
         <div className="flex items-center gap-2">
           <button
             onClick={() => navigate("/notifications")}
-            className="relative p-2.5 rounded-xl hover:bg-white/10 transition-colors"
-            title="알림함"
+            className="relative p-2.5 rounded-xl hover:bg-white/15 transition-colors"
+            title="알림"
             style={{ minHeight: 48, minWidth: 48 }}
           >
             <Bell className="w-6 h-6 text-white" />
             {hasUnread && (
-              <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full" />
+              <span
+                className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full ring-2 ring-white/40"
+                style={{ backgroundColor: COLORS.danger }}
+              />
             )}
           </button>
           <button
             onClick={onLogout}
-            className="flex items-center gap-2 px-3 py-2 text-white/70 hover:text-white hover:bg-white/10 rounded-xl transition-colors font-bold text-small"
+            className="flex items-center gap-2 px-3 py-2 text-white/80 hover:text-white hover:bg-white/15 rounded-xl transition-colors font-bold text-small"
             style={{ minHeight: 48 }}
           >
             <LogOut className="w-5 h-5" />
@@ -155,7 +145,7 @@ export function UserLayout({ onLogout }: { onLogout: () => void }) {
       </header>
 
       {/* ───────────────── 본문 (현재 탭 화면) ─────────────────
-          - 하단 탭바(높이 약 72px)에 가려지지 않도록 아래 여백을 넉넉히 줍니다. */}
+          하단 탭바에 가리지 않도록 아래 여백(paddingBottom)을 둔다. */}
       <main className="flex-1" style={{ paddingBottom: 88 }}>
         <Routes>
           <Route path="/" element={<ReportPage />} />
@@ -165,8 +155,7 @@ export function UserLayout({ onLogout }: { onLogout: () => void }) {
         </Routes>
       </main>
 
-      {/* ───────────────── 하단 탭바 (항상 고정) ─────────────────
-          - tabs 목록을 그대로 넘기면 막대를 그려주고, 누르면 해당 주소로 이동합니다. */}
+      {/* ───────────────── 하단 탭바 (항상 고정) ───────────────── */}
       <BottomTabBar items={tabs} />
     </div>
   );

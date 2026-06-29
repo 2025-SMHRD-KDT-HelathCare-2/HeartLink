@@ -1,3 +1,21 @@
+// LoginPage.tsx
+// frontend/src/pages/LoginPage.tsx
+// =============================================================================
+// 로그인 화면 — 역할(사용자/보호자) 선택 + 이메일/비번 로그인 + 소셜 로그인
+//
+// [이 화면이 하는 일]
+//   - 상단에서 역할(사용자/보호자)을 고르고, 이메일/비밀번호로 로그인합니다.
+//   - 로그인 결과의 실제 역할이 선택한 역할과 다르면 안내 메시지를 보여줍니다.
+//   - 소셜 로그인, 아이디/비밀번호 찾기, 회원가입 이동을 제공합니다.
+//
+// [디자인 리뉴얼 포인트 — 기능은 그대로, '겉모양'만 통일]
+//   1) 배경 그라데이션: from-primary..via.. → GRADIENTS.brand (청록→블루)로 통일
+//      (다른 화면의 그라데이션 헤더와 같은 톤)
+//   2) 전역 에러 박스의 하드코딩 색(bg-amber-50 등) → 토큰 색(warning 계열)으로 교체
+//   3) RoleToast 안내 박스는 기존 primary 톤 유지(이미 토큰 기반 클래스 사용)
+//   ※ 로그인/검증/역할 분기/라우팅 로직은 이전과 100% 동일합니다.
+// =============================================================================
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -5,6 +23,7 @@ import { login as loginApi } from "../api/authApi";
 import { SocialLoginButtons } from "../components/auth/SocialLoginButtons";
 import { Button, Input, FieldLabel } from "../components/ui";
 import { Heart, Eye, EyeOff, Lock, Mail, User, Shield } from "lucide-react";
+import { COLORS, GRADIENTS } from "../styles/tokens";
 
 type Role = "user" | "guardian";
 
@@ -89,8 +108,10 @@ export function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary via-primary-mid to-primary flex items-center justify-center p-4">
+    // [리뉴얼] 배경 그라데이션을 GRADIENTS.brand(청록→블루)로 통일 — 인라인 적용
+    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: GRADIENTS.brand }}>
       <div className="w-full max-w-md">
+        {/* 로고 영역 */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-24 h-24 bg-white/20 rounded-full mb-4 backdrop-blur-sm">
             <Heart className="w-12 h-12 text-white fill-current" />
@@ -99,7 +120,9 @@ export function LoginPage() {
           <p className="text-white/80 mt-2 text-body">심장 건강 모니터링 서비스</p>
         </div>
 
+        {/* 중앙 흰 카드 */}
         <div className="bg-white rounded-2xl shadow-2xl p-8">
+          {/* 역할 선택 버튼 */}
           <div className="flex gap-3 mb-3">
             <Button
               variant={role === "user" ? "selected" : "outline"}
@@ -124,8 +147,16 @@ export function LoginPage() {
           <RoleToast role={role} />
 
           <form onSubmit={handleSubmit} className="space-y-5">
+            {/* 전역 에러 박스 — [리뉴얼] amber 하드코딩 → 토큰 색(warning 계열) 인라인 */}
             {errors.global && (
-              <div className="bg-amber-50 border border-amber-300 text-amber-800 rounded-lg p-4 font-bold text-small">
+              <div
+                className="rounded-lg p-4 font-bold text-small border"
+                style={{
+                  backgroundColor: COLORS.warningBg,
+                  borderColor: COLORS.warningBorder,
+                  color: COLORS.warning,
+                }}
+              >
                 {errors.global}
               </div>
             )}
@@ -165,7 +196,8 @@ export function LoginPage() {
               />
             </div>
 
-            <Button type="submit" variant="primary" size="lg" fullWidth loading={submitting}>
+            {/* [리뉴얼] 로그인 버튼 — primary → gradient 로 통일 */}
+            <Button type="submit" variant="gradient" size="lg" fullWidth loading={submitting}>
               {submitting ? "로그인 중..." : "로그인"}
             </Button>
 

@@ -1,3 +1,5 @@
+// UserNotificationsPage.tsx
+
 // frontend/src/pages/UserNotificationsPage.tsx
 // =============================================================================
 // 사용자용 알림함 — 내가 받은 최근 7일간의 위험도 알림
@@ -6,20 +8,21 @@
 //   - 상단 고정 헤더(뒤로가기 + 제목)와 함께 내 알림 목록을 보여줍니다.
 //   - 알림 카드를 누르면 '읽음' 처리됩니다.
 //
-// [1단계 리팩터링에서 바뀐 점 — 기능은 그대로, '겉모양 코드'만 정리]
-//   1) 위험도 색상(상/중/하) → 공통 토큰(COLORS) 값 사용
-//   2) 색상 하드코딩(#0D9488) → 토큰 클래스(bg-primary 등)
-//   3) 글자 크기 인라인 style → 토큰 클래스
+// [디자인 리뉴얼 — 기능은 그대로, 겉모양만 통일]
+//   1) 헤더: 단색 primary → GRADIENTS.brand(teal→blue) 그라데이션 + 그림자
+//   2) 위험도 색상(상/중/하) → 공통 토큰(COLORS) 값 사용
+//   3) 빨간 점(bg-red-500) → COLORS.danger 토큰
+//   4) 글자 크기 인라인 style → 토큰 클래스
 //   ※ 안 읽은 알림 카드 배경/테두리는 위험도별 동적 색상이라 인라인 style 유지
-//   ※ 페이지 배경색(#F4F7FA)은 토큰에 대응값이 없어 임의값으로 그대로 둡니다.
-//   ※ 화면 결과(디자인/동작)는 이전과 똑같습니다.
+//   ※ 페이지 배경색(#F4F7FA)은 토큰 대응값이 없어 그대로 둡니다.
+//   ※ 화면 동작은 이전과 동일합니다.
 // =============================================================================
 
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChevronLeft, Bell, AlertTriangle, AlertCircle, Info } from "lucide-react";
 import { getMyNotifications, markNotificationRead, type AppNotification } from "../api/notificationApi";
-import { COLORS } from "../styles/tokens";
+import { COLORS, GRADIENTS } from "../styles/tokens";
 
 // 위험 등급별 색/배경/테두리/아이콘 (색은 공통 토큰 사용)
 const LEVEL_META = {
@@ -57,18 +60,27 @@ export function UserNotificationsPage() {
   };
 
   return (
-    // 페이지 배경: 연한 회청색(#F4F7FA) — 토큰 대응값이 없어 임의값 유지
+    // 페이지 배경: 연한 회청색(#F4F7FA) — 토큰 대응값이 없어 유지
     <div className="min-h-screen bg-[#F4F7FA]">
-      {/* 상단 고정 헤더 (민트색) */}
-      <header className="bg-primary text-white px-5 py-4 flex items-center gap-3 sticky top-0 z-20 shadow-lg">
-        <button onClick={() => navigate(-1)} className="p-2 rounded-xl hover:bg-white/10 transition-colors">
+      {/* 상단 고정 헤더 — 브랜드 그라데이션(teal→blue) */}
+      <header
+        className="text-white px-5 py-4 flex items-center gap-3 sticky top-0 z-20"
+        style={{
+          background: GRADIENTS.brand,
+          boxShadow: "0 4px 16px rgba(13, 148, 136, 0.25)",
+        }}
+      >
+        <button
+          onClick={() => navigate(-1)}
+          className="p-2 rounded-xl hover:bg-white/15 transition-colors"
+        >
           <ChevronLeft className="w-6 h-6" />
         </button>
         <div className="flex items-center gap-2">
           <Bell className="w-6 h-6" />
           <div>
             <div className="font-black text-sub">알림함</div>
-            <div className="text-white/60 font-bold text-[0.9rem]">최근 7일간의 알림</div>
+            <div className="text-white/70 font-bold text-[0.9rem]">최근 7일간의 알림</div>
           </div>
         </div>
       </header>
@@ -105,7 +117,12 @@ export function UserNotificationsPage() {
                         <span className="px-3 py-1 rounded-full text-white font-bold text-[0.85rem]" style={{ backgroundColor: meta.color }}>
                           위험도 {n.level}
                         </span>
-                        {!n.isRead && <span className="w-2.5 h-2.5 bg-red-500 rounded-full" />}
+                        {!n.isRead && (
+                          <span
+                            className="w-2.5 h-2.5 rounded-full"
+                            style={{ backgroundColor: COLORS.danger }}
+                          />
+                        )}
                         <span className="text-gray-400 font-bold ml-auto text-[0.9rem]">{timeAgo(n.createdAt)}</span>
                       </div>
                       <p className="text-gray-700 font-bold leading-relaxed text-[1.05rem]">{n.message}</p>

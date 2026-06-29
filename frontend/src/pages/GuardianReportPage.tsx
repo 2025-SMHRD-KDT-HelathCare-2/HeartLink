@@ -1,14 +1,30 @@
-// ============================================================================
+// GuardianReportPage.tsx
+// frontend/src/pages/GuardianReportPage.tsx
+// =============================================================================
 // 보호자 건강 결과 보고서 페이지 (사용자 선택 → 최근 측정 + 위험도 배너)
-// - 위험도 색상 토큰화(COLORS). 일일 리포트/기록 보기는 공통 Button 사용
-// ============================================================================
+//
+// [이 화면이 하는 일]
+//   - 위쪽 탭으로 "리포트를 볼 사용자(환자)"를 고릅니다.
+//   - 고른 환자의 최근 측정 3건과 현재 위험도 배너를 보여줍니다.
+//   - '일일 AI 리포트 보기'로 리포트를 생성/이동, '기록 보기'로 과거 리포트로 이동.
+//
+// [디자인 리뉴얼 포인트 — 기능은 그대로, '겉모양'만 업그레이드]
+//   1) 페이지 제목 → 청록→블루 그라데이션 헤더 카드(<Card variant="gradient">)
+//   2) 사용자 선택 탭 / 측정 기록 목록 / 빈 상태 → 공통 <Card> 로 통일
+//   3) 색 값은 모두 공통 토큰(COLORS)에서 가져옴 (하드코딩 색 제거)
+//   ※ 위험도별로 색이 바뀌는 배너/막대/배지는 '동적 색상'이라
+//      인라인 style 이 꼭 필요합니다. 다만 색 값은 토큰에서 가져옵니다.
+//   ※ 데이터 조회/선택/이동 로직은 이전과 100% 동일합니다.
+// =============================================================================
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { AlertTriangle, Info, ChevronLeft, ChevronRight, Clock, FileText, Sparkles } from "lucide-react";
 import api from "../api/authApi";
 import type { Patient } from "../components/layout/GuardianLayout";
 import { toKSTDatetime } from "../utils/formatKST";
-import { Button } from "../components/ui";
+// 공통 UI: 버튼 + 카드(겉모양 통일용)
+import { Button, Card } from "../components/ui";
 import { COLORS } from "../styles/tokens";
 
 interface MeasurementRecord {
@@ -36,6 +52,7 @@ interface GuardianReportPageProps {
 export function GuardianReportPage({ patients, selectedUserId, onSelectUser }: GuardianReportPageProps) {
   const navigate = useNavigate();
 
+  // 처음 진입 시, 부모가 알려준 selectedUserId 위치를 시작 인덱스로 잡습니다.
   const initialIdx = selectedUserId
     ? Math.max(0, patients.findIndex(p => p.user_id === selectedUserId))
     : 0;
@@ -44,6 +61,7 @@ export function GuardianReportPage({ patients, selectedUserId, onSelectUser }: G
   const [recordsLoading, setRecordsLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
 
+  // 부모가 선택 환자를 바꾸면(예: 다른 화면에서) 인덱스를 맞춰줍니다.
   useEffect(() => {
     if (!selectedUserId) return;
     const idx = patients.findIndex(p => p.user_id === selectedUserId);
@@ -75,15 +93,24 @@ export function GuardianReportPage({ patients, selectedUserId, onSelectUser }: G
         setRecordsLoading(false);
       }
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [patients, selectedIdx]);
 
+  // ── 연결된 사용자가 한 명도 없을 때 ──
   if (patients.length === 0) {
     return (
       <div className="max-w-2xl mx-auto p-6">
-        <h1 className="font-bold text-primary mb-6" style={{ fontSize: "1.9rem" }}>건강 결과 보고서</h1>
-        <div className="bg-white rounded-2xl p-12 shadow-sm border border-gray-100 text-center">
-          <p className="text-gray-400 font-bold text-[1.1rem]">아직 연결된 사용자가 없어요. 마이페이지에서 사용자를 등록해 보세요.</p>
-        </div>
+        {/* [리뉴얼] 제목 → 그라데이션 헤더 카드 */}
+        <Card variant="gradient" padding="lg" className="mb-6">
+          <h1 className="font-black text-white text-[1.8rem]">건강 결과 보고서</h1>
+          <p className="text-white/80 mt-1 font-bold text-small">연결된 사용자의 측정 결과를 확인합니다.</p>
+        </Card>
+        {/* 빈 상태 → 공통 카드 */}
+        <Card padding="lg" className="text-center py-12">
+          <p className="text-gray-400 font-bold text-[1.1rem]">
+            아직 연결된 사용자가 없어요. 마이페이지에서 사용자를 등록해 보세요.
+          </p>
+        </Card>
       </div>
     );
   }
@@ -107,12 +134,26 @@ export function GuardianReportPage({ patients, selectedUserId, onSelectUser }: G
 
   return (
     <div className="max-w-2xl mx-auto p-6">
-      <div className="mb-6">
-        <h1 className="font-bold text-primary" style={{ fontSize: "1.9rem" }}>건강 결과 보고서</h1>
-      </div>
+      {/* ───────────── 그라데이션 헤더 카드 ─────────────
+          [리뉴얼] 제목을 청록→블루 그라데이션 카드로 교체. */}
+      <Card variant="gradient" padding="lg" className="mb-6">
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center shrink-0">
+            <FileText className="w-8 h-8 text-white" />
+          </div>
+          <div>
+            <h1 className="font-black text-white text-[1.8rem] leading-tight">건강 결과 보고서</h1>
+            <p className="text-white/80 mt-1 font-bold text-small">
+              사용자를 선택해 측정 결과와 위험도를 확인하세요.
+            </p>
+          </div>
+        </div>
+      </Card>
 
-      {/* 사용자 선택 탭 */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 mb-6 overflow-hidden">
+      {/* ───────────── 사용자 선택 탭 ─────────────
+          [리뉴얼] 공통 <Card padding="none"> 로 감싸 모서리/그림자 통일.
+          - 활성 탭 하단 강조선 색은 COLORS.primary(동적) → 인라인 유지. */}
+      <Card padding="none" className="mb-6 overflow-hidden">
         <div className="p-4 border-b border-gray-100">
           <p className="text-gray-500 font-bold text-small">리포트를 볼 사용자를 선택하세요</p>
         </div>
@@ -125,9 +166,15 @@ export function GuardianReportPage({ patients, selectedUserId, onSelectUser }: G
               <button key={p.user_id}
                 onClick={() => setSelectedIdx(i)}
                 className={`flex-1 flex flex-col items-center gap-1 py-4 transition-all border-b-4 ${
-                  active ? "bg-blue-50" : "border-transparent hover:bg-gray-50"
+                  active ? "" : "border-transparent hover:bg-gray-50"
                 } ${i !== 0 ? "border-l border-gray-100" : ""}`}
-                style={{ minHeight: 80, ...(active ? { borderBottomColor: COLORS.primary } : {}) }}>
+                // 활성 탭: 연한 청록 배경 + 청록 하단선 (둘 다 토큰 색)
+                style={{
+                  minHeight: 80,
+                  ...(active
+                    ? { borderBottomColor: COLORS.primary, backgroundColor: COLORS.primarySoft }
+                    : {}),
+                }}>
                 <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-small"
                   style={{ backgroundColor: c.color }}>
                   {p.nickname[0]}
@@ -141,9 +188,9 @@ export function GuardianReportPage({ patients, selectedUserId, onSelectUser }: G
             );
           })}
         </div>
-      </div>
+      </Card>
 
-      {/* 이전/다음 네비게이션 */}
+      {/* ───────────── 이전/다음 네비게이션 ───────────── */}
       <div className="flex items-center justify-between mb-6">
         <button onClick={() => setSelectedIdx(i => Math.max(0, i - 1))} disabled={selectedIdx === 0}
           className="flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-30 font-bold transition-colors text-small">
@@ -158,8 +205,9 @@ export function GuardianReportPage({ patients, selectedUserId, onSelectUser }: G
         </button>
       </div>
 
-      {/* 최근 측정 기록 3건 */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 mb-6 overflow-hidden">
+      {/* ───────────── 최근 측정 기록 3건 ─────────────
+          [리뉴얼] 공통 <Card padding="none"> 로 통일. */}
+      <Card padding="none" className="mb-6 overflow-hidden">
         <div className="p-4 border-b border-gray-100 flex items-center gap-2">
           <FileText className="w-5 h-5 text-gray-400" />
           <p className="text-gray-700 font-bold text-small">최근 측정 기록</p>
@@ -186,7 +234,15 @@ export function GuardianReportPage({ patients, selectedUserId, onSelectUser }: G
                         style={{ backgroundColor: rc.color }}>
                         {rc.label} {r.riskScore}점
                       </span>
-                      {i === 0 && <span className="px-2 py-0.5 bg-blue-100 text-blue-600 rounded-full font-bold" style={{ fontSize: "0.8rem" }}>최신</span>}
+                      {/* '최신' 배지: 연한 청록(토큰 색)으로 통일 */}
+                      {i === 0 && (
+                        <span
+                          className="px-2 py-0.5 rounded-full font-bold"
+                          style={{ backgroundColor: COLORS.primarySoft, color: COLORS.primary, fontSize: "0.8rem" }}
+                        >
+                          최신
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center gap-1 text-gray-400 mt-1 font-bold text-tiny">
                       <Clock className="w-3 h-3" />{r.date}
@@ -198,9 +254,9 @@ export function GuardianReportPage({ patients, selectedUserId, onSelectUser }: G
             })}
           </div>
         )}
-      </div>
+      </Card>
 
-      {/* 위험도 배너 — 동적 색상이므로 인라인 유지 */}
+      {/* ───────────── 위험도 배너 — 동적 색상이므로 인라인 유지 ───────────── */}
       <div className="rounded-2xl p-6 mb-6 border-2" style={{ backgroundColor: config.bg, borderColor: config.border }}>
         <div className="flex items-center gap-4 mb-4">
           <AlertTriangle className="w-10 h-10 flex-shrink-0" style={{ color: config.color }} />
@@ -223,15 +279,17 @@ export function GuardianReportPage({ patients, selectedUserId, onSelectUser }: G
         </div>
       </div>
 
-      {/* 일일 AI 리포트 보기 — 공통 Button(primary) */}
+      {/* ───────────── 일일 AI 리포트 보기 — 공통 Button(gradient) ─────────────
+          [리뉴얼] primary → gradient 로 바꿔 헤더와 같은 청록→블루 톤 강조. */}
       <Button
-        variant="primary"
+        variant="gradient"
         size="lg"
         fullWidth
         onClick={handleGuardianReport}
         disabled={generating}
+        loading={generating}
         icon={<Sparkles className="w-7 h-7" />}
-        className="mb-3 shadow-lg"
+        className="mb-3"
       >
         {generating ? "리포트 생성 중..." : "일일 AI 리포트 보기"}
       </Button>

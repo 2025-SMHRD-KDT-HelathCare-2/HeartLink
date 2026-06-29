@@ -1,12 +1,15 @@
+// ReportHistoryListPage.tsx
+
 // ============================================================================
 // 리포트 기록 목록(일간/주간 모아보기) 페이지
-// - 색상 토큰화 + Card 적용. 헤더/배경은 primary/appBg 토큰 사용
+// - 디자인 리뉴얼: 헤더 단색 primary → GRADIENTS.brand(teal→blue) + 그림자
+// - 색상 토큰화 + Card 스타일은 기존 유지. 로직 변경 없음.
 // ============================================================================
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChevronLeft, FileText, CalendarDays, BarChart2, Clock } from "lucide-react";
 import api from "../api/authApi";
-import { COLORS } from "../styles/tokens";
+import { COLORS, GRADIENTS } from "../styles/tokens";
 
 type ReportPeriod = "daily" | "weekly";
 
@@ -63,17 +66,22 @@ export function ReportHistoryListPage() {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: COLORS.appBg }}>
-      {/* 상단 고정 헤더 */}
-      <header className="text-white px-5 py-4 flex items-center gap-3 sticky top-0 z-20 shadow-lg"
-        style={{ backgroundColor: COLORS.primary }}>
-        <button onClick={() => navigate(-1)} className="p-2 rounded-xl hover:bg-white/10 transition-colors">
+      {/* 상단 고정 헤더 — 브랜드 그라데이션(teal→blue) */}
+      <header
+        className="text-white px-5 py-4 flex items-center gap-3 sticky top-0 z-20"
+        style={{
+          background: GRADIENTS.brand,
+          boxShadow: "0 4px 16px rgba(13, 148, 136, 0.25)",
+        }}
+      >
+        <button onClick={() => navigate(-1)} className="p-2 rounded-xl hover:bg-white/15 transition-colors">
           <ChevronLeft className="w-6 h-6" />
         </button>
         <div className="flex items-center gap-2">
           <FileText className="w-5 h-5" />
           <div>
             <div className="font-black text-sub">리포트 기록</div>
-            <div className="text-white/60 font-bold text-tiny">일간 · 주간 리포트 모아보기</div>
+            <div className="text-white/70 font-bold text-tiny">일간 · 주간 리포트 모아보기</div>
           </div>
         </div>
       </header>

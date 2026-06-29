@@ -1,26 +1,30 @@
+// GuardianDashboard.tsx
 // frontend/src/pages/GuardianDashboard.tsx
 // =============================================================================
 // 보호자 대시보드 — 연결된 가족 구성원들의 건강 상태 요약
 //
 // [이 파일이 하는 일]
-//   - 상단에 요약 바(연결 인원 / 미확인 알림 / 위험 단계)를 보여줍니다.
+//   - 상단에 그라데이션 헤더(연결된 가족 현황 안내)를 보여줍니다.
+//   - 요약 바(연결 인원 / 미확인 알림 / 위험 단계)를 카드로 보여줍니다.
 //   - 각 가족 구성원을 카드로 보여주고, 위험도에 따라 색이 달라집니다.
 //   - '상세 보기'를 누르면 해당 구성원의 상세 화면으로 이동합니다.
 //
-// [1단계 리팩터링에서 바뀐 점 — 기능은 그대로, '겉모양 코드'만 정리]
-//   1) 위험도 색상(상/중/하)을 이 파일에서 직접 적던 것을
-//      → 공통 토큰(tokens.ts)의 COLORS 값을 가져와 한 곳에서 관리하도록 정리
-//   2) 색상 하드코딩(#0D9488) → 토큰 클래스(text-primary)
-//   3) 글자 크기 인라인 style → 토큰 클래스(text-small 등)
-//   ※ 위험도별로 색이 바뀌는 카드 테두리/배경은 '동적 색상'이라
+// [디자인 리뉴얼 포인트 — 기능은 그대로, '겉모양'만 업그레이드]
+//   1) 페이지 제목 → 청록→블루 그라데이션 헤더 카드(<Card variant="gradient">)
+//   2) 요약 바 3칸 / 빈 상태 / 구성원 카드 → 공통 <Card> 로 통일
+//      (둥근 모서리 + 부드러운 그림자 톤 일치)
+//   3) 색 값은 모두 공통 토큰(COLORS)에서 가져옴 (하드코딩 색 제거)
+//   ※ 위험도별로 색이 바뀌는 테두리/배경/막대는 '동적 색상'이라
 //      인라인 style 이 꼭 필요합니다. 다만 색 값은 토큰에서 가져옵니다.
-//   ※ 화면 결과(디자인/동작)는 이전과 똑같습니다.
+//   ※ 데이터 계산/이동 로직은 이전과 100% 동일합니다.
 // =============================================================================
 
-import { Bell, Clock, ArrowRight } from "lucide-react";
+import { Bell, Clock, ArrowRight, Users, AlertTriangle } from "lucide-react";
 import type { Patient } from "../components/layout/GuardianLayout";
 import type { AppNotification } from "../api/notificationApi";
 import { COLORS } from "../styles/tokens";
+// 공통 UI: 카드(겉모양 통일용)
+import { Card } from "../components/ui";
 
 // -----------------------------------------------------------------------------
 // [위험도 설정] 위험 등급(high/mid/low)별로 색/배경/테두리/표시 문구를 모아둡니다.
@@ -70,13 +74,27 @@ export function GuardianDashboard({ patients, notifications, onSelectMember }: G
 
   return (
     <div className="max-w-2xl mx-auto p-6">
-      {/* 페이지 제목 */}
-      <div className="mb-8">
-        <h1 className="font-bold text-primary text-[1.9rem]">연결된 가족 현황</h1>
-        <p className="text-gray-600 mt-2 font-bold text-[1.1rem]">연결된 가족 구성원의 건강 상태를 확인합니다.</p>
-      </div>
+      {/* ───────────── 그라데이션 헤더 카드 ─────────────
+          [리뉴얼] 기존 제목 영역을 청록→블루 그라데이션 카드로 교체.
+          - variant="gradient" 가 bg-gradient-brand + 흰 글자 + 그림자를 적용.
+          - 안에 아이콘을 두어 사용자/측정 화면 헤더와 톤을 맞춥니다. */}
+      <Card variant="gradient" padding="lg" className="mb-8">
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center shrink-0">
+            <Users className="w-8 h-8 text-white" />
+          </div>
+          <div>
+            <h1 className="font-black text-white text-[1.8rem] leading-tight">연결된 가족 현황</h1>
+            <p className="text-white/80 mt-1 font-bold text-small">
+              연결된 가족 구성원의 건강 상태를 확인합니다.
+            </p>
+          </div>
+        </div>
+      </Card>
 
-      {/* 요약 바: 연결 인원 / 미확인 알림 / 위험 단계 */}
+      {/* ───────────── 요약 바: 연결 인원 / 미확인 알림 / 위험 단계 ─────────────
+          [리뉴얼] 각 칸을 공통 <Card> 로 감싸 둥근 모서리/그림자 톤을 통일.
+          - urgent(긴급) 항목이 0보다 크면 빨간 강조 색을 토큰에서 가져와 인라인 적용. */}
       <div className="grid grid-cols-3 gap-4 mb-8">
         {[
           { label: "연결 인원",   value: `${patients.length}명`, urgent: false, count: 0 },
@@ -86,25 +104,35 @@ export function GuardianDashboard({ patients, notifications, onSelectMember }: G
           // urgent(긴급) 항목인데 0보다 크면 빨간 강조, 아니면 기본
           const isAlert = s.urgent && s.count > 0;
           return (
-            <div
+            <Card
               key={s.label}
-              className={`bg-white rounded-xl p-5 text-center shadow-sm border ${isAlert ? "border-red-200 bg-red-50" : "border-gray-100"}`}
+              padding="md"
+              className="text-center"
+              // 강조 시 연한 빨강 배경/테두리(토큰 색)를 인라인으로 적용
+              style={
+                isAlert
+                  ? { backgroundColor: COLORS.dangerBg, borderColor: COLORS.dangerBorder }
+                  : undefined
+              }
             >
-              <div className={`font-bold text-[1.8rem] ${isAlert ? "text-red-600" : "text-primary"}`}>
+              <div
+                className="font-black text-[1.8rem]"
+                style={{ color: isAlert ? COLORS.danger : COLORS.primary }}
+              >
                 {s.value}
               </div>
               <div className="text-gray-500 mt-1 font-bold text-small">{s.label}</div>
-            </div>
+            </Card>
           );
         })}
       </div>
 
       {patients.length === 0 ? (
-        // 연결된 가족이 한 명도 없을 때
-        <div className="bg-white rounded-2xl p-12 shadow-sm border border-gray-100 text-center">
+        // 연결된 가족이 한 명도 없을 때 — 공통 카드로 빈 상태 표시
+        <Card padding="lg" className="text-center py-12">
           <p className="text-gray-400 font-bold text-[1.1rem]">연결된 가족 구성원이 없습니다.</p>
           <p className="text-gray-400 mt-2 font-bold text-tiny">마이페이지에서 사용자를 등록하세요.</p>
-        </div>
+        </Card>
       ) : (
         <div className="space-y-5">
           {patients.map(patient => {
@@ -118,10 +146,13 @@ export function GuardianDashboard({ patients, notifications, onSelectMember }: G
             );
 
             return (
-              // 카드 테두리 색이 위험도에 따라 달라지므로 '동적 색상' → 인라인 style 필요
-              <div
+              // 구성원 카드: 공통 <Card> 로 감싸되, 위험도 색 테두리는 '동적 색상'이라
+              // 인라인 style 로 덮어씁니다. (color 값은 토큰에서 옴)
+              // padding="none" → 안쪽에서 색 막대 + 본문을 직접 배치하기 위함
+              <Card
                 key={patient.user_id}
-                className="w-full text-left bg-white rounded-2xl shadow-sm overflow-hidden"
+                padding="none"
+                className="overflow-hidden"
                 style={{ border: `2px solid ${cfg.border}` }}
               >
                 <div className="flex">
@@ -145,15 +176,24 @@ export function GuardianDashboard({ patients, notifications, onSelectMember }: G
                       <div className="flex flex-col items-end gap-2">
                         {/* 위험도 배지 (색은 위험도별 동적 → 인라인 style) */}
                         <span
-                          className="px-4 py-1.5 rounded-full text-white font-bold text-small"
+                          className="px-4 py-1.5 rounded-full text-white font-bold text-small whitespace-nowrap"
                           style={{ backgroundColor: cfg.color }}
                         >
                           위험도 {cfg.kr} — {cfg.label}
                         </span>
                         {unreadNotifs.length > 0 && (
-                          <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-full px-3 py-1.5">
-                            <Bell className="w-4 h-4 text-red-500" />
-                            <span className="text-red-600 font-bold text-small">미확인 {unreadNotifs.length}건</span>
+                          // 미확인 알림 배지 (연한 빨강 — 토큰 색 인라인)
+                          <div
+                            className="flex items-center gap-2 rounded-full px-3 py-1.5 border"
+                            style={{
+                              backgroundColor: COLORS.dangerBg,
+                              borderColor: COLORS.dangerBorder,
+                            }}
+                          >
+                            <Bell className="w-4 h-4" style={{ color: COLORS.danger }} />
+                            <span className="font-bold text-small" style={{ color: COLORS.danger }}>
+                              미확인 {unreadNotifs.length}건
+                            </span>
                           </div>
                         )}
                       </div>
@@ -203,7 +243,7 @@ export function GuardianDashboard({ patients, notifications, onSelectMember }: G
                     </div>
                   </div>
                 </div>
-              </div>
+              </Card>
             );
           })}
         </div>

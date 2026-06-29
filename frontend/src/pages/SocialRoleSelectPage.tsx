@@ -1,11 +1,21 @@
-// ============================================================================
+// SocialRoleSelectPage.tsx
+// frontend/src/pages/SocialRoleSelectPage.tsx
+// =============================================================================
 // 소셜 가입 완료 페이지 (역할 선택 → 휴대폰 인증 → 가입 확정)
-// - 리팩터링 포인트:
-//   1) 색상 하드코딩(#0D9488 / #0F766E) → COLORS 토큰 / primary 토큰 클래스
-//   2) 인라인 fontSize → 토큰 클래스 우선
-//   3) 마지막 가입/다음 버튼 → 공통 <Button>
-//   휴대폰 인증/타이머/가입 로직은 100% 동일
-// ============================================================================
+//
+// [이 파일이 하는 일]
+//   - step "role" : 사용자/보호자 역할을 고릅니다.
+//   - step "phone": 휴대폰 인증(발송→확인) 후 소셜 가입을 확정하고 홈으로 이동.
+//
+// [디자인 리뉴얼 포인트 — 기능은 그대로, '겉모양'만 통일]
+//   1) 배경 그라데이션: primary 3색 → GRADIENTS.brand (청록→블루)로 통일
+//   2) 주요 버튼(다음 / 가입 완료) → gradient 변형으로 통일
+//   3) 에러 박스 하드코딩 색(bg-amber-50 등) → 토큰 색(warning 계열)
+//   4) 만료 타이머/만료 안내의 text-red-500 → 토큰 색(COLORS.danger)
+//   ※ 번호+인증요청, 인증번호+확인 가로 줄은 정렬 보존 위해 원본 input 구조 유지.
+//   ※ 인증/타이머/가입 확정/라우팅 로직은 이전과 100% 동일합니다.
+// =============================================================================
+
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -17,7 +27,7 @@ import {
 import { setAccessToken } from "../api/tokenStore";
 import { Heart, User, Shield, Phone, CheckCircle2 } from "lucide-react";
 import { Button } from "../components/ui";
-import { COLORS } from "../styles/tokens";
+import { COLORS, GRADIENTS } from "../styles/tokens";
 
 type Role = "user" | "guardian";
 type Step = "role" | "phone";
@@ -139,8 +149,8 @@ export function SocialRoleSelectPage() {
       : undefined;
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4"
-      style={{ backgroundImage: `linear-gradient(to bottom right, ${COLORS.primary}, ${COLORS.primaryMid}, ${COLORS.primary})` }}>
+    // [리뉴얼] 배경 그라데이션을 GRADIENTS.brand(청록→블루)로 통일
+    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: GRADIENTS.brand }}>
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-24 h-24 bg-white/20 rounded-full mb-4 backdrop-blur-sm">
@@ -166,8 +176,16 @@ export function SocialRoleSelectPage() {
             </span>
           </div>
 
+          {/* 에러 박스 — [리뉴얼] amber 하드코딩 → 토큰 색(warning 계열) */}
           {error && (
-            <div className="bg-amber-50 border border-amber-300 text-amber-800 rounded-lg p-4 font-bold mb-4 text-small">
+            <div
+              className="rounded-lg p-4 font-bold mb-4 text-small border"
+              style={{
+                backgroundColor: COLORS.warningBg,
+                borderColor: COLORS.warningBorder,
+                color: COLORS.warning,
+              }}
+            >
               {error}
             </div>
           )}
@@ -204,8 +222,8 @@ export function SocialRoleSelectPage() {
                 </span>
               </div>
 
-              {/* 다음 버튼 — 공통 Button(primary) */}
-              <Button variant="primary" size="lg" fullWidth
+              {/* 다음 버튼 — [리뉴얼] gradient 변형으로 통일 */}
+              <Button variant="gradient" size="lg" fullWidth
                 onClick={() => { setError(""); setInfo(""); setStep("phone"); }}>
                 다음 (휴대폰 인증)
               </Button>
@@ -263,7 +281,8 @@ export function SocialRoleSelectPage() {
                         onBlur={e => (e.currentTarget.style.borderColor = "")}
                       />
                       {remaining > 0 && (
-                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-red-500 font-bold text-small">
+                        // [리뉴얼] 만료 타이머 색 → 토큰(COLORS.danger)
+                        <span className="absolute right-4 top-1/2 -translate-y-1/2 font-bold text-small" style={{ color: COLORS.danger }}>
                           {mmss(remaining)}
                         </span>
                       )}
@@ -279,7 +298,8 @@ export function SocialRoleSelectPage() {
                     </button>
                   </div>
                   {remaining <= 0 && (
-                    <p className="text-red-500 mt-1 font-bold" style={{ fontSize: "0.95rem" }}>
+                    // [리뉴얼] 만료 안내 색 → 토큰(COLORS.danger)
+                    <p className="mt-1 font-bold" style={{ fontSize: "0.95rem", color: COLORS.danger }}>
                       인증 시간이 만료되었습니다. 재발송해 주세요.
                     </p>
                   )}
@@ -298,9 +318,9 @@ export function SocialRoleSelectPage() {
                   style={{ minHeight: 60 }}>
                   이전
                 </button>
-                {/* 가입 완료 — 공통 Button(primary) */}
-                <Button variant="primary" size="lg" fullWidth
-                  onClick={handleComplete} disabled={!verified || submitting}
+                {/* 가입 완료 — [리뉴얼] gradient 변형으로 통일 */}
+                <Button variant="gradient" size="lg" fullWidth
+                  onClick={handleComplete} disabled={!verified || submitting} loading={submitting}
                   className="flex-1">
                   {submitting ? "가입 완료 중..." : "가입 완료"}
                 </Button>

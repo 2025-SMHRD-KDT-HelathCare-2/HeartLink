@@ -1,3 +1,4 @@
+// RegisterPage.tsx
 // frontend/src/pages/Registerpage.tsx
 // =============================================================================
 // 회원가입 페이지
@@ -5,11 +6,13 @@
 // [이 파일이 하는 일]
 //   - 사용자/보호자 회원가입 폼을 보여주고, 입력값을 검사한 뒤 서버로 보냅니다.
 //
-// [1단계 리팩터링에서 바뀐 점 — 기능은 그대로, '겉모양 코드'만 정리]
-//   1) 색상 하드코딩(#0D9488 등) → 디자인 토큰 클래스(primary 등)로 교체
-//   2) 글자 크기 인라인 style(style={{ fontSize: ... }}) → 토큰 클래스(text-sub 등)
-//   3) 반복되던 입력창/버튼 코드 → 공통 컴포넌트 <Input>, <Button> 으로 교체
-//   ※ 화면에 보이는 결과(디자인/동작)는 이전과 똑같습니다.
+// [디자인 리뉴얼 포인트 — 기능은 그대로, '겉모양'만 통일]
+//   1) 배경 그라데이션: from-primary..via.. → GRADIENTS.brand (청록→블루)로 통일
+//      (로그인 화면 및 다른 화면의 그라데이션 톤과 일치)
+//   2) 하드코딩 색(bg-red-50/red-100, green-100, text-red-500 등)
+//      → 토큰 색(COLORS.danger/dangerBg, safe/safeBg)으로 교체
+//   3) 회원가입/성공 모달 버튼 → gradient 변형으로 통일
+//   ※ 검증/전화 인증/제출/라우팅 로직은 이전과 100% 동일합니다.
 // =============================================================================
 
 import { useState, useEffect } from "react";
@@ -21,29 +24,25 @@ import {
 import { register, type RegisterPayload } from "../api/authApi";
 import { SocialLoginButtons } from "../components/auth/SocialLoginButtons";
 import { PhoneVerification } from "../components/auth/PhoneVerification";
-
-// 공통 UI 컴포넌트를 한 줄로 불러옵니다.
-//   - Button: 모든 버튼의 표준 모양/동작을 담당
-//   - Input : 아이콘 + 입력창 + 에러 메시지를 한 번에 처리
-// (참고) 이 페이지에는 '필수/선택' 배지를 보여주는 전용 라벨이 따로 필요해서,
-//        공통 FieldLabel 대신 아래에서 RegisterFieldLabel 을 별도로 정의해 씁니다.
 import { Button, Input } from "../components/ui";
+import { COLORS, GRADIENTS } from "../styles/tokens";
 
 type Role = "user" | "guardian";
 
 // -----------------------------------------------------------------------------
-// [전용 라벨] 입력 항목 위에 붙는 제목 라벨
-//   - 오른쪽에 '필수'(빨강) 또는 '선택'(회색) 배지를 함께 보여줍니다.
-//   - 공통 FieldLabel 은 별표(*)만 붙이는 단순한 형태라서, 이 페이지에서는
-//     배지 형태가 필요해 이름을 RegisterFieldLabel 로 두어 따로 유지합니다.
+// [전용 라벨] 입력 항목 위에 붙는 제목 라벨 (오른쪽에 필수/선택 배지)
+//   - 배지 색을 토큰(danger / muted 회색)으로 통일.
 // -----------------------------------------------------------------------------
 function RegisterFieldLabel({ text, required }: { text: string; required?: boolean }) {
   return (
     <label className="flex items-center gap-2 text-gray-700 mb-2 font-bold text-[1.1rem]">
       {text}
       {required ? (
-        // 필수 항목 배지: 연한 빨강 배경 + 빨강 글씨
-        <span className="px-2 py-0.5 rounded-md bg-red-100 text-red-600 font-bold text-[0.8rem]">
+        // 필수 항목 배지: 연한 빨강 배경 + 빨강 글씨 (토큰 색)
+        <span
+          className="px-2 py-0.5 rounded-md font-bold text-[0.8rem]"
+          style={{ backgroundColor: COLORS.dangerBg, color: COLORS.danger }}
+        >
           필수
         </span>
       ) : (
@@ -58,8 +57,7 @@ function RegisterFieldLabel({ text, required }: { text: string; required?: boole
 
 // -----------------------------------------------------------------------------
 // [안내 말풍선] 회원 유형(사용자/보호자)을 고르면 그에 맞는 설명을 보여줍니다.
-//   - 유형을 바꿀 때 잠깐 사라졌다(150ms) 다시 나타나는 '부드러운 전환' 효과가 있습니다.
-//   - visible 상태에 따라 투명도(opacity)와 위치(translate)가 바뀌면서 애니메이션됩니다.
+//   - 유형을 바꿀 때 잠깐 사라졌다(150ms) 다시 나타나는 '부드러운 전환' 효과.
 // -----------------------------------------------------------------------------
 function RoleToast({ role }: { role: Role }) {
   const [visible, setVisible] = useState(false);
@@ -85,8 +83,6 @@ function RoleToast({ role }: { role: Role }) {
 
   return (
     <div
-      // bg-primary/10 = 민트색의 10% 투명 배경, border-primary/30 = 민트 30% 테두리
-      // (원래 코드는 사용자/보호자 둘 다 같은 민트 스타일이라, 분기 없이 합쳤습니다.)
       className={`flex items-start gap-3 px-4 py-3 rounded-xl border font-bold mb-4 transition-all duration-500 bg-primary/10 border-primary/30 text-primary ${
         visible ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-1"
       }`}
@@ -103,15 +99,17 @@ function RoleToast({ role }: { role: Role }) {
 
 // -----------------------------------------------------------------------------
 // [성공 모달] 가입이 끝나면 화면 전체를 덮는 안내 창을 띄웁니다.
-//   - fixed inset-0 = 화면 전체를 덮음, bg-black/50 = 반투명 검정 배경
-//   - 버튼을 누르면 onClose() 가 실행되어 로그인 페이지로 이동합니다.
+//   - 체크 아이콘 원 색을 토큰(safe/safeBg)으로 통일.
 // -----------------------------------------------------------------------------
 function SuccessModal({ onClose }: { onClose: () => void }) {
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-sm text-center">
-        <div className="flex items-center justify-center w-20 h-20 bg-green-100 rounded-full mx-auto mb-5">
-          <CheckCircle className="w-12 h-12 text-green-500" />
+        <div
+          className="flex items-center justify-center w-20 h-20 rounded-full mx-auto mb-5"
+          style={{ backgroundColor: COLORS.safeBg }}
+        >
+          <CheckCircle className="w-12 h-12" style={{ color: COLORS.safe }} />
         </div>
         <h2 className="text-primary font-black mb-3 text-title">가입 완료!</h2>
         <p className="text-gray-600 font-bold mb-7 leading-relaxed text-[1.1rem]">
@@ -119,8 +117,8 @@ function SuccessModal({ onClose }: { onClose: () => void }) {
           <br />
           로그인 후 서비스를 이용하세요.
         </p>
-        {/* 공통 Button 사용: primary(민트) + lg(큰 크기) + 가로 꽉 채움 */}
-        <Button variant="primary" size="lg" fullWidth onClick={onClose}>
+        {/* 공통 Button(gradient) — 다른 화면 주요 버튼과 톤 통일 */}
+        <Button variant="gradient" size="lg" fullWidth onClick={onClose}>
           로그인하러 가기
         </Button>
       </div>
@@ -137,10 +135,7 @@ export function RegisterPage() {
   const [errors, setErrors] = useState<Record<string, string>>({}); // 항목별 에러 메시지
 
   // ---------------------------------------------------------------------------
-  // [입력값 상태] 사용자가 입력한 모든 값을 한 곳에 모아 둡니다.
-  //   - birthDate: 생년월일을 "YYYY-MM-DD" 문자열로 저장 (예: "1955-03-12")
-  //   - gender   : "" (미선택) / "M" (남) / "F" (여)
-  //   - medical_history: 쉼표로 구분된 과거 병력 텍스트
+  // [입력값 상태]
   // ---------------------------------------------------------------------------
   const [form, setForm] = useState({
     email: "", password: "", passwordConfirm: "", nickname: "",
@@ -157,8 +152,7 @@ export function RegisterPage() {
     setForm((prev) => ({ ...prev, [key]: value }));
 
   // ---------------------------------------------------------------------------
-  // [입력값 검사] 서버로 보내기 전에 잘못된 값이 없는지 확인합니다.
-  //   - 문제가 있으면 { 항목이름: "에러 메시지" } 형태로 모아서 돌려줍니다.
+  // [입력값 검사]
   // ---------------------------------------------------------------------------
   const validate = () => {
     const errs: Record<string, string> = {};
@@ -194,7 +188,7 @@ export function RegisterPage() {
     text.split(",").map((s) => s.trim()).filter((s) => s.length > 0);
 
   // ---------------------------------------------------------------------------
-  // [폼 제출] 회원가입 버튼을 눌렀을 때 실행됩니다.
+  // [폼 제출]
   // ---------------------------------------------------------------------------
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault(); // 브라우저 기본 새로고침 동작 막기
@@ -231,8 +225,8 @@ export function RegisterPage() {
       {/* 가입 성공 시에만 모달 표시. 닫으면 로그인 페이지로 이동 */}
       {showSuccess && <SuccessModal onClose={() => navigate("/login")} />}
 
-      {/* 전체 배경: 민트 그라데이션 (primary → primary-mid → primary) */}
-      <div className="min-h-screen bg-gradient-to-br from-primary via-primary-mid to-primary flex items-center justify-center p-4 py-10">
+      {/* [리뉴얼] 전체 배경: GRADIENTS.brand(청록→블루)로 통일 — 인라인 적용 */}
+      <div className="min-h-screen flex items-center justify-center p-4 py-10" style={{ background: GRADIENTS.brand }}>
         <div className="w-full max-w-md">
           {/* 상단 로고 영역 */}
           <div className="text-center mb-8">
@@ -246,7 +240,7 @@ export function RegisterPage() {
           {/* 흰색 카드: 실제 입력 폼이 들어가는 영역 */}
           <div className="bg-white rounded-2xl shadow-2xl p-8">
             <p className="text-gray-500 mb-6 font-bold text-small">
-              <span className="text-red-500">필수</span> 항목을 입력해 주세요. 건강 정보(
+              <span style={{ color: COLORS.danger }}>필수</span> 항목을 입력해 주세요. 건강 정보(
               <span className="text-gray-500">선택</span>)를 입력하시면 더 정확한 분석을 받을 수 있어요.
             </p>
 
@@ -254,7 +248,6 @@ export function RegisterPage() {
             <div className="mb-3">
               <RegisterFieldLabel text="회원 유형" required />
               <div className="flex gap-3">
-                {/* 선택된 유형은 'selected'(민트 강조), 아니면 'outline'(회색 테두리) */}
                 <Button
                   variant={role === "user" ? "selected" : "outline"}
                   size="md"
@@ -280,9 +273,16 @@ export function RegisterPage() {
             <RoleToast role={role} />
 
             <form onSubmit={handleSubmit} className="space-y-5">
-              {/* 전체 에러(서버 실패 등) 표시 영역 */}
+              {/* 전체 에러(서버 실패 등) 표시 영역 — [리뉴얼] 토큰 색(danger 계열) */}
               {errors.global && (
-                <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-4 font-bold text-small">
+                <div
+                  className="rounded-lg p-4 font-bold text-small border"
+                  style={{
+                    backgroundColor: COLORS.dangerBg,
+                    borderColor: COLORS.dangerBorder,
+                    color: COLORS.danger,
+                  }}
+                >
                   {errors.global}
                 </div>
               )}
@@ -300,10 +300,10 @@ export function RegisterPage() {
                   onVerifiedChange={setPhoneVerified}
                 />
                 {errors.phone && (
-                  <p className="text-red-500 mb-3 font-bold text-small">{errors.phone}</p>
+                  <p className="mb-3 font-bold text-small" style={{ color: COLORS.danger }}>{errors.phone}</p>
                 )}
 
-                {/* 이메일 입력: 공통 Input 사용 (왼쪽 메일 아이콘 + 에러 메시지 자동 처리) */}
+                {/* 이메일 입력 */}
                 <div className="mb-5">
                   <RegisterFieldLabel text="이메일 주소" required />
                   <Input
@@ -316,7 +316,7 @@ export function RegisterPage() {
                   />
                 </div>
 
-                {/* 비밀번호 입력: 오른쪽 눈 아이콘으로 보기/숨기기 토글 */}
+                {/* 비밀번호 입력 */}
                 <div className="mb-5">
                   <RegisterFieldLabel text="비밀번호" required />
                   <Input
@@ -338,7 +338,7 @@ export function RegisterPage() {
                   />
                 </div>
 
-                {/* 비밀번호 확인 입력 (위 비밀번호와 같은 보기/숨기기 상태를 공유) */}
+                {/* 비밀번호 확인 입력 */}
                 <div className="mb-5">
                   <RegisterFieldLabel text="비밀번호 확인" required />
                   <Input
@@ -375,8 +375,7 @@ export function RegisterPage() {
                     선택 입력이며, 나중에 프로필에서 추가할 수 있어요.
                   </p>
 
-                  {/* 생년월일: 브라우저 기본 날짜 선택기(type="date") 사용.
-                      max(오늘)을 지정해 미래 날짜는 아예 못 고르게 막습니다. */}
+                  {/* 생년월일 */}
                   <div className="mb-5">
                     <RegisterFieldLabel text="생년월일" />
                     <Input
@@ -389,7 +388,7 @@ export function RegisterPage() {
                     />
                   </div>
 
-                  {/* 성별 선택 (남성 / 여성). 선택된 쪽이 민트색으로 강조됨 */}
+                  {/* 성별 선택 (남성 / 여성) */}
                   <div className="mb-5">
                     <RegisterFieldLabel text="성별" />
                     <div className="flex gap-3">
@@ -414,8 +413,8 @@ export function RegisterPage() {
                 </div>
               )}
 
-              {/* 회원가입 제출 버튼: 처리 중이면 스피너 + '가입 처리 중...' 표시 */}
-              <Button type="submit" variant="primary" size="lg" fullWidth loading={submitting}>
+              {/* 회원가입 제출 버튼 — [리뉴얼] gradient 변형으로 통일 */}
+              <Button type="submit" variant="gradient" size="lg" fullWidth loading={submitting}>
                 {submitting ? "가입 처리 중..." : "회원가입"}
               </Button>
             </form>
