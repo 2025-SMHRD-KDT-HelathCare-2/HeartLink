@@ -73,25 +73,58 @@ self.addEventListener('notificationclick', event => {
 // 워커는 로그인 role 을 모르므로 url/type 기반으로만 결정하고,
 // 정보가 없으면 알림 목록(/notifications)으로 폴백한다.
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// 경로 계산 (notificationLink.ts 와 동일 규칙의 JS 복제본)
+// 워커는 로그인 role 을 모르므로:
+//  - userId 가 data 에 있으면 "보호자가 받는 환자용 알림"으로 간주
+//  - 그 외는 사용자(본인) 경로로 처리
+//  - 정보가 부족하면 /notifications 로 폴백
+// ---------------------------------------------------------------------------
 function resolveNotificationPathSW(data) {
-  // (1) 백엔드가 완성된 링크를 직접 준 경우
+  // (1) 완성 링크 직접 수신 시 최우선
   if (data.url && typeof data.url === 'string' && data.url.indexOf('/') === 0) {
     return data.url;
   }
 
-  // (2) 보호자용: 특정 환자 리포트 상세
-  if (data.type === 'report' && data.userId && data.reportType && data.reportId) {
-    return '/guardian-report-detail/' + data.userId + '/' + data.reportType + '/' + data.reportId;
-  }
-  // (2) 사용자용: 본인 리포트 상세
-  if (data.type === 'report' && data.reportType && data.reportId) {
-    return '/report-detail/' + data.reportType + '/' + data.reportId;
-  }
-  // (2) 사용자용: 측정 상세
-  if (data.type === 'measurement' && data.measurementId) {
-    return '/measurement/' + data.measurementId;
-  }
+  switch (data.type) {
+    // --- 측정 상세 ---
+    case 'measurement':
+      if (data.userId && data.measurementId) {
+        return '/guardian-report-detail/' + data.userId + '/measurement/' + data.measurementId;
+      }
+      if (data.measurementId) {
+        return '/measurement/' + data.measurementId;
+      }
+      return '/notifications';
 
-  // (3) 폴백
-  return '/notifications';
+    // --- 리포트 상세 ---
+    case 'report': {
+      var reportType = data.reportType || 'weekly';
+      if (data.userId && data.reportId) {
+        return '/guardian-report-detail/' + data.userId + '/' + reportType + '/' + data.reportId;
+      }
+      if (data.reportId) {
+        return '/report-detail/' + reportType + '/' + data.reportId;
+      }
+      return '/notifications';
+    }
+
+    // --- 보호자 등록 요청(사용자 수신) -> 사용자 마이페이지 ---
+    case 'guardian_request':
+      return '/mypage';
+
+    // --- 보호자 등록 수락(보호자 수신) -> 홈 ---
+    case 'guardian_accepted':
+      return '/';
+
+    // --- 연결 해제(양쪽 수신): 워커는 role 을 모르므로 userId 유무로 추정 ---
+    //     userId 가 있으면 보호자가 받은 알림으로 보고 보호자 마이페이지로,
+    //     없으면 사용자 마이페이지로.
+    case 'guardian_disconnected':
+      return data.userId ? '/guardian-mypage' : '/mypage';
+
+    default:
+      return '/notifications';
+  }
 }
+
