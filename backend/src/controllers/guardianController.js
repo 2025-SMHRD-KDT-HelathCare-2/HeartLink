@@ -101,6 +101,31 @@ export const deleteGuardian = async (req, res, next) => {
       $or: [{ userId: req.user.id }, { guardianId: req.user.id }],
     });
     if (!relation) return res.status(404).json({ message: '없는 보호자 관계입니다.' });
+
+    // 연결 해제 시 양쪽 모두에게 FCM 알림
+    const [patientUser, guardianUser] = await Promise.all([
+      User.findById(relation.userId).select('deviceToken nickname'),
+      User.findById(relation.guardianId).select('deviceToken nickname'),
+    ]);
+
+    const notifyPatient = patientUser?.deviceToken
+      ? sendPushNotification(
+          patientUser.deviceToken,
+          '보호자 연결 해제',
+          `${guardianUser?.nickname ?? '보호자'}님과의 보호자 연결이 해제되었습니다.`
+        ).catch((err) => console.error('[FCM] 연결 해제 알림(환자) 실패:', err.message))
+      : null;
+
+    const notifyGuardian = guardianUser?.deviceToken
+      ? sendPushNotification(
+          guardianUser.deviceToken,
+          '보호자 연결 해제',
+          `${patientUser?.nickname ?? '사용자'}님과의 보호자 연결이 해제되었습니다.`
+        ).catch((err) => console.error('[FCM] 연결 해제 알림(보호자) 실패:', err.message))
+      : null;
+
+    await Promise.allSettled([notifyPatient, notifyGuardian].filter(Boolean));
+
     res.json({ message: '보호자 관계가 해제되었습니다.' });
   } catch (err) {
     next(err);
@@ -178,6 +203,25 @@ export const getSentRequests = async (req, res, next) => {
     const requests = await GuardianRelation.find({ guardianId: req.user.id })
       .populate('userId', 'nickname email');
     res.json(requests);
+  } catch (err) {
+    next(err);
+  }
+};
+
+// 보호자가 연동 요청 전 이메일로 사용자 닉네임 확인
+export const lookupUserByEmail = async (req, res, next) => {
+  try {
+    const { email } = req.query;
+    if (!email) return res.status(400).json({ message: '이메일을 입력해 주세요.' });
+
+    const user = await User.findOne({ email: email.toLowerCase().trim(), role: 'user' }).select('nickname email');
+    if (!user) return res.status(404).json({ message: '해당 이메일의 사용자 계정을 찾을 수 없습니다.' });
+
+    if (user._id.toString() === req.user.id) {
+      return res.status(400).json({ message: '자기 자신에게 요청을 보낼 수 없습니다.' });
+    }
+
+    res.json({ nickname: user.nickname, email: user.email });
   } catch (err) {
     next(err);
   }
