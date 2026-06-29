@@ -124,7 +124,7 @@ export function SocialRoleSelectPage() {
       const data = await completeSocialSignup({ role, phone: normalizePhone(phone) });
       setAccessToken(data.token);
       applySession(data.user, data.user.role);
-      navigate("/dashboard", { replace: true });
+      navigate("/", { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : "가입 완료에 실패했습니다. 다시 시도해 주세요.");
     } finally {

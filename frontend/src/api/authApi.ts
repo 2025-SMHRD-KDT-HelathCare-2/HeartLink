@@ -85,7 +85,17 @@ api.interceptors.response.use(
     const message =
       error?.response?.data?.message ??
       "요청 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.";
-    return Promise.reject(new Error(message));
+
+      // 가공된 Error 에도 HTTP 상태코드를 실어 보내, 호출하는 쪽에서
+      // err.status 로 404 등을 구분할 수 있게 합니다. (원본 응답도 함께 보존)
+      const customError = new Error(message) as Error & {
+        status?: number;
+      response?: typeof error.response;
+    };
+    customError.status = error?.response?.status;
+    customError.response = error?.response;
+    return Promise.reject(customError);
+
   }
 );
 

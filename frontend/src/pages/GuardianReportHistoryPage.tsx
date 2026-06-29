@@ -120,7 +120,7 @@ export function GuardianReportHistoryPage() {
               const isDaily = r.reportPeriod === "daily";
               return (
                 <button key={r.id}
-                  onClick={() => navigate(`/guardian-report-detail/${userId}`, { state: { reportId: r.id, type: r.reportPeriod } })}
+                  onClick={() => navigate(`/guardian-report-detail/${userId}/${r.reportPeriod}/${r.id}`)}
                   className="w-full bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center gap-4 text-left hover:bg-gray-50 transition-colors">
                   {/* 일간/주간 아이콘 — 둘 다 primary 배경 */}
                   <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0"

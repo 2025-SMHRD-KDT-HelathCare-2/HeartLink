@@ -79,7 +79,7 @@ export function LoginPage() {
       }
 
       login({ email: form.email, role: resolvedRole }, resolvedRole, data.token);
-      navigate("/dashboard");
+      navigate("/");
     } catch (err) {
       const message = err instanceof Error ? err.message : "로그인에 실패했습니다.";
       setErrors({ global: message });
@@ -195,7 +195,7 @@ export function LoginPage() {
           <div className="mt-6 pt-6 border-t border-gray-100 text-center">
             <span className="text-gray-500 font-bold text-small">아직 회원이 아니신가요? </span>
             <button
-              onClick={() => navigate("/signup")}
+              onClick={() => navigate("/register")}
               className="text-primary font-bold underline text-small"
             >
               회원가입

@@ -36,7 +36,7 @@ export function OAuthCallbackPage() {
         const data = await exchangeToken();
         setAccessToken(data.token);
         applySession(data.user, data.user.role);
-        navigate("/dashboard", { replace: true });
+        navigate("/", { replace: true });
       } catch {
         navigate("/login?error=social", { replace: true });
       }
