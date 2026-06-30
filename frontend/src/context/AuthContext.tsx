@@ -22,6 +22,9 @@ interface AuthContextType {
   applySession: (userData: UserData, userRole: Role) => void;
   logout: () => void;
   loading: boolean;
+  // [추가] 닉네임 수정 후 전역 상태(헤더/대시보드 등 user.nickname 참조하는 모든 곳)를
+  // 다시 로그인하지 않고도 즉시 갱신하기 위한 함수.
+  updateNickname: (nickname: string) => void;
 }
 
 const INACTIVITY_LIMIT_MS = 30 * 60 * 1000; // 30분
@@ -41,7 +44,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const token = await getToken(messaging, { vapidKey: VAPID_KEY });
       if (token) await api.patch('/auth/device-token', { deviceToken: token });
       
-      // 앱이 열려 있을 때(포그라운드)도 알림 표시 + 클릭 시 딥링크 이동
+      // 앱이 열려 있을 때(포그라운드)도 알림 표시 + 클릭시 딥링크 이동
       onMessage(messaging, (payload) => {
         if (!payload.notification?.title) return;
 
@@ -108,6 +111,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem("role", userRole);
   };
 
+  // [추가] 닉네임만 바뀐 경우, 전체 세션을 다시 만들지 않고 user 객체 일부만 갱신.
+  // 사용자/보호자 양쪽 화면이 모두 이 Context의 user.nickname을 구독하므로
+  // 이 함수 하나로 양쪽 화면에 동시 반영됩니다.
+  const updateNickname = (nickname: string) => {
+    setUser(prev => (prev ? { ...prev, nickname } : prev));
+  };
+
   const logout = useCallback(() => {
     callLogout();
     setAccessToken(null);
@@ -125,7 +135,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setRole(null);
     };
     window.addEventListener("auth:logout", handleForcedLogout);
-    return () => window.removeEventListener("auth:logout", handleForcedLogout);
+    return () => window.removeEventListener("auth:logout",handleForcedLogout);
   }, []);
 
   // 30분 비활동 감지 → 강제 로그아웃
@@ -159,10 +169,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user]);
 
   return (
-    <AuthContext.Provider value={{ user, role, login, applySession, logout, loading }}>
+    <AuthContext.Provider value={{ user, role, login, applySession, logout, loading, updateNickname }}>
       {children}
     </AuthContext.Provider>
   );
 }
-
 export const useAuth = () => useContext(AuthContext)!;
