@@ -16,6 +16,12 @@
 //   3) 1단계 [확인], 2단계 [요청 보내기]/[다시 입력] 버튼을 공통 <Button> 으로 교체
 //      (gradient / outline 변형 사용 → 다른 화면과 톤 일치)
 //   ※ 데이터 조회/요청 전송/연결 해제/탈퇴 로직은 이전과 100% 동일합니다.
+//
+// [추가 — 내 닉네임 수정]
+//   - "사용자 등록 요청" 카드 아래에 보호자 본인 닉네임 수정 카드를 별도로 둠.
+//   - 사용자 마이페이지(MyPage.tsx)와 동일한 패턴: 자체 저장 버튼,
+//     저장 성공 시 AuthContext.updateNickname()으로 전역 상태 즉시 갱신.
+//   - 헤더의 "{nickname}님 · 보호자"도 같은 user 상태를 구독하므로 자동 반영됨.
 // =============================================================================
 
 import { useState, useEffect } from "react";
@@ -23,11 +29,12 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import {
   UserPlus, User, Clock, Users, AlertTriangle,
-  LogOut, LinkIcon, Search, CheckCircle2,
+  LogOut, LinkIcon, Search, CheckCircle2, Pencil, Check, Loader2,
 } from "lucide-react";
 import {
   requestUser, getSentRequests, disconnectRelation, lookupUser,
 } from "../api/guardianApi";
+import api from "../api/authApi";
 import { Card, CardTitle, Input, Button } from "../components/ui";
 import { COLORS } from "../styles/tokens";
 
@@ -88,7 +95,7 @@ function WithdrawModal({ onConfirm, onCancel, processing }:
 
 export function GuardianMyPage() {
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user, logout, updateNickname } = useAuth();
 
   // ── 입력/조회 관련 상태 ───────────────────────────────────
   const [userEmail, setUserEmail] = useState("");   // 입력한 이메일
@@ -106,6 +113,16 @@ export function GuardianMyPage() {
   const [loadingRequests, setLoadingRequests] = useState(true);
   const [showWithdraw, setShowWithdraw] = useState(false);
   const [withdrawing, setWithdrawing] = useState(false);
+
+  // ── 내 닉네임 수정 상태 ───────────────────────────────────
+  const [nicknameInput, setNicknameInput] = useState((user as any)?.nickname ?? "");
+  const [nicknameSaving, setNicknameSaving] = useState(false);
+  const [nicknameSaved, setNicknameSaved] = useState(false);
+  const [nicknameError, setNicknameError] = useState("");
+
+  useEffect(() => {
+    setNicknameInput((user as any)?.nickname ?? "");
+  }, [(user as any)?.nickname]);
 
   // 화면 처음 뜰 때: 내가 보낸 요청 목록 불러오기
   useEffect(() => {
@@ -203,6 +220,32 @@ export function GuardianMyPage() {
       console.error("회원 탈퇴 실패", err);
       setWithdrawing(false);
       setShowWithdraw(false);
+    }
+  };
+
+  // 내 닉네임 저장 — 사용자 등록 요청 흐름과 별개로 독립적으로 저장됨
+  const handleSaveNickname = async () => {
+    const trimmed = nicknameInput.trim();
+    if (!trimmed) {
+      setNicknameError("닉네임을 입력해 주세요.");
+      return;
+    }
+    if (trimmed.length > 50) {
+      setNicknameError("닉네임은 50자 이하로 입력해 주세요.");
+      return;
+    }
+    setNicknameError("");
+    setNicknameSaving(true);
+    try {
+      await api.patch("/auth/me", { nickname: trimmed });
+      updateNickname(trimmed); // 전역 상태 즉시 갱신 → 헤더 등에 바로 반영
+      setNicknameSaved(true);
+      setTimeout(() => setNicknameSaved(false), 2000);
+    } catch (err) {
+      console.error("닉네임 저장 실패", err);
+      setNicknameError("닉네임 저장에 실패했어요. 잠시 후 다시 시도해 주세요.");
+    } finally {
+      setNicknameSaving(false);
     }
   };
 
@@ -321,6 +364,53 @@ export function GuardianMyPage() {
           )}
         </Card>
       </form>
+
+      {/* ───────────── 내 닉네임 수정 카드 ─────────────
+          [추가] 사용자 등록 요청과 별개로 독립 저장.
+          저장 성공 시 AuthContext.updateNickname() 으로 전역 상태 즉시 갱신
+          → 위 헤더의 "{nickname}님 · 보호자" 부분에 바로 반영됨. */}
+      <Card padding="lg" className="mb-6">
+        <CardTitle className="font-black mb-2">내 닉네임</CardTitle>
+        <p className="text-gray-500 mb-4 font-bold text-small">
+          사용자 화면과 보호자 화면에 표시되는 이름이에요.
+        </p>
+        <div className="flex items-center gap-3">
+          <div className="relative flex-1">
+            <Pencil className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              value={nicknameInput}
+              onChange={e => setNicknameInput(e.target.value)}
+              maxLength={50}
+              placeholder="닉네임을 입력하세요"
+              className="w-full pl-11 pr-4 py-3 rounded-xl border-2 font-bold text-body outline-none transition-colors"
+              style={{ borderColor: nicknameError ? COLORS.danger : COLORS.border }}
+              onFocus={e => { e.currentTarget.style.borderColor = COLORS.primary; }}
+              onBlur={e => { e.currentTarget.style.borderColor = nicknameError ? COLORS.danger : COLORS.border; }}
+            />
+          </div>
+          <Button
+            type="button"
+            variant="gradient"
+            size="md"
+            onClick={handleSaveNickname}
+            disabled={nicknameSaving || nicknameInput.trim() === ((user as any)?.nickname ?? "")}
+          >
+            {nicknameSaved ? (
+              <><Check className="w-5 h-5" />완료</>
+            ) : nicknameSaving ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              "저장"
+            )}
+          </Button>
+        </div>
+        {nicknameError && (
+          <p className="font-bold text-small mt-2" style={{ color: COLORS.danger }}>
+            {nicknameError}
+          </p>
+        )}
+      </Card>
 
       {/* ───────────── 등록한 사용자 목록 ───────────── */}
       <Card padding="lg">
