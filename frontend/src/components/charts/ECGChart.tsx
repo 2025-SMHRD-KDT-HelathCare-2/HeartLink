@@ -1,9 +1,14 @@
+// src/components/charts/ECGChart.tsx
+
 // ============================================================================
 // ECG 실시간/리포트 파형 차트
-// - 리팩터링 포인트:
-//   1) 순수 CSS 인 인라인 style(격자 배경/페이지 dot/범례 마커) → ECGChart.module.css
-//   2) Recharts SVG props 색/폰트 → chartTokens.ts(CHART_AXIS, COLORS) 로 일원화
-//   페이지네이션/줌/reveal 로직은 100% 동일
+//
+// [성능 최적화 포인트 — 보이는 모양/동작은 동일]
+//   1) 큰 파형을 LTTB 다운샘플링으로 "화면 폭 픽셀 수" 정도까지 줄입니다.
+//      → 점 2,500개를 ~800개로 줄여도 심전도 모양은 거의 그대로,
+//        recharts 가 그릴 DOM/계산량은 크게 줄어 렌더가 빨라집니다.
+//   2) slice / filter / 다운샘플 결과를 useMemo 로 감싸 불필요한 재계산을 막습니다.
+//   페이지네이션/줌/reveal 로직은 100% 동일합니다.
 // ============================================================================
 import {
   LineChart, Line, XAxis, YAxis, Tooltip,
@@ -13,6 +18,7 @@ import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { COLORS } from "../../styles/tokens";
 import { CHART_AXIS } from "../../styles/chartTokens";
+import { lttbDownsample } from "../../utils/downsample";
 import styles from "./ECGChart.module.css";
 
 interface ECGChartProps {
@@ -27,9 +33,16 @@ interface ECGChartProps {
 
 const SECONDS_PER_PAGE = 10;
 
-export function ECGChart({ data, rPeaks, zoom = 1, revealPercent, sampleRate: _sampleRate = 250  }: ECGChartProps) {
-  const visibleCount = Math.floor(data.length / zoom);
-  const baseData = data.slice(0, visibleCount);
+// 한 페이지(10초)에 그릴 "최대 점 개수".
+// 화면 폭이 대략 600~900px 이므로, 그 이상은 눈에 안 보이는 점이라 줄여도 무방합니다.
+const MAX_POINTS_PER_PAGE = 800;
+
+export function ECGChart({ data, rPeaks, zoom = 1, revealPercent, sampleRate: _sampleRate = 250 }: ECGChartProps) {
+  // zoom 에 맞춘 기준 데이터 — slice 결과를 메모이즈
+  const baseData = useMemo(() => {
+    const visibleCount = Math.floor(data.length / zoom);
+    return data.slice(0, visibleCount);
+  }, [data, zoom]);
 
   // reveal(실시간 재생 진행률)에 맞춰 일부만 노출
   const revealedData = useMemo(() => {
@@ -51,11 +64,18 @@ export function ECGChart({ data, rPeaks, zoom = 1, revealPercent, sampleRate: _s
   const pageStartX = safePage * SECONDS_PER_PAGE;
   const pageEndX = pageStartX + SECONDS_PER_PAGE;
 
+  // 현재 페이지(10초)에 해당하는 점만 추리고, 그 다음 다운샘플링으로 줄입니다.
   const pageData = useMemo(() => {
-    return revealedData.filter(d => d.x >= pageStartX && d.x < pageEndX);
+    const sliced = revealedData.filter(d => d.x >= pageStartX && d.x < pageEndX);
+    // 점이 너무 많으면 LTTB 로 줄여서 그립니다. (모양 보존)
+    return lttbDownsample(sliced, MAX_POINTS_PER_PAGE);
   }, [revealedData, pageStartX, pageEndX]);
 
-  const visiblePeaks = rPeaks.filter(x => x >= pageStartX && x < pageEndX);
+  // R-peak 중 현재 페이지 범위에 드는 것만 — filter 결과 메모이즈
+  const visiblePeaks = useMemo(
+    () => rPeaks.filter(x => x >= pageStartX && x < pageEndX),
+    [rPeaks, pageStartX, pageEndX]
+  );
 
   return (
     <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">

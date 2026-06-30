@@ -1,8 +1,14 @@
+// MonitorChart.tsx
+
 // ============================================================================
 // 병원 심장 모니터 스타일 실시간 차트
-// - 다크 모니터 색은 chartTokens.ts(MONITOR_COLORS) 로 일원화
-// - 컨테이너/플롯/LIVE 점 스타일 → MonitorChart.module.css
-//   reveal 커서 로직은 100% 동일
+//
+// [성능 최적화 포인트 — 보이는 모양/동작은 동일]
+//   - reveal(스캔)이 진행될수록 그릴 점이 계속 늘어나(후반부일수록 무거움),
+//     LTTB 다운샘플링으로 "화면에 보이는 만큼"만 그리도록 줄입니다.
+//   - 단, 맨 끝점(깜빡이는 커서)은 항상 정확한 최신 위치를 써야 하므로
+//     다운샘플 결과의 마지막 점이 아니라 "원본의 마지막 점"을 커서로 씁니다.
+//   reveal 커서 로직(진행률 계산)은 100% 동일합니다.
 // ============================================================================
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, ReferenceDot,
@@ -10,6 +16,7 @@ import {
 } from "recharts";
 import { useMemo } from "react";
 import { MONITOR_COLORS } from "../../styles/chartTokens";
+import { lttbDownsample } from "../../utils/downsample";
 import styles from "./MonitorChart.module.css";
 
 interface MonitorChartProps {
@@ -17,11 +24,24 @@ interface MonitorChartProps {
   revealPercent: number; // 0~100
 }
 
+// 모니터 차트에 그릴 최대 점 개수 (실시간이라 ECG 리포트보다 약간 여유 있게)
+const MAX_MONITOR_POINTS = 600;
+
 // 병원 심장 모니터처럼: 지나온 구간은 선으로, 끝점에 깜빡이는 커서
 export function MonitorChart({ data, revealPercent }: MonitorChartProps) {
   const cutoff = Math.max(1, Math.floor((data.length * revealPercent) / 100));
-  const displayData = useMemo(() => data.slice(0, cutoff), [data, cutoff]);
-  const cursor = displayData[displayData.length - 1];
+
+  // 지금까지 노출된 구간(원본). 커서 위치 계산에 사용합니다.
+  const revealed = useMemo(() => data.slice(0, cutoff), [data, cutoff]);
+
+  // 실제로 그릴 데이터는 다운샘플링해서 점 개수를 줄입니다.
+  const displayData = useMemo(
+    () => lttbDownsample(revealed, MAX_MONITOR_POINTS),
+    [revealed]
+  );
+
+  // 커서(깜빡이는 끝점)는 "원본의 마지막 점"을 써서 정확한 최신 위치를 유지합니다.
+  const cursor = revealed[revealed.length - 1];
   const maxX = data[data.length - 1]?.x ?? 0;
 
   return (
