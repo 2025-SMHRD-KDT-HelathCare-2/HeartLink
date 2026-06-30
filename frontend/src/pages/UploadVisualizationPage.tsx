@@ -323,7 +323,7 @@ export function UploadVisualizationPage() {
       {phase === "result" && result && (
         <div className={`${styles.fadein} space-y-6`}>
           <div className="font-bold mb-2 text-[1.1rem]" style={{ color: COLORS.primary }}>
-            ✅ {(result.ecgPoints?.length ?? 0).toLocaleString()}개 샘플 · {sampleRate}Hz · 분석 완료
+            ✅ 분석 완료
           </div>
 
           {chartData.length > 0 && (

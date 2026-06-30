@@ -27,6 +27,7 @@ import { RiskGauge } from "../components/charts/RiskGauge";
 // 공통 UI: 카드(겉모양 통일용)
 import { Card } from "../components/ui";
 import { COLORS } from "../styles/tokens";
+import { ARRHYTHMIA_CLASS_LABEL } from "../constants/arrhythmiaLabels";
 
 interface Analysis {
   riskScore: number;
@@ -58,11 +59,6 @@ const RISK_META = {
   high: { label: "위험", color: COLORS.danger,  bg: COLORS.dangerBg,  border: COLORS.dangerBorder },
   mid:  { label: "주의", color: COLORS.warning, bg: COLORS.warningBg, border: COLORS.warningBorder },
   low:  { label: "양호", color: COLORS.safe,    bg: COLORS.safeBg,    border: COLORS.safeBorder },
-};
-
-const CLASS_LABEL: Record<string, string> = {
-  N: "정상 (N)", SVEB: "상심실성 이소박동 (SVEB)",
-  VEB: "심실성 이소박동 (VEB)", F: "융합박동 (F)", Q: "판별불가 (Q)",
 };
 
 export function MeasurementDetailPage() {
@@ -198,9 +194,6 @@ export function MeasurementDetailPage() {
       {/* ───────────── ECG 파형 ───────────── */}
       {chartData.length > 0 ? (
         <div>
-          <div className="text-gray-500 font-bold mb-2" style={{ fontSize: "0.95rem" }}>
-            {chartData.length.toLocaleString()}개 샘플 · {sampleRate}Hz
-          </div>
           <ECGChart data={chartData} rPeaks={rPeakTimes} zoom={1} sampleRate={sampleRate} />
         </div>
       ) : (
@@ -225,10 +218,10 @@ export function MeasurementDetailPage() {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <StatCard label="심박수" value={`${analysis.heartRate ?? 0} bpm`} />
-            <StatCard label="부정맥 분류" value={CLASS_LABEL[analysis.arrhythmiaClass] ?? analysis.arrhythmiaClass ?? "—"} small />
+            <StatCard label="부정맥 분류" value={ARRHYTHMIA_CLASS_LABEL[analysis.arrhythmiaClass] ?? analysis.arrhythmiaClass ?? "—"} small />
             <StatCard label="부정맥 발생 횟수" value={`${analysis.arrhythmiaCount ?? 0}회`} />
             <StatCard
-              label="심방세동 (AF)"
+              label="심방세동"
               value={analysis.afDetected ? `감지됨 (${(analysis.afProb * 100).toFixed(1)}%)` : "미감지"}
               highlight={analysis.afDetected}
             />

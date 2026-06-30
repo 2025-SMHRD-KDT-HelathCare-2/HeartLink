@@ -168,7 +168,7 @@ export function WeeklyRiskDistributionChart({ data }: { data: Array<{ day: strin
   );
 }
 
-// HRV 주간 추이 (RMSSD + SDNN)
+// HRV 주간 추이 (심박변이도)
 export function HRVTrendChart({ data }: { data: Array<{ day: string; rmssd: number; sdnn: number }> }) {
   return (
     <div className={styles.card}>
@@ -183,9 +183,9 @@ export function HRVTrendChart({ data }: { data: Array<{ day: string; rmssd: numb
             <Tooltip />
             <Legend />
             <Line type="monotone" dataKey="rmssd" stroke={COLORS.primary} strokeWidth={2.5}
-              dot={{ r: 4 }} isAnimationActive={false} name="RMSSD" />
+              dot={{ r: 4 }} isAnimationActive={false} name="심박변이도(단기)" />
             <Line type="monotone" dataKey="sdnn" stroke={COLORS.primary} strokeWidth={2.5}
-              dot={{ r: 4 }} isAnimationActive={false} name="SDNN" strokeDasharray="5 5" />
+              dot={{ r: 4 }} isAnimationActive={false} name="심박변이도(전체)" strokeDasharray="5 5" />
           </LineChart>
         </ResponsiveContainer>
       </div>

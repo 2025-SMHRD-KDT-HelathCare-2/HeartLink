@@ -13,12 +13,13 @@ export const RISK_COLOR_MAP: Record<string, string> = {
 };
 
 // 부정맥 종류별 색(도넛/범례). 기존 ARRHYTHMIA_COLORS 대체.
+// N(정상)은 청록, 나머지는 위험도 톤 + 회색을 순서대로 배정해 항목별로 색이 겹치지 않게 함.
 export const ARRHYTHMIA_COLORS = [
-  COLORS.primary,
   COLORS.primary,
   COLORS.danger,
   COLORS.warning,
   COLORS.safe,
+  "#9ca3af",
 ];
 
 // 위험도 3단계 범례 공통 데이터 (양호/주의/위험)

@@ -5,13 +5,17 @@
 //
 // [성능 최적화 포인트 — 보이는 모양/동작은 동일]
 //   1) 큰 파형을 LTTB 다운샘플링으로 "화면 폭 픽셀 수" 정도까지 줄입니다.
-//      → 점 2,500개를 ~800개로 줄여도 심전도 모양은 거의 그대로,
+//      → 점 2,500개를 ~800개로 줄여도 심전도 모양은 거의그대로,
 //        recharts 가 그릴 DOM/계산량은 크게 줄어 렌더가 빨라집니다.
 //   2) slice / filter / 다운샘플 결과를 useMemo 로 감싸 불필요한 재계산을 막습니다.
 //   페이지네이션/줌/reveal 로직은 100% 동일합니다.
+//
+// [멘토링 반영]
+//   - y축에 숫자 눈금(mV) 여러 개를 나열하는 대신, 실제 병원 ECG 모니터처럼
+//     "캘리브레이션 마커(꺾쇠 모양 펄스, 1mV 기준선)" 하나만 표시합니다.
 // ============================================================================
 import {
-  LineChart, Line, XAxis, YAxis, Tooltip,
+  LineChart, Line, XAxis, Tooltip,
   ResponsiveContainer, ReferenceLine
 } from "recharts";
 import { useMemo, useState } from "react";
@@ -37,6 +41,9 @@ const SECONDS_PER_PAGE = 10;
 // 화면 폭이 대략 600~900px 이므로, 그 이상은 눈에 안 보이는 점이라 줄여도 무방합니다.
 const MAX_POINTS_PER_PAGE = 800;
 
+// 캘리브레이션 마커(꺾쇠) 크기 — 1mV 기준
+const CALIBRATION_MV = 1;
+
 export function ECGChart({ data, rPeaks, zoom = 1, revealPercent, sampleRate: _sampleRate = 250 }: ECGChartProps) {
   // zoom 에 맞춘 기준 데이터 — slice 결과를 메모이즈
   const baseData = useMemo(() => {
@@ -56,7 +63,7 @@ export function ECGChart({ data, rPeaks, zoom = 1, revealPercent, sampleRate: _s
   const totalDuration = revealedData.length > 0
     ? revealedData[revealedData.length - 1].x
     : 0;
-  const totalPages = Math.max(1, Math.ceil(totalDuration / SECONDS_PER_PAGE));
+  const totalPages = Math.max(1, Math.ceil(totalDuration /SECONDS_PER_PAGE));
 
   const [page, setPage] = useState(0);
   const safePage = Math.min(page, totalPages - 1);
@@ -71,17 +78,29 @@ export function ECGChart({ data, rPeaks, zoom = 1, revealPercent, sampleRate: _s
     return lttbDownsample(sliced, MAX_POINTS_PER_PAGE);
   }, [revealedData, pageStartX, pageEndX]);
 
-  // R-peak 중 현재 페이지 범위에 드는 것만 — filter 결과 메모이즈
+  // R-peak 중 현재 페이지 범위에 드는 것만 — filter 결과메모이즈
   const visiblePeaks = useMemo(
     () => rPeaks.filter(x => x >= pageStartX && x < pageEndX),
     [rPeaks, pageStartX, pageEndX]
   );
 
+  // y축 표시 범위 계산 (캘리브레이션 마커 높이를 데이터 범위에 맞추기 위함)
+  const yDomain = useMemo(() => {
+    if (pageData.length === 0) return [-1, 1];
+    let min = Infinity, max = -Infinity;
+    for (const d of pageData) {
+      if (d.y < min) min = d.y;
+      if (d.y > max) max = d.y;
+    }
+    const pad = (max - min) * 0.1 || 0.5;
+    return [min - pad, max + pad];
+  }, [pageData]);
+
   return (
     <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-bold text-sub" style={{ color: COLORS.primary }}>심장 뛰는 모양 그래프</h3>
-        <span className="text-gray-400 font-bold" style={{ fontSize: "0.95rem" }}>
+        <h3 className="font-bold text-sub" style={{ color:COLORS.primary }}>심장 뛰는 모양 그래프</h3>
+        <span className="text-gray-400 font-bold" style={{fontSize: "0.95rem" }}>
           {safePage + 1} / {totalPages} 페이지
         </span>
       </div>
@@ -90,9 +109,12 @@ export function ECGChart({ data, rPeaks, zoom = 1, revealPercent, sampleRate: _s
       <div className={styles.plotArea}>
         <div className={styles.gridBackground} />
 
-        <div className={styles.chartLayer}>
+        <div className={styles.chartLayer} style={{ position: "relative" }}>
+          {/* 캘리브레이션 마커(꺾쇠) — y축 숫자 눈금 대신 1mV 기준 펄스 표시 */}
+          <CalibrationMark />
+
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={pageData} margin={{ top: 5, right: 10, left: -20, bottom: 25 }}>
+            <LineChart data={pageData} margin={{ top: 5, right: 10, left: 10, bottom: 25 }}>
               <XAxis
                 dataKey="x"
                 type="number"
@@ -102,7 +124,6 @@ export function ECGChart({ data, rPeaks, zoom = 1, revealPercent, sampleRate: _s
                 tickFormatter={v => `${v.toFixed(0)}s`}
                 stroke={CHART_AXIS.axisStroke}
               />
-              <YAxis tick={CHART_AXIS.tick} stroke={CHART_AXIS.axisStroke} />
               <Tooltip
                 formatter={(val) => [`${Number(val).toFixed(3)} mV`, "진폭"]}
                 labelFormatter={l => `${Number(l).toFixed(2)}초`}
@@ -162,9 +183,39 @@ export function ECGChart({ data, rPeaks, zoom = 1, revealPercent, sampleRate: _s
         </div>
         <div className="flex items-center gap-2">
           <div className={styles.legendGridBox} />
-          <span>ECG 격자 (대/소)</span>
+          <span>심전도 격자 (대/소)</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <svg width="14" height="20" viewBox="0 0 14 20">
+            <path d="M2 18 L2 8 L7 8 L7 2 L12 2 L12 18" fill="none" stroke={COLORS.muted ?? "#6b7280"} strokeWidth="2" />
+          </svg>
+          <span>{CALIBRATION_MV}mV 기준선</span>
         </div>
       </div>
+    </div>
+  );
+}
+
+// 병원 모니터 스타일 캘리브레이션 펄스(꺾쇠 모양) — 차트 좌측 상단에 고정 표시
+function CalibrationMark() {
+  return (
+    <div
+      style={{
+        position: "absolute",
+        top: 5,
+        left: 4,
+        zIndex: 1,
+        pointerEvents: "none",
+      }}
+    >
+      <svg width="20" height="40" viewBox="0 0 20 40">
+        <path
+          d="M2 35 L2 20 L10 20 L10 5 L18 5 L18 35"
+          fill="none"
+          stroke={COLORS.muted ?? "#9ca3af"}
+          strokeWidth="2"
+        />
+      </svg>
     </div>
   );
 }
