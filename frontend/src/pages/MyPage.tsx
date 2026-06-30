@@ -10,6 +10,12 @@
 //   2) 탭 토글의 활성 탭, 질병 칩, 안내/상태 색을 tokens.ts(COLORS) 로 정리
 //   3) 보호자 요청 배지(빨간 점) / 수락 버튼을 토큰 색상으로 통일
 //   4) 카드/모달은 기존 공용 <Card>/<Button> 유지
+//
+// [추가 — 닉네임 수정]
+//   - "건강 정보 수정" 탭, 기저질환 카드 아래에 닉네임 수정 카드를 별도로 둠.
+//   - 기저질환과 별개로 자체 저장 버튼을 가지며, 저장 즉시 AuthContext의
+//     updateNickname()으로 전역 상태를 갱신해 헤더/사용자·보호자 화면에 바로 반영됨.
+//   - 백엔드 PATCH /auth/me 가 nickname 필드를 받아 처리한다고 가정.
 // =============================================================================
 
 import { useState, useEffect } from "react";
@@ -17,7 +23,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import {
   Save, Check, UserCheck, UserX, Heart, Clock, Bell,
-  AlertTriangle, LogOut, Loader2, LinkIcon,
+  AlertTriangle, LogOut, Loader2, LinkIcon, Pencil,
 } from "lucide-react";
 import { getPendingRequests, acceptRequest, rejectRequest, disconnectRelation } from "../api/guardianApi";
 import api from "../api/authApi";
@@ -75,12 +81,23 @@ function WithdrawModal({ onConfirm, onCancel, processing }:
 
 export function MyPage() {
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user, logout, updateNickname } = useAuth();
   const [tab, setTab] = useState<Tab>("profile"); // 현재 탭
 
   const [diseases, setDiseases] = useState<string[]>([]); // 선택된 질환
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  // ── 닉네임 수정 상태 ──
+  const [nicknameInput, setNicknameInput] = useState((user as any)?.nickname ?? "");
+  const [nicknameSaving, setNicknameSaving] = useState(false);
+  const [nicknameSaved, setNicknameSaved] = useState(false);
+  const [nicknameError, setNicknameError] = useState("");
+
+  // user가 나중에 채워지는 타이밍(새로고침 등)에도 입력칸 초기값을 맞춰줌
+  useEffect(() => {
+    setNicknameInput((user as any)?.nickname ?? "");
+  }, [(user as any)?.nickname]);
 
   const [showWithdraw, setShowWithdraw] = useState(false);
   const [withdrawing, setWithdrawing] = useState(false);
@@ -136,6 +153,32 @@ export function MyPage() {
       console.error("저장 실패", err);
     } finally {
       setSaving(false);
+    }
+  };
+
+  // 닉네임 저장 — 기저질환과 별개로 독립적으로 저장됨
+  const handleSaveNickname = async () => {
+    const trimmed = nicknameInput.trim();
+    if (!trimmed) {
+      setNicknameError("닉네임을 입력해 주세요.");
+      return;
+    }
+    if (trimmed.length > 50) {
+      setNicknameError("닉네임은 50자 이하로 입력해 주세요.");
+      return;
+    }
+    setNicknameError("");
+    setNicknameSaving(true);
+    try {
+      await api.patch("/auth/me", { nickname: trimmed });
+      updateNickname(trimmed); // 전역 상태 즉시 갱신 → 헤더/보호자 화면 등에 바로 반영
+      setNicknameSaved(true);
+      setTimeout(() => setNicknameSaved(false), 2000);
+    } catch (err) {
+      console.error("닉네임 저장 실패", err);
+      setNicknameError("닉네임 저장에 실패했어요. 잠시 후 다시 시도해 주세요.");
+    } finally {
+      setNicknameSaving(false);
     }
   };
 
@@ -235,6 +278,50 @@ export function MyPage() {
                 );
               })}
             </div>
+          </Card>
+
+          {/* ───────── 닉네임 수정 카드 — 기저질환과 별개로 독립 저장 ───────── */}
+          <Card padding="lg">
+            <CardTitle className="font-black mb-2">닉네임</CardTitle>
+            <p className="text-gray-500 mb-4 font-bold text-small">
+              사용자/보호자 화면에 표시되는 이름이에요.
+            </p>
+            <div className="flex items-center gap-3">
+              <div className="relative flex-1">
+                <Pencil className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  value={nicknameInput}
+                  onChange={e => setNicknameInput(e.target.value)}
+                  maxLength={50}
+                  placeholder="닉네임을 입력하세요"
+                  className="w-full pl-11 pr-4 py-3 rounded-xl border-2 font-bold text-body outline-none transition-colors"
+                  style={{ borderColor: nicknameError ? COLORS.danger : COLORS.border }}
+                  onFocus={e => { e.currentTarget.style.borderColor = COLORS.primary; }}
+                  onBlur={e => { e.currentTarget.style.borderColor = nicknameError ? COLORS.danger : COLORS.border; }}
+                />
+              </div>
+              <Button
+                type="button"
+                variant="gradient"
+                size="md"
+                onClick={handleSaveNickname}
+                disabled={nicknameSaving || nicknameInput.trim() === ((user as any)?.nickname ?? "")}
+              >
+                {nicknameSaved ? (
+                  <><Check className="w-5 h-5" />완료</>
+                ) : nicknameSaving ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  "저장"
+                )}
+              </Button>
+            </div>
+            {nicknameError && (
+              <p className="font-bold text-small mt-2" style={{ color: COLORS.danger }}>
+                {nicknameError}
+              </p>
+            )}
           </Card>
 
           {/* 저장 버튼: 상태별로 '저장하기 / 저장 중 / 저장 완료' */}
