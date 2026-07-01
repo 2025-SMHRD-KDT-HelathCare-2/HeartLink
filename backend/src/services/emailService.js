@@ -1,3 +1,4 @@
+// [서비스] 이메일 발송 — Nodemailer + SMTP (비밀번호 재설정 인증번호 등)
 import nodemailer from 'nodemailer';
 
 const transporter = nodemailer.createTransport({

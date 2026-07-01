@@ -1,3 +1,4 @@
+// [미들웨어] 전역 에러 핸들러 — 에러 종류별(ValidationError, JWT 만료 등) 한국어 응답 처리
 export default (err, req, res, next) => {
   console.error(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
   console.error(err.stack);

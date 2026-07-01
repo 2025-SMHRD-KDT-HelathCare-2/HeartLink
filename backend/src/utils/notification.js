@@ -1,3 +1,4 @@
+// [유틸] FCM 푸시 발송 — sendPushNotification(재시도 포함), sendRiskNotification(위험도별 야간 지연 처리)
 import admin from '../config/firebase.js';
 
 function isNightTime() {

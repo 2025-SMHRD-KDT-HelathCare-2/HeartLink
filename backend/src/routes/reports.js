@@ -1,3 +1,4 @@
+// [라우터] /api/reports — 리포트 생성 요청 및 조회, TTS 음성 제공
 import { Router } from 'express';
 import auth from '../middlewares/auth.js';
 import {

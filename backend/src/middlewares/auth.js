@@ -1,3 +1,4 @@
+// [미들웨어] JWT 토큰 검증 — 로그인 여부 확인 (모든 인증 필요 라우터에 적용)
 import jwt from 'jsonwebtoken';
 
 export default (req, res, next) => {

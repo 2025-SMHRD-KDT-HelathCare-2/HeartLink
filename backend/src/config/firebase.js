@@ -1,3 +1,4 @@
+// [설정] Firebase Admin SDK 초기화 — FCM 푸시 알림 발송용
 import { createRequire } from 'module';
 import admin from 'firebase-admin';
 

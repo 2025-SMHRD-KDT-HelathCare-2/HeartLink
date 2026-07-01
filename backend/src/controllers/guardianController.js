@@ -1,3 +1,4 @@
+// [컨트롤러] 보호자 관계 — 등록 요청, 수락/거절, 해제, 환자 목록 및 최신 위험도 조회
 import GuardianRelation from '../models/GuardianRelation.js';
 import User from '../models/User.js';
 import Measurement from '../models/Measurement.js';

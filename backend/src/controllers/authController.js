@@ -1,3 +1,4 @@
+// [컨트롤러] 인증 — 회원가입, 로그인, 토큰 재발급, 아이디/비밀번호 찾기, 회원 탈퇴
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';

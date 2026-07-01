@@ -1,3 +1,4 @@
+// [컨트롤러] 리포트 — 일간/주간 리포트 생성(on-demand), 조회, TTS 음성 변환
 import Report from '../models/Report.js';
 import AnalysisResult from '../models/AnalysisResult.js';
 import Measurement from '../models/Measurement.js';

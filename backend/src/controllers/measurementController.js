@@ -1,3 +1,4 @@
+// [컨트롤러] ECG 측정 — 파일 업로드, AI 분석 요청, 분석 완료 후 위험도별 알림 발송
 import Measurement from '../models/Measurement.js';
 import AnalysisResult from '../models/AnalysisResult.js';
 import Notification from '../models/Notification.js';

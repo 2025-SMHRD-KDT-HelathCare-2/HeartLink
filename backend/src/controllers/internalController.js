@@ -1,3 +1,4 @@
+// [컨트롤러] 내부 API — AI 서버 콜백 수신(분석 결과 저장), 위험도 상 시 SMS 발송
 import Measurement from '../models/Measurement.js';
 import AnalysisResult from '../models/AnalysisResult.js';
 import GuardianRelation from '../models/GuardianRelation.js';

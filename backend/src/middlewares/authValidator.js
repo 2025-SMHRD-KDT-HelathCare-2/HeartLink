@@ -1,4 +1,4 @@
-// HeartLink\backend\src\middlewares\authValidator.js
+// [미들웨어] 회원가입·로그인 입력값 유효성 검사 규칙 (express-validator)
 import { body, validationResult } from 'express-validator';
 
 // 검증(유효성 검사) 결과를 확인해서, 문제가 있으면 첫 번째 오류 메시지를 응답으로 돌려줍니다.

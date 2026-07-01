@@ -1,3 +1,4 @@
+// [서비스] AI 서버 통신 — ECG 분석(preview/analyze), 리포트 생성, TTS 요청
 import axios from 'axios';
 import FormData from 'form-data';
 

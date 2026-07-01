@@ -19,7 +19,7 @@
 
 import { useState, useEffect } from "react";
 import { Bell, AlertTriangle, AlertCircle, Info, FileText, Filter } from "lucide-react";
-import { getGuardianNotifications, markNotificationRead, type AppNotification } from "../api/notificationApi";
+import { getGuardianNotifications, markNotificationRead, type GuardianUserGroup } from "../api/notificationApi";
 import { COLORS } from "../styles/tokens";
 // 공통 UI: 카드(겉모양 통일용)
 import { Card } from "../components/ui";
@@ -47,34 +47,39 @@ interface NotificationsPageProps {
 }
 
 export function NotificationsPage({ onViewReport }: NotificationsPageProps) {
-  const [items, setItems] = useState<AppNotification[]>([]);
+  const [groups, setGroups] = useState<GuardianUserGroup[]>([]);
   const [loading, setLoading] = useState(true);
-  const [memberFilter, setMemberFilter] = useState("전체"); // 사용자 필터
-  const [levelFilter, setLevelFilter] = useState("전체");   // 위험도 필터
+  const [memberFilter, setMemberFilter] = useState("전체");
+  const [levelFilter, setLevelFilter] = useState("전체");
 
-  // 화면이 열리면 알림 목록을 불러옵니다.
   useEffect(() => {
     getGuardianNotifications()
-      .then(data => setItems(data))
+      .then(data => setGroups(data))
       .catch(err => console.error("알림 조회 실패", err))
       .finally(() => setLoading(false));
   }, []);
 
   // 알림 카드를 누르면 즉시 화면에서 읽음 처리 + 서버에도 반영
   const handleMarkRead = (id: string) => {
-    setItems(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
+    setGroups(prev => prev.map(g => ({
+      ...g,
+      notifications: g.notifications.map(n => n.id === id ? { ...n, isRead: true } : n),
+    })));
     markNotificationRead(id).catch(err => console.error("읽음 처리 실패", err));
   };
 
-  // 필터 버튼에 쓸 '사용자 이름' 목록 (중복 제거)
-  const members = ["전체", ...Array.from(new Set(items.map(i => i.memberName ?? "").filter(Boolean)))];
+  // 연동된 모든 사용자 이름 목록 (알림 없는 사용자도 포함)
+  const members = ["전체", ...groups.map(g => g.memberName)];
 
-  // 현재 선택된 필터에 맞는 알림만 추립니다.
-  const filtered = items.filter(n => {
-    if (memberFilter !== "전체" && (n.memberName ?? "") !== memberFilter) return false;
-    if (levelFilter !== "전체" && n.level !== levelFilter) return false;
-    return true;
-  });
+  // memberFilter로 보여줄 그룹 선택 후, levelFilter로 각 그룹 내 알림 필터링
+  const visibleGroups = groups
+    .filter(g => memberFilter === "전체" || g.memberName === memberFilter)
+    .map(g => ({
+      ...g,
+      notifications: levelFilter === "전체"
+        ? g.notifications
+        : g.notifications.filter(n => n.level === levelFilter),
+    }));
 
   // ───────────────────────────────────────────────────────────
   // [도우미] 필터 버튼 스타일.
@@ -145,65 +150,68 @@ export function NotificationsPage({ onViewReport }: NotificationsPageProps) {
       </Card>
 
       {loading ? (
-        // 로딩 스피너 (테두리 색만 토큰으로)
         <div className="flex justify-center py-16">
           <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
         </div>
-      ) : filtered.length === 0 ? (
-        // 알림이 없거나, 필터에 걸리는 게 없을 때 — 공통 카드로 빈 상태 표시
+      ) : visibleGroups.length === 0 ? (
         <Card padding="lg" className="text-center py-12">
           <Bell className="w-12 h-12 mx-auto text-gray-300 mb-3" />
-          <p className="text-gray-400 font-bold text-[1.1rem]">
-            {items.length === 0 ? "최근 7일간 알림이 없습니다." : "해당 조건의 알림이 없습니다."}
-          </p>
+          <p className="text-gray-400 font-bold text-[1.1rem]">연결된 사용자가 없습니다.</p>
         </Card>
       ) : (
-        <div className="space-y-3">
-          {filtered.map(n => {
-            const meta = LEVEL_META[n.level as RiskLevel] ?? LEVEL_META["하"];
-            const Icon = meta.icon;
-            return (
-              <div
-                key={n.id}
-                onClick={() => handleMarkRead(n.id)}
-                className={`rounded-2xl p-5 border-2 cursor-pointer transition-all ${n.isRead ? "bg-white border-gray-100" : ""}`}
-                // 안 읽은 알림은 위험도별 색 배경/테두리 → 동적 색상이라 인라인 style
-                style={!n.isRead ? { backgroundColor: meta.bg, borderColor: meta.border } : {}}
-              >
-                <div className="flex items-start gap-3">
-                  <Icon className="w-7 h-7 shrink-0 mt-0.5" style={{ color: meta.color }} />
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <span className="text-gray-800 font-black text-[1.1rem]">{n.memberName}</span>
-                      <span className="px-3 py-1 rounded-full text-white font-bold text-[0.8rem]" style={{ backgroundColor: meta.color }}>
-                        {meta.label}
-                      </span>
-                      {/* 안 읽음 표시 빨간 점 — 토큰 색 */}
-                      {!n.isRead && (
-                        <span
-                          className="w-2.5 h-2.5 rounded-full"
-                          style={{ backgroundColor: COLORS.danger }}
-                        />
-                      )}
-                      <span className="text-gray-400 font-bold ml-auto text-[0.9rem]">{timeAgo(n.createdAt)}</span>
-                    </div>
-                    <p className="text-gray-700 font-bold leading-relaxed mb-2 text-[1.05rem]">{n.message}</p>
+        <div className="space-y-6">
+          {visibleGroups.map(group => (
+            <div key={group.userId}>
+              {/* 사용자 이름 헤더 */}
+              <p className="text-gray-500 font-bold text-[0.95rem] mb-2 px-1">{group.memberName}</p>
 
-                    {/* 위험(상) 알림에만 '리포트 보기' 버튼.
-                        카드 클릭(읽음 처리)과 겹치지 않게 stopPropagation 사용 */}
-                    {n.level === "상" && onViewReport && (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); onViewReport(); }}
-                        className="flex items-center gap-1.5 text-primary font-bold hover:underline text-tiny"
+              {group.notifications.length === 0 ? (
+                <Card padding="lg" className="text-center py-6">
+                  <Bell className="w-8 h-8 mx-auto text-gray-300 mb-2" />
+                  <p className="text-gray-400 font-bold text-small">최근 7일간 위험 알림이 없어요.</p>
+                </Card>
+              ) : (
+                <div className="space-y-3">
+                  {group.notifications.map(n => {
+                    const meta = LEVEL_META[n.level as RiskLevel] ?? LEVEL_META["하"];
+                    const Icon = meta.icon;
+                    return (
+                      <div
+                        key={n.id}
+                        onClick={() => handleMarkRead(n.id)}
+                        className={`rounded-2xl p-5 border-2 cursor-pointer transition-all ${n.isRead ? "bg-white border-gray-100" : ""}`}
+                        style={!n.isRead ? { backgroundColor: meta.bg, borderColor: meta.border } : {}}
                       >
-                        <FileText className="w-4 h-4" />리포트 보기
-                      </button>
-                    )}
-                  </div>
+                        <div className="flex items-start gap-3">
+                          <Icon className="w-7 h-7 shrink-0 mt-0.5" style={{ color: meta.color }} />
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                              <span className="px-3 py-1 rounded-full text-white font-bold text-[0.8rem]" style={{ backgroundColor: meta.color }}>
+                                {meta.label}
+                              </span>
+                              {!n.isRead && (
+                                <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS.danger }} />
+                              )}
+                              <span className="text-gray-400 font-bold ml-auto text-tiny">{timeAgo(n.createdAt)}</span>
+                            </div>
+                            <p className="text-gray-700 font-bold leading-relaxed mb-2 text-[1.05rem]">{n.message}</p>
+                            {n.level === "상" && onViewReport && (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); onViewReport(); }}
+                                className="flex items-center gap-1.5 text-primary font-bold hover:underline text-tiny"
+                              >
+                                <FileText className="w-4 h-4" />리포트 보기
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-              </div>
-            );
-          })}
+              )}
+            </div>
+          ))}
         </div>
       )}
     </div>
