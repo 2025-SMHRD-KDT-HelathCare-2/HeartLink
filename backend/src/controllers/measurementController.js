@@ -7,15 +7,17 @@ import * as aiService from '../services/aiService.js';
 import { sendHighRiskSMS } from './internalController.js';
 import { sendPushNotification } from '../utils/notification.js';
 
+// 사용자 FCM 발송 메세지
 const RISK_MESSAGES = {
-  high: '심장이 불규칙하게 뛰는 증상이 감지됐어요. 병원 방문을 권해 드려요.',
-  mid:  '심장 박동이 평소보다 조금 빨랐어요. 무리하지 말고 쉬어 주세요.',
+  high: '심장이 불규칙하게 뛰는 증상이 감지됐어요. 가능한 빨리 병원 방문을 권해 드려요.',
+  mid:  '오늘은 무리하지 마시고 수 일 내에 병원 방문을 권해 드려요.',
   low:  '오늘 심장 상태는 양호했어요. 좋은 컨디션을 유지하고 계세요.',
 };
 
+// 보호자 FCM 발송 메세지 (nickname은 호출 시점에 삽입)
 const GUARDIAN_RISK_MESSAGES = {
-  high: '즉시 상태를 확인하고 필요 시 병원 방문을 도와주세요.',
-  mid:  '어르신 상태를 한번 확인해 보세요.',
+  high: (nickname) => `즉시 ${nickname}님의 상태를 확인하고 필요 시 병원 방문을 도와주세요.`,
+  mid:  (nickname) => `${nickname}님의 상태를 한번 확인해 보세요.`,
 };
 
 // AI 서버 응답 후 최초 조회 1회만 전달하기 위한 서버 메모리 캐시 (DB 미저장)
@@ -146,22 +148,19 @@ export const uploadECG = async (req, res, next) => {
             sendPushNotification(
               token,
               `${user.nickname ?? '어르신'}님에게 이상이 감지됐어요`,
-              GUARDIAN_RISK_MESSAGES[riskLevel] ?? GUARDIAN_RISK_MESSAGES.mid,
+              (GUARDIAN_RISK_MESSAGES[riskLevel] ?? GUARDIAN_RISK_MESSAGES.mid)(user.nickname ?? '어르신'),
               { type: 'measurement', measurementId: measurement._id.toString(), userId: req.user.id.toString() }
             ).catch(err => console.error('보호자 FCM 실패:', err.message));
           }
         }
       }
 
-      // 사용자 FCM: 모든 risk level에서 측정 완료 알림 발송
-      if (user?.deviceToken) {
-        const isHighRisk = riskLevel === 'high';
+      // 사용자 FCM: 위험도 상일 때만 발송
+      if (riskLevel === 'high' && user?.deviceToken) {
         sendPushNotification(
           user.deviceToken,
-          isHighRisk ? '⚠️ 위험 신호가 감지되었어요' : '측정이 완료됐어요',
-          isHighRisk
-            ? '심장이 불규칙하게 뛰는 증상이 있어요. 내 건강 결과를 확인해 주세요.'
-            : RISK_MESSAGES[riskLevel],
+          '⚠️ 위험 신호가 감지되었어요',
+          RISK_MESSAGES.high,
           { type: 'measurement', measurementId: measurement._id.toString() }
         ).catch(err => console.error('사용자 FCM 실패:', err.message));
       }
