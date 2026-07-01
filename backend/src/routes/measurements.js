@@ -1,3 +1,4 @@
+// [라우터] /api/measurements — ECG 파일 업로드 및 측정 결과 조회
 import { Router } from 'express';
 import auth from '../middlewares/auth.js';
 import upload from '../middlewares/upload.js';

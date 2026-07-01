@@ -1,3 +1,4 @@
+// [서비스] SMS 발송 — Solapi API (위험 신호 알림, 휴대폰 인증번호 등, 재시도 3회)
 import axios from 'axios';
 import crypto from 'crypto';
 

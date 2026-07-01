@@ -143,9 +143,8 @@ async function generateWeeklyForUser(user, periodStart, periodEnd) {
 }
 
 export function startWeeklyReportJob() {
-  // 매주 일요일 오전 6시 KST
-  cron.schedule('0 6 * * 0', async () => {
-    console.log('[주간 리포트] 자동 생성 시작...');
+  // 매주 일요일 오후 6시 KST
+  cron.schedule('0 18 * * 0', async () => {
 
     const now        = new Date();
     const periodEnd  = new Date(now);

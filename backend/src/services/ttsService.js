@@ -1,3 +1,4 @@
+// [서비스] TTS(음성 변환) — Google Cloud Text-to-Speech API (리포트 읽어주기)
 import axios from 'axios';
 
 // 프론트에서 넘어오는 speedIdx (0=느리게, 1=보통, 2=빠르게) → Google speakingRate

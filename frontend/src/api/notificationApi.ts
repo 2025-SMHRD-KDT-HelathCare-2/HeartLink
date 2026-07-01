@@ -3,25 +3,39 @@ import api from "./authApi";
 
 export type RiskLevel = "상" | "중" | "하";
 
+// 사용자 본인 알림 항목
 export interface AppNotification {
   id: string;
   level: RiskLevel;
   message: string;
-  createdAt: string;      // ISO string
-  memberName?: string;    // 보호자용: 어느 사용자 알림인지
+  createdAt: string;
   isRead: boolean;
 }
 
+// 보호자 알림 — 사용자별 그룹 (알림 없는 사용자도 포함)
+export interface NotificationItem {
+  id: string;
+  level: RiskLevel;
+  message: string;
+  createdAt: string;
+  isRead: boolean;
+}
+
+export interface GuardianUserGroup {
+  userId: string;
+  memberName: string;
+  notifications: NotificationItem[];
+}
+
 // ===== 사용자 본인 알림 =====
-// 주간(최근 7일) 알림 목록
 export async function getMyNotifications(): Promise<AppNotification[]> {
   const { data } = await api.get("/notifications");
   return data;
 }
 
 // ===== 보호자 알림 =====
-// 연결된 사용자들의 알림 (요약 현황: 일일 / 주간 알림함: 주간)
-export async function getGuardianNotifications(): Promise<AppNotification[]> {
+// 연동된 모든 사용자를 기준으로 반환 (알림 없는 사용자도 항상 포함)
+export async function getGuardianNotifications(): Promise<GuardianUserGroup[]> {
   const { data } = await api.get("/notifications/guardian");
   return data;
 }

@@ -1,3 +1,4 @@
+// [컨트롤러] 소셜 로그인 — Google/Naver/Kakao OAuth2 처리 및 신규 가입 완료
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';

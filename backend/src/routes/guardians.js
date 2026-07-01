@@ -1,3 +1,4 @@
+// [라우터] /api/guardians — 보호자 관계 관리 (요청, 수락/거절, 해제, 환자 목록)
 import { Router } from 'express';
 import auth from '../middlewares/auth.js';
 import {

@@ -1,3 +1,4 @@
+// [라우터] /api/auth — 인증 관련 엔드포인트 (회원가입, 로그인, 소셜 로그인, 아이디/비밀번호 찾기)
 import { Router } from 'express';
 import {
   register, login, refreshToken, getToken, logout, getMe, updateMe, deleteMe, saveDeviceToken,
