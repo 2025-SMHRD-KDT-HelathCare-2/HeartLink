@@ -1,22 +1,11 @@
-// ReportHistoryPage.tsx
-// ============================================================================
-// 지난 기록 페이지 (측정 이력 + 주간 리포트)  ※ 디자인 리뉴얼 버전
-//
-// [디자인 리뉴얼 포인트]
-//   1) 상단 제목 → 청록→블루 그라데이션 헤더 배너 (<Card variant="gradient">)
-//   2) 필터/목록/주간 리포트 카드 → 공용 <Card> + shadow-card 로 통일
-//   3) 필터 칩, 상태 뱃지 색상을 모두 tokens.ts(COLORS) 로 정리
-//   ※ 필터/페이지네이션/주간 리포트 조회 로직은 100% 동일
-// ============================================================================
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChevronLeft, ChevronRight, Filter, FileText, ChevronRight as ArrowRight, BarChart2, Loader2, AlertCircle } from "lucide-react";
+import { ChevronLeft, ChevronRight, Filter, FileText, ChevronRight as ArrowRight } from "lucide-react";
 import api from "../api/authApi";
 import { toKSTDate, toKSTTime } from "../utils/formatKST";
 import { Card } from "../components/ui";
 import { COLORS } from "../styles/tokens";
 
-// ===== 측정 이력 =====
 interface ReportHistoryItem {
   id: string;
   date: string;
@@ -25,26 +14,10 @@ interface ReportHistoryItem {
   score: number;
 }
 
-// ===== 주간 리포트 =====
-interface WeeklyReportItem {
-  id: string;
-  periodStart: string;
-  periodEnd: string;
-  maxRiskLevel: string;
-  status: "generating" | "completed" | "failed";
-}
-
-// 위험도 색상 → tokens.ts(COLORS)로 일원화
 const LEVEL_META = {
   상: { color: COLORS.danger,  label: "위험" },
   중: { color: COLORS.warning, label: "주의" },
   하: { color: COLORS.safe,    label: "양호" },
-};
-
-const WEEKLY_LEVEL_META: Record<string, { color: string; label: string }> = {
-  high: { color: COLORS.danger,  label: "위험" },
-  mid:  { color: COLORS.warning, label: "주의" },
-  low:  { color: COLORS.safe,    label: "양호" },
 };
 
 const PERIOD_OPTIONS = ["전체", "1주일", "1개월", "3개월", "6개월", "1년"] as const;
@@ -53,18 +26,12 @@ const PAGE_SIZE = 8;
 export function ReportHistoryPage() {
   const navigate = useNavigate();
 
-  // 측정 이력 상태
   const [reports, setReports] = useState<ReportHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [periodFilter, setPeriodFilter] = useState<typeof PERIOD_OPTIONS[number]>("전체");
   const [levelFilter, setLevelFilter] = useState("전체");
   const [page, setPage] = useState(1);
 
-  // 주간 리포트 상태
-  const [weeklyReports, setWeeklyReports] = useState<WeeklyReportItem[]>([]);
-  const [weeklyLoading, setWeeklyLoading] = useState(true);
-
-  // 측정 이력 조회 (기존 로직 동일)
   useEffect(() => {
     (async () => {
       try {
@@ -85,30 +52,6 @@ export function ReportHistoryPage() {
     })();
   }, []);
 
-  // 주간 리포트 조회 (기존 로직 동일)
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await api.get("/reports");
-        const weekly = (res.data || [])
-          .filter((r: any) => r.reportPeriod === "weekly")
-          .map((r: any) => ({
-            id: r._id,
-            periodStart: r.periodStart,
-            periodEnd: r.periodEnd,
-            maxRiskLevel: r.maxRiskLevel ?? "low",
-            status: r.status ?? "completed",
-          }));
-        setWeeklyReports(weekly);
-      } catch (err) {
-        console.error("주간 리포트 조회 실패", err);
-      } finally {
-        setWeeklyLoading(false);
-      }
-    })();
-  }, []);
-
-  // 기간 + 위험도 필터링 (기존 로직 동일)
   const filtered = useMemo(() => {
     const now = new Date();
     return reports.filter(r => {
@@ -128,7 +71,6 @@ export function ReportHistoryPage() {
 
   useEffect(() => { setPage(1); }, [periodFilter, levelFilter]);
 
-  // 선택 토글 칩 스타일 — 선택 시 옅은 청록 배경 + 청록 글씨/테두리
   const chipStyle = (active: boolean) =>
     active
       ? { borderColor: COLORS.primary, backgroundColor: COLORS.primarySoft, color: COLORS.primary }
@@ -137,7 +79,6 @@ export function ReportHistoryPage() {
   return (
     <div className="max-w-3xl mx-auto p-5">
 
-      {/* ───────── 상단 그라데이션 헤더 배너 ───────── */}
       <Card variant="gradient" padding="lg" className="mb-6">
         <h1 className="font-black text-hero leading-tight">지난 기록</h1>
         <p className="mt-2 font-bold text-body opacity-90">
@@ -145,7 +86,6 @@ export function ReportHistoryPage() {
         </p>
       </Card>
 
-      {/* 필터 카드 */}
       <Card padding="lg" className="mb-6">
         <div className="flex items-center gap-2 mb-5">
           <Filter className="w-5 h-5 text-gray-400" />
@@ -181,14 +121,12 @@ export function ReportHistoryPage() {
         </div>
       </Card>
 
-      {/* 측정 이력 개수 */}
       <div className="flex items-center justify-between mb-4">
         <p className="text-gray-600 font-bold text-small">
           총 <span className="text-primary">{filtered.length}</span>개의 기록
         </p>
       </div>
 
-      {/* 측정 이력 목록 */}
       {loading ? (
         <div className="flex items-center justify-center py-16">
           <div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin"
@@ -230,7 +168,6 @@ export function ReportHistoryPage() {
         </div>
       )}
 
-      {/* 페이지네이션 */}
       {!loading && totalPages > 1 && (
         <div className="flex items-center justify-center gap-2 mt-6">
           <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
@@ -246,86 +183,6 @@ export function ReportHistoryPage() {
           </button>
         </div>
       )}
-
-      {/* ===== 주간 리포트 섹션 ===== */}
-      <div className="mt-10">
-        <div className="flex items-center gap-2 mb-4">
-          <BarChart2 className="w-6 h-6 text-primary" />
-          <h2 className="font-black text-primary" style={{ fontSize: "1.5rem" }}>주간 리포트</h2>
-        </div>
-        <p className="text-gray-500 font-bold mb-5 text-small">스케줄러가 자동으로 생성한 주간 분석 리포트예요.</p>
-
-        {weeklyLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin"
-              style={{ borderColor: COLORS.primary, borderTopColor: "transparent" }} />
-          </div>
-        ) : weeklyReports.length === 0 ? (
-          <Card padding="lg" className="py-12 text-center">
-            <BarChart2 className="w-12 h-12 mx-auto text-gray-300 mb-3" />
-            <p className="text-gray-400 font-bold text-[1.1rem]">아직 주간 리포트가 없습니다.</p>
-          </Card>
-        ) : (
-          <div className="space-y-3">
-            {weeklyReports.map(r => {
-              const meta = WEEKLY_LEVEL_META[r.maxRiskLevel] ?? WEEKLY_LEVEL_META.low;
-              const isGenerating = r.status === "generating";
-              const isFailed = r.status === "failed";
-              const isCompleted = r.status === "completed";
-
-              return (
-                <Card
-                  key={r.id}
-                  padding="md"
-                  onClick={() => isCompleted && navigate(`/report-detail/weekly/${r.id}`)}
-                  className={`flex items-center gap-4 text-left transition-all
-                    ${isCompleted ? "hover:shadow-card-hover cursor-pointer" : "cursor-default opacity-70"}`}
-                  onMouseEnter={(e) => { if (isCompleted) e.currentTarget.style.borderColor = COLORS.primary; }}
-                  onMouseLeave={(e) => { if (isCompleted) e.currentTarget.style.borderColor = ""; }}
-                >
-                  {/* 상태 아이콘 (완료=청록, 그 외=회색) */}
-                  <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0"
-                    style={{ backgroundColor: isCompleted ? COLORS.primary : COLORS.faint }}>
-                    {isGenerating
-                      ? <Loader2 className="w-6 h-6 text-white animate-spin" />
-                      : isFailed
-                        ? <AlertCircle className="w-6 h-6 text-white" />
-                        : <BarChart2 className="w-6 h-6 text-white" />}
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <span className="font-black text-gray-800 text-[1.1rem]">
-                        {toKSTDate(r.periodStart)} ~ {toKSTDate(r.periodEnd)}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      {isGenerating && (
-                        <span className="px-3 py-1 rounded-full font-bold text-tiny"
-                          style={{ backgroundColor: COLORS.infoBg, color: COLORS.info }}>
-                          생성 중...
-                        </span>
-                      )}
-                      {isFailed && (
-                        <span className="px-3 py-1 rounded-full font-bold text-tiny"
-                          style={{ backgroundColor: COLORS.dangerBg, color: COLORS.danger }}>
-                          생성 실패
-                        </span>
-                      )}
-                      {isCompleted && (
-                        <span className="px-3 py-1 rounded-full text-white font-bold text-tiny"
-                          style={{ backgroundColor: meta.color }}>
-                          {meta.label}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  {isCompleted && <ArrowRight className="w-5 h-5 text-gray-400 shrink-0" />}
-                </Card>
-              );
-            })}
-          </div>
-        )}
-      </div>
     </div>
   );
 }
