@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 import PhoneVerification from '../models/PhoneVerification.js';
+import { hashToken } from '../utils/tokenHash.js';
 
 const COOKIE_RT_OPTIONS = {
   httpOnly: true,
@@ -171,7 +172,7 @@ export const handleCallback = async (req, res) => {
         await user.save();
       }
       const { token, refreshToken } = issueTokens(user);
-      await User.findByIdAndUpdate(user._id, { refreshToken });
+      await User.findByIdAndUpdate(user._id, { refreshToken: hashToken(refreshToken) });
       res.cookie('refreshToken', refreshToken, COOKIE_RT_OPTIONS);
       return res.redirect(`${frontendUrl}/oauth/callback`);
     }
@@ -244,7 +245,7 @@ export const socialComplete = async (req, res, next) => {
     res.clearCookie('social_pending');
 
     const { token, refreshToken } = issueTokens(newUser);
-    await User.findByIdAndUpdate(newUser._id, { refreshToken });
+    await User.findByIdAndUpdate(newUser._id, { refreshToken: hashToken(refreshToken) });
     res.cookie('refreshToken', refreshToken, COOKIE_RT_OPTIONS);
 
     res.json({ token, user: { email: newUser.email, role: newUser.role } });

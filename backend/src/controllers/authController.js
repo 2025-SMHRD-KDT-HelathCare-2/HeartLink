@@ -1,6 +1,7 @@
 // [컨트롤러] 인증 — 회원가입, 로그인, 토큰 재발급, 아이디/비밀번호 찾기, 회원 탈퇴
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import { hashToken } from '../utils/tokenHash.js';
 import User from '../models/User.js';
 import PhoneVerification from '../models/PhoneVerification.js';
 import PasswordResetCode from '../models/PasswordResetCode.js';
@@ -208,7 +209,7 @@ export const login = async (req, res, next) => {
       { expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '3d' }
     );
 
-    await User.findByIdAndUpdate(user._id, { refreshToken });
+    await User.findByIdAndUpdate(user._id, { refreshToken: hashToken(refreshToken) });
     res.cookie('refreshToken', refreshToken, COOKIE_RT_OPTIONS);
 
     return res.json({
@@ -238,7 +239,7 @@ export const refreshToken = async (req, res, next) => {
     }
 
     const user = await User.findById(decoded.id);
-    if (!user || user.refreshToken !== incomingRT) {
+    if (!user || user.refreshToken !== hashToken(incomingRT)) {
       return res.status(401).json({ message: '유효하지 않은 세션입니다. 다시 로그인해 주세요.' });
     }
 
@@ -254,7 +255,7 @@ export const refreshToken = async (req, res, next) => {
       { expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '3d' }
     );
 
-    await User.findByIdAndUpdate(user._id, { refreshToken: newRefreshToken });
+    await User.findByIdAndUpdate(user._id, { refreshToken: hashToken(newRefreshToken) });
     res.cookie('refreshToken', newRefreshToken, COOKIE_RT_OPTIONS);
 
     return res.json({ token: newToken });
@@ -280,7 +281,7 @@ export const getToken = async (req, res, next) => {
     }
 
     const user = await User.findById(decoded.id);
-    if (!user || user.refreshToken !== incomingRT) {
+    if (!user || user.refreshToken !== hashToken(incomingRT)) {
       return res.status(401).json({ message: '유효하지 않은 세션입니다. 다시 로그인해 주세요.' });
     }
 

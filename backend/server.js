@@ -1,6 +1,8 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import cookieParser from 'cookie-parser';
 import { spawn } from 'child_process';
 import connectDB from './src/config/db.js';
@@ -45,12 +47,24 @@ mcpServer.on('error', (err) => {
 
 process.on('exit', () => mcpServer.kill());
 
+app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
+
 app.use(cors({
   origin: process.env.FRONTEND_URL || 'http://localhost:5173',
   credentials: true,
 }));
 app.use(cookieParser());
 app.use(express.json());
+
+// 전역 요청 제한 (AI 서버 콜백은 내부 시크릿으로 별도 보호되므로 제외)
+app.use(rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => req.path.startsWith('/api/internal'),
+  message: { message: '요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.' },
+}));
 
 app.use('/api/auth', authRouter);
 app.use('/api/measurements', measurementsRouter);
