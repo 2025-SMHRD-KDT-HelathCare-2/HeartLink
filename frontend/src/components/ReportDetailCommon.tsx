@@ -19,6 +19,7 @@ import { Card, Button } from "../components/ui";
 import { COLORS, GRADIENTS } from "../styles/tokens";
 import styles from "./ReportDetailCommon.module.css";
 import { formatArrhythmiaLabel } from "../constants/arrhythmiaLabels";
+import html2canvas from 'html2canvas-pro';
 
 type ReportType = "daily" | "weekly";
 
@@ -156,10 +157,9 @@ export function ReportDetailPage({ mode, memberId }: ReportDetailPageProps) {
   useEffect(() => () => { audioRef.current?.pause(); }, []);
 
   const handleSavePdf = async () => {
-    const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
-    import("html2canvas"),
-    import("jspdf"),
-  ]);
+    // html2canvas-pro는 상단에서 이미 static import 되어 있음 (oklch 색상 지원용).
+    // jsPDF만 동적으로 불러온다.
+    const { default: jsPDF } = await import("jspdf");
 
     if (!captureRef.current || !report) return;
     try {
