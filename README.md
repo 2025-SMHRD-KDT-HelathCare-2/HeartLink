@@ -183,7 +183,7 @@ MongoDB **8개 컬렉션**으로 구성됩니다.
 | 이름 | 역할 | 담당 업무 |
 |------|------|-----------|
 | **주양덕** | 팀장 / PM / DB / Frontend | 프로젝트 일정·역할 관리, 산출물 총괄, 문서 작업, PPT·발표, MongoDB 스키마 설계 및 인덱스 전략, 프론트 회원가입 구현 |
-| **김동건** | Frontend | React + Recharts 기반 보호자/사용자 대시보드, ECG 파형·위험도 시각화 UI, 시니어 친화적 UI 설계, 사용자 화면 구현 |
+| **김동건** | Frontend | React + Recharts 기반 보호자/사용자 대시보드, ECG 파형·위험도 시각화 UI, 시니어 친화적 UI 설계, 사용자 화면 구현, 시연영상 |
 | **문정인** | Backend | 회원가입·대시보드·ECG 파형/위험도 시각화 연동, AI-Server ECG 분석 연동, LLM 리포트 파이프라인, DB 입출력 통괄 등 서버 간 기능별 연결 구현 |
 | **신예은** | AI / Data Modeling | ECG 공개 데이터셋 조사·EDA, ResNet1D 부정맥·AF 분류 모델, HRV 이상 탐지, Gemini+MCP LLM 리포트 파이프라인 |
 
