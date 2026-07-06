@@ -183,8 +183,8 @@ MongoDB **8개 컬렉션**으로 구성됩니다.
 | 이름 | 역할 | 담당 업무 |
 |------|------|-----------|
 | **주양덕** | 팀장 / PM / DB / Frontend | 프로젝트 일정·역할 관리, 산출물 총괄, 문서 작업, PPT·발표, MongoDB 스키마 설계 및 인덱스 전략, 프론트 회원가입 구현 |
-| **문정인** | Backend | 회원가입·대시보드·ECG 파형/위험도 시각화 연동, AI-Server ECG 분석 연동, LLM 리포트 파이프라인, DB 입출력 통괄 등 서버 간 기능별 연결 구현 |
 | **김동건** | Frontend | React + Recharts 기반 보호자/사용자 대시보드, ECG 파형·위험도 시각화 UI, 시니어 친화적 UI 설계, 사용자 화면 구현 |
+| **문정인** | Backend | 회원가입·대시보드·ECG 파형/위험도 시각화 연동, AI-Server ECG 분석 연동, LLM 리포트 파이프라인, DB 입출력 통괄 등 서버 간 기능별 연결 구현 |
 | **신예은** | AI / Data Modeling | ECG 공개 데이터셋 조사·EDA, ResNet1D 부정맥·AF 분류 모델, HRV 이상 탐지, Gemini+MCP LLM 리포트 파이프라인 |
 
 > Backend(Node.js + Express, JWT 인증, FCM/SOLAPI 알림, Gmail SMTP 이메일 인증) 및 AI 서버 연동은 팀 협업으로 진행
@@ -201,15 +201,21 @@ MongoDB **8개 컬렉션**으로 구성됩니다.
 - **해결**: 서버 주소·포트와 연결 옵션이 모두 명시된 non-SRV(Standard) 주소 사용 — mongodb://...shard-00-00...:27017,...shard-00-01...:27017,...shard-00-02...:27017/...?ssl=true&replicaSet=...&authSource=admin. SRV 조회 단계를 건너뛰므로 해당 환경에서도 정상 접속됨
 - **참고**: non-SRV는 서버 주소가 고정 기재되어 있어, 추후 Atlas가 클러스터 노드를 변경하면 주소를 수동 갱신해야 할 수 있음. 다만 SRV 조회가 막히는 환경에서는 가장 확실한 해결책
 
-#### 🐛 이슈 #2: reports 유니크 인덱스 중복 키(E11000)
-- **문제**: `{userId, reportType, reportPeriod, lastAnalysisAt}` 유니크 인덱스 생성 시 `E11000 duplicate key` 발생
-- **원인**: 구버전 리포트 문서의 `reportPeriod/lastAnalysisAt`이 `null`로 중복
-- **해결**: `partialFilterExpression`으로 해당 필드가 존재할 때만 유니크를 적용하고, 구버전 데모 데이터 정리(`deleteMany`) 후 인덱스 재생성
+#### 🐛 이슈 #2: Tailwind v4가 적용된 화면을 html2canvas로 캡처해 PDF로 저장하려 할 때 에러가 발생
+- **문제**: Tailwind v4가 적용된 화면을 html2canvas로 캡처해 PDF로 저장하려 할 때 에러가 발생했다.
+- **원인**: Tailwind v4는 색상을 oklch() 함수로 정의하는데, html2canvas가 이 색상 함수를 파싱하지 못해서 PDF 저장 과정이 실패했다. onclone 콜백으로 색상을 강제 변환하는 우회 방법을 시도했지만, 처리가 불완전해서 근본적인 해결이 되지 않았다.
+- **해결**: 패키지를 oklch()를 지원하는 html2canvas-pro로 교체하여 문제를 해결했다.
 
-> 예시 항목 (개발 진행하며 채워넣으세요)
-> - 대용량 모델 가중치(.onnx) Git 용량 초과 → Git LFS / 외부 스토리지 전환
-> - Gemini MCP 연동 시 MongoDB 접근 권한·응답 지연 처리
-> - FCM + SMS 이중 발송 중복 알림 방지 로직
+#### 🐛 이슈 #3: 타인의 ECG/병력 데이터 조회 가능 (IDOR) 발생
+- **문제**: 보호자-환자가 N:M 구조라 GET /measurements/patient/:userId처럼 URL에 대상 userId를 직접 받는 API 존재. 로그인 여부(JWT)만 검증하면, 담당하지 않는 환자의 userId로 바꿔 요청해도 통과 → 타인의 ECG/병력 데이터 조회 가능 (IDOR)
+- **원인**: "인증(로그인 여부)"과 "인가(그 데이터에 접근할 자격)"를 동일시함 → JWT 미들웨어는 신원만 확인, 관계 여부는 미확인
+- **해결**: 컨트롤러 진입 시 GuardianRelation에서 guardianId + userId + relationStatus:'accepted' 매칭 여부를 먼저 조회 → 없으면 403, 있어야만 데이터 조회 진행 (관계 해제도 당사자만 가능하도록 $or 조건 적용)
+- **결과**: 요청마다 소유권/관계를 재검증하는 패턴 정착 → 무관한 사용자의 의료데이터 접근 차단
+
+#### 🐛 이슈 #4: HRV, 즉 심박변이도 분석에서 정상적인 박동 변동을 위험으로 잘못 인식하는 문제
+- **문제**: HRV, 즉 심박변이도 분석에서 정상적인 박동 변동을 위험으로 잘못 인식하는 문제
+- **원인**: 참고한 HRV의 기준은 5분간 측정을 기준으로 만들어진 값인데, HeartLink는 30초측정을 사용. 정상적인 심박 변동까지 위험으로 오인하는 문제 발생
+- **해결**: 측정 시간 2분 미만일 경우, 30초 측정 전용 정상범위를 별도로 적용하도록 로직 분기
 
 <br>
 
