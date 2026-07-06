@@ -248,8 +248,6 @@ export function GuardianDashboard({ patients, notifications, onSelectMember }: G
           })}
         </div>
       )}
-
-      <p className="mt-6 text-center text-gray-400 font-bold text-small">최대 3명까지 연결할 수 있습니다.</p>
     </div>
   );
 }
